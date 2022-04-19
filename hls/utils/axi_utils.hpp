@@ -1,0 +1,34 @@
+#ifndef _ASI_UTILS_
+#define _ASI_UTILS_
+#include "ap_int.h"
+
+#include <hls_stream.h>
+#include <iostream>
+using std::cout;
+using std::dec;
+using std::endl;
+using std::hex;
+
+#define TCP_STACK_MAX_SESSIONS 1000
+
+#define NET_TDATA_WIDTH 512
+#define NET_TID_WIDTH 16
+#define NET_TUSER_WIDTH 16
+#define NET_TDEST_WIDTH 4
+
+typedef ap_uint<NET_TDATA_WIDTH>     NetAXISData;
+typedef ap_uint<NET_TID_WIDTH>       NetAXISId;
+typedef ap_uint<NET_TUSER_WIDTH>     NetAXISUser;
+typedef ap_uint<NET_TDEST_WIDTH>     NetAXISDest;
+typedef ap_uint<NET_TDATA_WIDTH / 8> NetAXISKeep;
+
+struct NetAXIS {
+  NetAXISData data;
+  NetAXISId   id;
+  NetAXISUser user;
+  NetAXISDest dest;
+  NetAXISKeep keep;
+  ap_uint<1>  last;
+};
+
+#endif
