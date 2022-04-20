@@ -1,7 +1,5 @@
 #include "packet_handler.hpp"
 
-ap_uint<16> SwapByte16(ap_uint<16> input) { return (input.range(7, 0), input(15, 8)); }
-
 /**
  * @brief      Shave off the Ethernet when is needed. (IPv4) packets
  *
@@ -129,9 +127,9 @@ void                 PacketIdentify(stream<NetAXIS> &data_in, stream<NetAXIS> &d
     case FIRST_WORD:
       if (!data_in.empty()) {
         data_in.read(curr_word);
-        ethernet_type = SwapByte16(curr_word.data(111, 96));  // Get Ethernet type
-        ip_version    = curr_word.data(119, 116);             // Get IPv4
-        ip_protocol   = curr_word.data(191, 184);             // Get protocol for IPv4 packets
+        ethernet_type = SwapByte<16>(curr_word.data(111, 96));  // Get Ethernet type
+        ip_version    = curr_word.data(119, 116);               // Get IPv4
+        ip_protocol   = curr_word.data(191, 184);               // Get protocol for IPv4 packets
 
         if (ethernet_type == TYPE_ARP) {
           tdest          = 0;
@@ -208,7 +206,13 @@ void                 PacketIdentify(stream<NetAXIS> &data_in, stream<NetAXIS> &d
  * off for IPv4 packets
  *
  */
-void PacketHandler(stream<NetAXIS> &data_in, stream<NetAXIS> &data_out) {
+void        PacketHandler(stream<NetAXIS> &data_in, stream<NetAXIS> &data_out) {
+#pragma HLS DATAFLOW
+#pragma HLS INTERFACE ap_ctrl_none port = return
+
+#pragma HLS INTERFACE axis register both port = data_in name = s_axis
+#pragma HLS INTERFACE axis register both port = data_out name = m_axis
+
   static stream<NetAXIS> eth_level_pkt("eth_level_pkt");
 #pragma HLS DATA_PACK variable = eth_level_pkt
 #pragma HLS STREAM variable = eth_level_pkt depth = 16
@@ -216,14 +220,4 @@ void PacketHandler(stream<NetAXIS> &data_in, stream<NetAXIS> &data_out) {
   PacketIdentify(data_in, eth_level_pkt);
 
   EthernetRemover(eth_level_pkt, data_out);
-}
-
-void        packet_handler_top(stream<NetAXIS> &data_in, stream<NetAXIS> &data_out) {
-#pragma HLS DATAFLOW
-#pragma HLS INTERFACE ap_ctrl_none port = return
-
-#pragma HLS INTERFACE axis register both port = data_in name = s_axis
-#pragma HLS INTERFACE axis register both port = data_out name = m_axis
-
-  PacketHandler(data_in, data_out);
 }

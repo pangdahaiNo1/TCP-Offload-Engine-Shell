@@ -5,8 +5,8 @@ set hls_act [lindex $argv 5]
 set ip_repo [lindex $argv 6]
 
 set prj_src_dir ${src_top_dir}/${prj_name}
-set pcap_input_dir ${prj_src_dir}/input
-set pcap_output_dir ${prj_src_dir}/output
+set pcap_input_dir ${src_top_dir}/pcap/input
+set pcap_output_dir ${src_top_dir}/pcap/output
 
 # Create project
 open_project ${prj_name}
@@ -50,5 +50,5 @@ if {$hls_act == "install_ip"} {
    exec unzip ${prj_name}/solution1/impl/ip/*.zip -d ${ip_repo}/${prj_name}/
 } 
 
-
+ 
 exit
