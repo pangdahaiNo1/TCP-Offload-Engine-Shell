@@ -5,6 +5,7 @@
 #include "utils/axi_utils.hpp"
 
 typedef ap_uint<16>          TcpSessionID;
+typedef ap_uint<16>          TcpPortNumber;
 typedef ap_uint<WINDOW_BITS> TcpSessionBuffer;
 // TCP STATE
 /*
@@ -24,6 +25,47 @@ enum SessionState {
   CLOSING,
   TIME_WAIT,
   LAST_ACK
+};
+
+struct PortTableEntry {
+  bool        is_open;
+  NetAXISDest role_id;
+};
+
+struct ListenPortRsp {
+  bool          open_successfully;
+  bool          wrong_port_number;
+  bool          already_open;
+  TcpPortNumber port_number;
+  ListenPortRsp() {}
+  ListenPortRsp(bool          open_successfully,
+                bool          wrong_port_number,
+                bool          already_open,
+                TcpPortNumber port_number)
+      : open_successfully(open_successfully)
+      , wrong_port_number(wrong_port_number)
+      , already_open(already_open)
+      , port_number(port_number) {}
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "Open Port Response: " << std::dec << this->port_number << " \tOpened successfully "
+            << ((this->open_successfully) ? "Yes." : "No.") << "\tWrong port number "
+            << ((this->wrong_port_number) ? "Yes." : "No.") << "\tThe port is already open "
+            << ((this->already_open) ? "Yes." : "No.");
+    return sstream.str();
+  }
+#endif
+};
+
+struct NetAXISListenPortReq {
+  TcpPortNumber data;
+  NetAXISDest   dest;
+};
+
+struct NetAXISListenPortRsp {
+  ListenPortRsp data;
+  NetAXISDest   dest;
 };
 
 struct StateTableReq {
@@ -78,10 +120,6 @@ struct RxSarReq {
   bool             gap;
   RxSarReq() {}
   RxSarReq(ap_uint<16> id) : session_id(id), recvd(0), write(0), init(0) {}
-  // rxSarRecvd(ap_uint<16> id, ap_uint<32> recvd)
-  // 			:session_id(id), recvd(recvd), write(1), init(0) {}
-  // rxSarRecvd(ap_uint<16> id, ap_uint<32> recvd, ap_uint<4> win_shift)
-  // 				:session_id(id), recvd(recvd), win_shift(win_shift), write(1), init(1) {}
 
   RxSarReq(ap_uint<16> id, ap_uint<32> recvd, ap_uint<32> head, ap_uint<32> offset, bool gap)
       : session_id(id), recvd(recvd), head(head), offset(offset), gap(gap), write(1), init(0) {}

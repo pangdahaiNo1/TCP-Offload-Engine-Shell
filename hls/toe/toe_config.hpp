@@ -23,4 +23,7 @@ const uint32_t WINDOW_BITS = 16 + WINDOW_SCALE_BITS;
 const uint32_t BUFFER_SIZE           = (1 << WINDOW_BITS);
 const uint32_t CONGESTION_WINDOW_MAX = (BUFFER_SIZE - 2048);
 
+#define LISTENING_PORT_CNT (1 << 15)
+#define FREE_PORT_CNT (1 << 15)
+
 #endif  // _TOE_CONFIG_HPP_

@@ -1,4 +1,4 @@
-TOE_SRC=$(HLS_SRC_DIR)/TOE
+TOE_SRC=$(HLS_SRC_DIR)/toe
 ARK_DELAY_SRC=$(TOE_SRC)/ack_delay
 CLOSE_TIMER_SRC=$(TOE_SRC)/close_timer
 EVENT_ENGINE_SRC=$(TOE_SRC)/event_engine
@@ -16,6 +16,7 @@ TX_APP_INTERFACE_SRC=$(TOE_SRC)/tx_app_interface
 TX_APP_STREAM_IF_SRC=$(TOE_SRC)/tx_app_stream_if
 TX_ENGINE_SRC=$(TOE_SRC)/tx_engine
 TX_SAR_TABLE_SRC=$(TOE_SRC)/tx_sar_table
+TEST_PORT_SRC=$(TOE_SRC)/test_port
 
 IPERF_SRC=$(HLS_SRC_DIR)/iperf2_client
 HASH_TABLE_SRC=$(HLS_SRC_DIR)/hash_table
@@ -123,75 +124,79 @@ udp: $(shell find $(UDP_SRC) -type f)
 # TOE sub module
 ack_delay: $(shell find $(ACK_DELAY_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 close_timer: $(shell find $(CLOSE_TIMER_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 event_engine: $(shell find $(EVENT_ENGINE_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 memory_access: $(shell find $(MEMORY_ACCESS_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 port_table: $(shell find $(PORT_TABLE_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 probe_timer: $(shell find $(PROBE_TIMER_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 retransmit_timer: $(shell find $(RETRANSMIT_TIMER_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 rx_app_stream_if: $(shell find $($RX_APP_STREAM_IF_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 rx_engine: $(shell find $(RX_ENGINE_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 rx_sar_table: $(shell find $(RX_SAR_TABLE_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 session_lookup_controller: $(shell find $(SESSION_LOOKUP_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 state_table: $(shell find $(STATE_TABLE_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 # statistics: $(shell find $(STATISTICS_SRC) -type f)  
 # 	mkdir -p $(HLS_PRJ_DIR)/$@
-# 	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+# 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 tx_app_if: $(shell find $(TX_APP_IF_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 # tx_app_interface: $(shell find $(TX_APP_INTERFACE_SRC) -type f)  
 # 	mkdir -p $(HLS_PRJ_DIR)/$@
-# 	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+# 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 tx_app_stream_if: $(shell find $(TX_APP_STREAM_IF_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 tx_engine: $(shell find $(TX_ENGINE_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 tx_sar_table: $(shell find $(TX_SAR_TABLE_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/TOE/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+
+test_port: $(shell find $(TEST_PORT_SRC) -type f)  
+	mkdir -p $(HLS_PRJ_DIR)/$@
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 
 .PHONY: list help
