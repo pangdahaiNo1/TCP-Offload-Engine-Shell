@@ -27,11 +27,17 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************/
 #pragma once
-#include "utils/axi_utils.hpp"
+#include "toe/toe_config.hpp"
 
+#include <ap_int.h>
+#include <hls_stream.h>
 #include <math.h>
 
-const uint32_t kMaxNumberOfEntries = TCP_STACK_MAX_SESSIONS;
+#ifndef __SYNTHESIS__
+#include <iostream>
+#endif
+
+const uint32_t kMaxNumberOfEntries = TCP_MAX_SESSIONS;
 
 // Copied from hlslib by Johannes de Fine Licht
 // https://github.com/definelicht/hlslib/blob/master/include/hlslib/xilinx/Utility.h

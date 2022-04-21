@@ -142,7 +142,9 @@ insertLoop:
       break;
   }  // for
   if (!response.success) {
+#ifndef __SYNTHESIS__
     std::cout << "REACHED MAX TRIALS: " << request.key << " " << currentEntry.key << std::endl;
+#endif
     insertFailureCounter++;
   }
   return response;
