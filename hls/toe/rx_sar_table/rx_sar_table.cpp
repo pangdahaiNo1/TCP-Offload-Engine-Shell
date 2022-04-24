@@ -5,20 +5,20 @@ using namespace hls;
 
 /** @ingroup rx_sar_table
  * 	This data structure stores the RX(receiving) sliding window
- *  and handles concurrent access from the @ref rx_engine, @ref rx_app_if
+ *  and handles concurrent access from the @ref rx_engine, @ref rx_app_intf
  *  and @ref tx_engine
  *  @param[in]		rx_eng_to_rx_sar_upd_req
- *  @param[in]		rx_app_to_rx_sar_upd_req
+ *  @param[in]		rx_app_to_rx_sar_req
  *  @param[in]		tx_eng_to_rx_sar_lookup_req
  *  @param[out]		rx_sar_to_rx_eng_upd_rsp
- *  @param[out]		rx_sar_to_rx_app_upd_rsp
+ *  @param[out]		rx_sar_to_rx_app_rsp
  *  @param[out]		rx_sar_to_tx_eng_lookup_rsp
  */
 void                 rx_sar_table(stream<RxSarSegReq> &    rx_eng_to_rx_sar_upd_req,
-                                  stream<RxSarAppReqRsp> & rx_app_to_rx_sar_upd_req,
+                                  stream<RxSarAppReqRsp> & rx_app_to_rx_sar_req,
                                   stream<TcpSessionID> &   tx_eng_to_rx_sar_lookup_req,  // read only
                                   stream<RxSarTableEntry> &rx_sar_to_rx_eng_upd_rsp,
-                                  stream<RxSarAppReqRsp> & rx_sar_to_rx_app_upd_rsp,
+                                  stream<RxSarAppReqRsp> & rx_sar_to_rx_app_rsp,
                                   stream<RxSarLookupRsp> & rx_sar_to_tx_eng_lookup_rsp) {
 #pragma HLS PIPELINE II = 1
 
@@ -41,12 +41,12 @@ void                 rx_sar_table(stream<RxSarSegReq> &    rx_eng_to_rx_sar_upd_
     rx_sar_to_tx_eng_lookup_rsp.write(to_tx_eng_rsp);
   }
   // Read or Write access from the Rx App I/F to update the application pointer
-  else if (!rx_app_to_rx_sar_upd_req.empty()) {
-    RxSarAppReqRsp rx_app_req = rx_app_to_rx_sar_upd_req.read();
+  else if (!rx_app_to_rx_sar_req.empty()) {
+    RxSarAppReqRsp rx_app_req = rx_app_to_rx_sar_req.read();
     if (rx_app_req.write) {
       rx_sar_table[rx_app_req.session_id].app_read = rx_app_req.app_read;
     } else {
-      rx_sar_to_rx_app_upd_rsp.write(
+      rx_sar_to_rx_app_rsp.write(
           RxSarAppReqRsp(rx_app_req.session_id, rx_sar_table[rx_app_req.session_id].app_read));
     }
   }
