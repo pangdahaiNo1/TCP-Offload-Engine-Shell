@@ -4,6 +4,8 @@
 
 #define TCP_MAX_SESSIONS 1000
 #define TCP_MSS 1460
+#define TCP_MSS 1460
+#define TCP_MSS_TEN_TIMES 14600
 
 // TCP_NODELAY flag, to disable Nagle's Algorithm
 #define TCP_NODELAY 1
@@ -13,6 +15,8 @@
 
 // TCP fast recovery/fast retransmit
 #define TCP_FAST_RETRANSMIT 1
+
+#define TCP_MAX_RETX_ATTEMPTS 4
 
 // TCP window scaling option
 #define TCP_WINDOW_SCALE 1
