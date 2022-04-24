@@ -5,6 +5,7 @@ EVENT_ENGINE_SRC=$(TOE_SRC)/event_engine
 MEMORY_ACCESS_SRC=$(TOE_SRC)/memory_access
 PORT_TABLE_SRC=$(TOE_SRC)/port_table
 RETRANSMIT_TIMER_SRC=$(TOE_SRC)/retransmit_timer
+RX_APP_INTF_SRC=$(TOE_SRC)/rx_app_intf
 RX_APP_STREAM_IF_SRC=$(TOE_SRC)/rx_app_stream_if
 RX_ENGINE_SRC=$(TOE_SRC)/rx_engine
 RX_SAR_TABLE_SRC=$(TOE_SRC)/rx_sar_table
@@ -51,6 +52,7 @@ project = TOE \
 		port_table \
 		probe_timer \
 		retransmit_timer \
+		rx_app_intf \
 		rx_app_stream_if \
 		rx_engine \
 		rx_sar_table \
@@ -147,6 +149,10 @@ probe_timer: $(shell find $(PROBE_TIMER_SRC) -type f)
 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 retransmit_timer: $(shell find $(RETRANSMIT_TIMER_SRC) -type f)  
+	mkdir -p $(HLS_PRJ_DIR)/$@
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+
+rx_app_intf: $(shell find $($RX_APP_INTF_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
