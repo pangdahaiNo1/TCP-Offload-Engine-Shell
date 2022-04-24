@@ -9,23 +9,23 @@ using namespace hls;
  *  It also receives Session-IDs from the @ref close_timer, those sessions
  *  are closed and the IDs forwarded to the @ref session_lookup_controller which
  *  releases this ID.
- *  @param[in]		rx_eng_to_state_table_upd_req
- *  @param[in]		tx_app_to_state_table_upd_req
- *  @param[in]		tx_app_to_state_table_lup_req
- *  @param[in]		timer_to_state_table_release_session_req
- *  @param[out]		state_table_to_rx_eng_upd_rsp
- *  @param[out]		state_table_to_tx_app_upd_rsp
- *  @param[out]		state_table_to_tx_app_lup_rsp
- *  @param[out]		state_table_to_sessionlup_rsp
+ *  @param[in]		rx_eng_to_sttable_upd_req
+ *  @param[in]		tx_app_to_sttable_upd_req
+ *  @param[in]		tx_app_to_sttable_lup_req
+ *  @param[in]		timer_to_sttable_release_session_req
+ *  @param[out]		sttable_to_rx_eng_upd_rsp
+ *  @param[out]		sttable_to_tx_app_upd_rsp
+ *  @param[out]		sttable_to_tx_app_lup_rsp
+ *  @param[out]		sttable_to_slookup_release_session_req
  */
-void                 state_table(stream<StateTableReq> &rx_eng_to_state_table_upd_req,
-                                 stream<StateTableReq> &tx_app_to_state_table_upd_req,
-                                 stream<TcpSessionID> & tx_app_to_state_table_lup_req,
-                                 stream<TcpSessionID> & timer_to_state_table_release_session_req,
-                                 stream<SessionState> & state_table_to_rx_eng_upd_rsp,
-                                 stream<SessionState> & state_table_to_tx_app_upd_rsp,
-                                 stream<SessionState> & state_table_to_tx_app_lup_rsp,
-                                 stream<TcpSessionID> & state_table_to_sessionlup_rsp) {
+void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_upd_req,
+                                 stream<StateTableReq> &tx_app_to_sttable_upd_req,
+                                 stream<TcpSessionID> & tx_app_to_sttable_lup_req,
+                                 stream<TcpSessionID> & timer_to_sttable_release_session_req,
+                                 stream<SessionState> & sttable_to_rx_eng_upd_rsp,
+                                 stream<SessionState> & sttable_to_tx_app_upd_rsp,
+                                 stream<SessionState> & sttable_to_tx_app_lup_rsp,
+                                 stream<TcpSessionID> & sttable_to_slookup_release_session_req) {
 #pragma HLS PIPELINE II = 1
 
   static SessionState state_table[TCP_MAX_SESSIONS];
@@ -48,8 +48,8 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_state_table_up
   TcpSessionID session_id;
 
   // TX App If
-  if (!tx_app_to_state_table_upd_req.empty() && !stt_tx_wait) {
-    tx_app_to_state_table_upd_req.read(stt_tx_req);
+  if (!tx_app_to_sttable_upd_req.empty() && !stt_tx_wait) {
+    tx_app_to_sttable_upd_req.read(stt_tx_req);
     if ((stt_tx_req.session_id == stt_rx_locked_session_id) && stt_rx_session_locked)  // delay
     {
       stt_tx_wait = true;
@@ -58,7 +58,7 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_state_table_up
         state_table[stt_tx_req.session_id] = stt_tx_req.state;
         stt_tx_session_locked              = false;
       } else {
-        state_table_to_tx_app_upd_rsp.write(state_table[stt_tx_req.session_id]);
+        sttable_to_tx_app_upd_rsp.write(state_table[stt_tx_req.session_id]);
         // lock on every read
         stt_tx_locked_session_id = stt_tx_req.session_id;
         stt_tx_session_locked    = true;
@@ -66,42 +66,41 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_state_table_up
     }
   }
   // TX App Stream If
-  else if (!tx_app_to_state_table_lup_req.empty()) {
-    tx_app_to_state_table_lup_req.read(session_id);
-    state_table_to_tx_app_lup_rsp.write(state_table[session_id]);
+  else if (!tx_app_to_sttable_lup_req.empty()) {
+    tx_app_to_sttable_lup_req.read(session_id);
+    sttable_to_tx_app_lup_rsp.write(state_table[session_id]);
   }
   // RX Engine
-  else if (!rx_eng_to_state_table_upd_req.empty() && !stt_rx_wait) {
-    rx_eng_to_state_table_upd_req.read(stt_rx_req);
+  else if (!rx_eng_to_sttable_upd_req.empty() && !stt_rx_wait) {
+    rx_eng_to_sttable_upd_req.read(stt_rx_req);
     if ((stt_rx_req.session_id == stt_tx_locked_session_id) && stt_tx_session_locked) {
       stt_rx_wait = true;
     } else {
       if (stt_rx_req.write) {
         // We check if it was not closed before, not sure if necessary
         if (stt_rx_req.state == CLOSED) {
-          state_table_to_sessionlup_rsp.write(stt_rx_req.session_id);
+          sttable_to_slookup_release_session_req.write(stt_rx_req.session_id);
         }
         state_table[stt_rx_req.session_id] = stt_rx_req.state;
         stt_rx_session_locked              = false;
       } else {
-        state_table_to_rx_eng_upd_rsp.write(state_table[stt_rx_req.session_id]);
+        sttable_to_rx_eng_upd_rsp.write(state_table[stt_rx_req.session_id]);
         stt_rx_locked_session_id = stt_rx_req.session_id;
         stt_rx_session_locked    = true;
       }
     }
   }
   // Timer release
-  else if (!timer_to_state_table_release_session_req.empty() &&
-           !stt_close_wait)  // can only be a close
+  else if (!timer_to_sttable_release_session_req.empty() && !stt_close_wait)  // can only be a close
   {
-    timer_to_state_table_release_session_req.read(stt_close_session_id);
+    timer_to_sttable_release_session_req.read(stt_close_session_id);
     // Check if locked
     if (((stt_close_session_id == stt_rx_locked_session_id) && stt_rx_session_locked) ||
         ((stt_close_session_id == stt_tx_locked_session_id) && stt_tx_session_locked)) {
       stt_close_wait = true;
     } else {
       state_table[stt_close_session_id] = CLOSED;
-      state_table_to_sessionlup_rsp.write(stt_close_session_id);
+      sttable_to_slookup_release_session_req.write(stt_close_session_id);
     }
   } else if (stt_tx_wait) {
     if ((stt_tx_req.session_id != stt_rx_locked_session_id) || !stt_rx_session_locked) {
@@ -109,7 +108,7 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_state_table_up
         state_table[stt_tx_req.session_id] = stt_tx_req.state;
         stt_tx_session_locked              = false;
       } else {
-        state_table_to_tx_app_upd_rsp.write(state_table[stt_tx_req.session_id]);
+        sttable_to_tx_app_upd_rsp.write(state_table[stt_tx_req.session_id]);
         stt_tx_locked_session_id = stt_tx_req.session_id;
         stt_tx_session_locked    = true;
       }
@@ -119,12 +118,12 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_state_table_up
     if ((stt_rx_req.session_id != stt_tx_locked_session_id) || !stt_tx_session_locked) {
       if (stt_rx_req.write) {
         if (stt_rx_req.state == CLOSED) {
-          state_table_to_sessionlup_rsp.write(stt_rx_req.session_id);
+          sttable_to_slookup_release_session_req.write(stt_rx_req.session_id);
         }
         state_table[stt_rx_req.session_id] = stt_rx_req.state;
         stt_rx_session_locked              = false;
       } else {
-        state_table_to_rx_eng_upd_rsp.write(state_table[stt_rx_req.session_id]);
+        sttable_to_rx_eng_upd_rsp.write(state_table[stt_rx_req.session_id]);
         stt_rx_locked_session_id = stt_rx_req.session_id;
         stt_rx_session_locked    = true;
       }
@@ -134,7 +133,7 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_state_table_up
     if (((stt_close_session_id != stt_rx_locked_session_id) || !stt_rx_session_locked) &&
         ((stt_close_session_id != stt_tx_locked_session_id) || !stt_tx_session_locked)) {
       state_table[stt_close_session_id] = CLOSED;
-      state_table_to_sessionlup_rsp.write(stt_close_session_id);
+      sttable_to_slookup_release_session_req.write(stt_close_session_id);
       stt_close_wait = false;
     }
   }
