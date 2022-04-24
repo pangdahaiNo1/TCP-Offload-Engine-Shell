@@ -46,8 +46,8 @@ void                 GetNewAvailableSessionId(stream<ap_uint<14> > &available_id
  */
 void                 CamLookupRspHandler(stream<RtlCamToSlookupRsp> &          cam_to_slookup_rsp,
                                          stream<RtlCamToSlookupUpdateRsp> &    cam_to_slookup_upd_rsp,
-                                         stream<SessionLookupReq> &            rx_eng_to_slookup_req,
-                                         stream<FourTuple> &                   tx_app_to_slookup_req,
+                                         stream<RxEngToSlookupReq> &           rx_eng_to_slookup_req,
+                                         stream<TxAppToSlookupReq> &           tx_app_to_slookup_req,
                                          stream<ap_uint<14> > &                slookup_available_id_in,
                                          stream<RtlSLookupToCamReq> &          slookup_to_cam_req,
                                          stream<SessionLookupRsp> &            slookup_to_rx_eng_rsp,
@@ -57,16 +57,16 @@ void                 CamLookupRspHandler(stream<RtlCamToSlookupRsp> &          c
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
-  static stream<ThreeTuple> slookup_to_cam_insert_req_cache_fifo(
-      "slookup_to_cam_insert_req_cache_fifo");
-#pragma HLS STREAM variable = slookup_to_cam_insert_req_cache_fifo depth = 4
+  static stream<ReverseTableEntry> slookup_reverse_table_req_cache_fifo(
+      "slookup_reverse_table_req_cache_fifo");
+#pragma HLS STREAM variable = slookup_reverse_table_req_cache_fifo depth = 4
 
   static stream<SlookupReqInternal> slookup_to_cam_req_cache_fifo("slookup_to_cam_req_cache_fifo");
 #pragma HLS STREAM variable = slookup_to_cam_req_cache_fifo depth = 8
 
-  FourTuple                tx_app_req_four_tuple;
-  SessionLookupReq         rx_eng_req;
-  ThreeTuple               cam_rsp_corresponding_tuple;
+  TxAppToSlookupReq        tx_app_req;
+  RxEngToSlookupReq        rx_eng_req;
+  ReverseTableEntry        reverse_table_one_entry;
   SlookupReqInternal       req_internal;
   RtlCamToSlookupRsp       cam_rsp;
   RtlCamToSlookupUpdateRsp cam_update_rsp;
@@ -79,13 +79,14 @@ void                 CamLookupRspHandler(stream<RtlCamToSlookupRsp> &          c
   switch (slc_fsm_state) {
     case LUP_REQ:
       if (!tx_app_to_slookup_req.empty()) {
-        tx_app_to_slookup_req.read(tx_app_req_four_tuple);
-        req_internal.tuple.their_ip_addr  = tx_app_req_four_tuple.dst_ip_addr;
-        req_internal.tuple.there_tcp_port = tx_app_req_four_tuple.dst_tcp_port;
-        // req_internal.tuple.myIp = tx_app_req_four_tuple.src_ip_addr;
-        req_internal.tuple.here_tcp_port = tx_app_req_four_tuple.src_tcp_port;
-        req_internal.allow_creation      = true;
-        req_internal.source              = TX_APP;
+        tx_app_to_slookup_req.read(tx_app_req);
+        // req_internal.tuple.myIp = tx_app_req.four_tuple.src_ip_addr;
+        req_internal.tuple.their_ip_addr  = tx_app_req.four_tuple.dst_ip_addr;
+        req_internal.tuple.there_tcp_port = tx_app_req.four_tuple.dst_tcp_port;
+        req_internal.tuple.here_tcp_port  = tx_app_req.four_tuple.src_tcp_port;
+        req_internal.allow_creation       = true;
+        req_internal.source               = TX_APP;
+        req_internal.role_id              = tx_app_req.role_id;
         slookup_to_cam_req.write(RtlSLookupToCamReq(req_internal.tuple, req_internal.source));
         slookup_to_cam_req_cache_fifo.write(req_internal);
         slc_fsm_state = LUP_RSP;
@@ -97,6 +98,7 @@ void                 CamLookupRspHandler(stream<RtlCamToSlookupRsp> &          c
         req_internal.tuple.here_tcp_port = rx_eng_req.four_tuple.dst_tcp_port;
         req_internal.allow_creation      = rx_eng_req.allow_creation;
         req_internal.source              = RX;
+        req_internal.role_id             = rx_eng_req.role_id;
         slookup_to_cam_req.write(RtlSLookupToCamReq(req_internal.tuple, req_internal.source));
         slookup_to_cam_req_cache_fifo.write(req_internal);
         slc_fsm_state = LUP_RSP;
@@ -110,7 +112,8 @@ void                 CamLookupRspHandler(stream<RtlCamToSlookupRsp> &          c
           slookup_available_id_in.read(available_session_id);
           slookup_to_cam_insert_req.write(RtlSlookupToCamUpdateReq(
               req_internal.tuple, available_session_id, INSERT, cam_rsp.source));
-          slookup_to_cam_insert_req_cache_fifo.write(req_internal.tuple);
+          slookup_reverse_table_req_cache_fifo.write(
+              ReverseTableEntry(req_internal.tuple, req_internal.role_id));
           slc_fsm_state = UPD_RSP;
         } else {
           if (cam_rsp.source == RX) {
@@ -125,9 +128,9 @@ void                 CamLookupRspHandler(stream<RtlCamToSlookupRsp> &          c
     // case UPD_REQ:
     // break;
     case UPD_RSP:
-      if (!cam_to_slookup_upd_rsp.empty() && !slookup_to_cam_insert_req_cache_fifo.empty()) {
+      if (!cam_to_slookup_upd_rsp.empty() && !slookup_reverse_table_req_cache_fifo.empty()) {
         cam_to_slookup_upd_rsp.read(cam_update_rsp);
-        slookup_to_cam_insert_req_cache_fifo.read(cam_rsp_corresponding_tuple);
+        slookup_reverse_table_req_cache_fifo.read(reverse_table_one_entry);
         // updateReplies.write(SessionLookupRsp(cam_update_rsp.session_id, true));
         if (cam_update_rsp.source == RX) {
           slookup_to_rx_eng_rsp.write(SessionLookupRsp(cam_update_rsp.session_id, true));
@@ -135,7 +138,9 @@ void                 CamLookupRspHandler(stream<RtlCamToSlookupRsp> &          c
           slookup_to_tx_app_rsp.write(SessionLookupRsp(cam_update_rsp.session_id, true));
         }
         reverse_table_insert_req.write(
-            SlookupReverseTableInsertReq(cam_update_rsp.session_id, cam_rsp_corresponding_tuple));
+            SlookupReverseTableInsertReq(cam_update_rsp.session_id,
+                                         reverse_table_one_entry.three_tuple,
+                                         reverse_table_one_entry.role_id));
         slc_fsm_state = LUP_REQ;
       }
       break;
@@ -188,37 +193,39 @@ void CamUpdateRspHandler(stream<RtlCamToSlookupUpdateRsp> &rtl_cam_to_slookup_up
   }
 }
 
-void SlookupReverseTableInterface(stream<SlookupReverseTableInsertReq> &reverse_table_insert_req,
-                                  stream<TcpSessionID> &sttable_to_slookup_release_session_req,
-                                  stream<TcpSessionID> &tx_eng_to_slookup_reverse_table_req,
-                                  stream<TcpSessionID> &slookup_to_ptable_release_port_req,
-                                  stream<RtlSlookupToCamUpdateReq> &slookup_to_cam_delete_req,
-                                  stream<FourTuple> &slookup_reverse_table_to_tx_eng_rsp,
-                                  IpAddr             my_ip_addr) {
+void SlookupReverseTableInterface(
+    stream<SlookupReverseTableInsertReq> &reverse_table_insert_req,
+    stream<TcpSessionID> &                sttable_to_slookup_release_session_req,
+    stream<TcpSessionID> &                tx_eng_to_slookup_reverse_table_req,
+    stream<TcpSessionID> &                slookup_to_ptable_release_port_req,
+    stream<RtlSlookupToCamUpdateReq> &    slookup_to_cam_delete_req,
+    stream<ReverseTableToTxEngRsp> &      slookup_reverse_table_to_tx_eng_rsp,
+    IpAddr                                my_ip_addr) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
-  static ThreeTuple slookup_reverse_table[TCP_MAX_SESSIONS];
+  static ReverseTableEntry slookup_reverse_table[TCP_MAX_SESSIONS];
 #pragma HLS RESOURCE variable = slookup_reverse_table core = RAM_T2P_BRAM
 #pragma HLS DEPENDENCE variable                            = slookup_reverse_table inter false
   static bool valid_tuple[TCP_MAX_SESSIONS];
 #pragma HLS DEPENDENCE variable = valid_tuple inter false
 
   SlookupReverseTableInsertReq insert_req;
-  FourTuple                    cur_four_tuple_to_tx_rsp;
+  ReverseTableToTxEngRsp       tx_eng_rsp;
   ThreeTuple                   cur_tuple_to_release;
   TcpSessionID                 session_id;
 
   if (!reverse_table_insert_req.empty()) {
     reverse_table_insert_req.read(insert_req);
-    slookup_reverse_table[insert_req.key] = insert_req.value;
-    valid_tuple[insert_req.key]           = true;
+    slookup_reverse_table[insert_req.key] =
+        ReverseTableEntry(insert_req.tuple_value, insert_req.role_value);
+    valid_tuple[insert_req.key] = true;
 
   }
   // TODO check if else if necessary
   else if (!sttable_to_slookup_release_session_req.empty()) {
     sttable_to_slookup_release_session_req.read(session_id);
-    cur_tuple_to_release = slookup_reverse_table[session_id];
+    cur_tuple_to_release = slookup_reverse_table[session_id].three_tuple;
     if (valid_tuple[session_id])  // if valid
     {
       slookup_to_ptable_release_port_req.write(cur_tuple_to_release.here_tcp_port);
@@ -228,11 +235,14 @@ void SlookupReverseTableInterface(stream<SlookupReverseTableInsertReq> &reverse_
     valid_tuple[session_id] = false;
   } else if (!tx_eng_to_slookup_reverse_table_req.empty()) {
     tx_eng_to_slookup_reverse_table_req.read(session_id);
-    cur_four_tuple_to_tx_rsp.src_ip_addr  = my_ip_addr;
-    cur_four_tuple_to_tx_rsp.dst_ip_addr  = slookup_reverse_table[session_id].their_ip_addr;
-    cur_four_tuple_to_tx_rsp.src_tcp_port = slookup_reverse_table[session_id].here_tcp_port;
-    cur_four_tuple_to_tx_rsp.dst_tcp_port = slookup_reverse_table[session_id].there_tcp_port;
-    slookup_reverse_table_to_tx_eng_rsp.write(cur_four_tuple_to_tx_rsp);
+    tx_eng_rsp.four_tuple.src_ip_addr = my_ip_addr;
+    tx_eng_rsp.four_tuple.dst_ip_addr = slookup_reverse_table[session_id].three_tuple.their_ip_addr;
+    tx_eng_rsp.four_tuple.src_tcp_port =
+        slookup_reverse_table[session_id].three_tuple.here_tcp_port;
+    tx_eng_rsp.four_tuple.dst_tcp_port =
+        slookup_reverse_table[session_id].three_tuple.there_tcp_port;
+    tx_eng_rsp.role_id = slookup_reverse_table[session_id].role_id;
+    slookup_reverse_table_to_tx_eng_rsp.write(tx_eng_rsp);
   }
 }
 
@@ -254,16 +264,16 @@ void SlookupReverseTableInterface(stream<SlookupReverseTableInsertReq> &reverse_
  *  @param[out]		updateOut
  *  @TODO rename
  */
-void session_lookup_controller(stream<SessionLookupReq> &  rx_eng_to_slookup_req,
-                               stream<SessionLookupRsp> &  slookup_to_rx_eng_rsp,
-                               stream<ap_uint<16> > &      sttable_to_slookup_release_session_req,
-                               stream<ap_uint<16> > &      slookup_to_ptable_release_port_req,
-                               stream<FourTuple> &         tx_app_to_slookup_req,
-                               stream<SessionLookupRsp> &  slookup_to_tx_app_rsp,
-                               stream<ap_uint<16> > &      tx_eng_to_slookup_reverse_table_req,
-                               stream<FourTuple> &         slookup_reverse_table_to_tx_eng_rsp,
-                               stream<RtlSLookupToCamReq> &slookup_to_cam_req,
-                               stream<RtlCamToSlookupRsp> &cam_to_slookup_rsp,
+void session_lookup_controller(stream<RxEngToSlookupReq> &rx_eng_to_slookup_req,
+                               stream<SessionLookupRsp> & slookup_to_rx_eng_rsp,
+                               stream<ap_uint<16> > &     sttable_to_slookup_release_session_req,
+                               stream<ap_uint<16> > &     slookup_to_ptable_release_port_req,
+                               stream<TxAppToSlookupReq> &tx_app_to_slookup_req,
+                               stream<SessionLookupRsp> & slookup_to_tx_app_rsp,
+                               stream<ap_uint<16> > &     tx_eng_to_slookup_reverse_table_req,
+                               stream<ReverseTableToTxEngRsp> &slookup_reverse_table_to_tx_eng_rsp,
+                               stream<RtlSLookupToCamReq> &    slookup_to_cam_req,
+                               stream<RtlCamToSlookupRsp> &    cam_to_slookup_rsp,
                                stream<RtlSlookupToCamUpdateReq> &rtl_slookup_to_cam_update_req,
                                stream<RtlCamToSlookupUpdateRsp> &rtl_cam_to_slookup_update_rsp,
                                ap_uint<16> &                     reg_session_cnt,

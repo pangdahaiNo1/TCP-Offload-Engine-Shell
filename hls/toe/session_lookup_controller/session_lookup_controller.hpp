@@ -13,13 +13,6 @@ enum SlookupSource { RX, TX_APP };
  */
 enum SlookupOp { INSERT, DELETE };
 
-struct SlookupRouting {
-  bool          is_update;
-  SlookupSource source;
-  SlookupRouting() {}
-  SlookupRouting(bool is_update, SlookupSource src) : is_update(is_update), source(src) {}
-};
-
 /** @ingroup session_lookup_controller
  *  This struct defines the internal storage format of the IP tuple instead of destiantion and
  * source, my and their is used. When a tuple is sent or received from the tx/rx path it is mapped
@@ -52,6 +45,12 @@ struct ThreeTuple {
   }
 };
 
+struct ReverseTableEntry {
+  ThreeTuple  three_tuple;
+  NetAXISDest role_id;
+  ReverseTableEntry() {}
+  ReverseTableEntry(ThreeTuple tuple, NetAXISDest role) : three_tuple(tuple), role_id(role) {}
+};
 /** @ingroup session_lookup_controller
  *
  */
@@ -59,9 +58,10 @@ struct SlookupReqInternal {
   ThreeTuple    tuple;
   bool          allow_creation;
   SlookupSource source;
+  NetAXISDest   role_id;
   SlookupReqInternal() {}
-  SlookupReqInternal(ThreeTuple tuple, bool allow_creation, SlookupSource src)
-      : tuple(tuple), allow_creation(allow_creation), source(src) {}
+  SlookupReqInternal(ThreeTuple tuple, bool allow_creation, SlookupSource src, NetAXISDest role_id)
+      : tuple(tuple), allow_creation(allow_creation), source(src), role_id(role_id) {}
 };
 
 /** @ingroup session_lookup_controller
@@ -118,15 +118,17 @@ struct RtlCamToSlookupUpdateRsp {
 
 struct SlookupReverseTableInsertReq {
   TcpSessionID key;
-  ThreeTuple   value;
+  ThreeTuple   tuple_value;
+  NetAXISDest  role_value;
   SlookupReverseTableInsertReq(){};
-  SlookupReverseTableInsertReq(TcpSessionID key, ThreeTuple value) : key(key), value(value) {}
+  SlookupReverseTableInsertReq(TcpSessionID key, ThreeTuple tuple, NetAXISDest role)
+      : key(key), tuple_value(tuple), role_value(role) {}
 };
 
 /** @defgroup session_lookup_controller Session Lookup Controller
  *  @ingroup tcp_module
  */
-void session_lookup_controller(stream<SessionLookupReq> &        rxEng2sLookup_req,
+void session_lookup_controller(stream<RxEngToSlookupReq> &       rxEng2sLookup_req,
                                stream<SessionLookupRsp> &        sLookup2rxEng_rsp,
                                stream<ap_uint<16> > &            stateTable2sLookup_releaseSession,
                                stream<ap_uint<16> > &            sLookup2portTable_releasePort,
