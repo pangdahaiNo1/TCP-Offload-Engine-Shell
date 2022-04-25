@@ -1,5 +1,5 @@
-#ifndef _ASI_UTILS_TEST_HPP_
-#define _ASI_UTILS_TEST_HPP_
+#ifndef _AXI_UTILS_TEST_HPP_
+#define _AXI_UTILS_TEST_HPP_
 #include "axi_utils.hpp"
 
 #include <fstream>
@@ -50,7 +50,7 @@ void SaveNetAXISToFile(stream<NetAXIS> &net_axis_stream, const string &file_name
     axis_outfile << " ";
     axis_outfile << one_data.last;
     axis_outfile << " ";
-    axis_outfile<<endl;
+    axis_outfile << endl;
   }
   axis_outfile.close();
 }
