@@ -4,7 +4,7 @@ void                 ComputeSubChecksum(stream<NetAXIS> &    pkt_in,
                                         stream<NetAXIS> &    pkt_out,
                                         stream<SubChecksum> &sub_checksum) {
 #pragma HLS PIPELINE II = 1
-#pragma HLS INLINE   off
+#pragma HLS          INLINE
   static SubChecksum tcp_checksums;
   if (!pkt_in.empty()) {
     NetAXIS cur_word = pkt_in.read();
@@ -34,9 +34,9 @@ void                 ComputeSubChecksum(stream<NetAXIS> &    pkt_in,
   }
 }
 
-void                 CheckChecksum(stream<SubChecksum> &sub_checksum, stream<bool> &valid_pkt_out) {
+void CheckChecksum(stream<SubChecksum> &sub_checksum, stream<ap_uint<16> > &final_checksum) {
 #pragma HLS PIPELINE II = 1
-#pragma HLS INLINE   off
+#pragma HLS          INLINE
 
   if (!sub_checksum.empty()) {
     SubChecksum subsums = sub_checksum.read();
@@ -69,6 +69,6 @@ void                 CheckChecksum(stream<SubChecksum> &sub_checksum, stream<boo
     subsums.sum[0] = (subsums.sum[0] + (subsums.sum[0] >> 16)) & 0xFFFF;
     subsums.sum[0] = ~subsums.sum[0];
     std::cout << "checked checksum: " << std::hex << (uint16_t)subsums.sum[0](15, 0) << std::endl;
-    valid_pkt_out.write(subsums.sum[0](15, 0) == 0);
+    final_checksum.write(subsums.sum[0](15, 0));
   }
 }

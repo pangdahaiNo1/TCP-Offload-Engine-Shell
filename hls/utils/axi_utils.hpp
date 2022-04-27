@@ -2,8 +2,8 @@
 #define _AXI_UTILS_HPP_
 #include "ap_int.h"
 #include "axi_intf.hpp"
-
 #include "stdint.h"
+
 #include <hls_stream.h>
 #include <iostream>
 
@@ -43,6 +43,6 @@ void ComputeSubChecksum(stream<NetAXIS> &    pkt_in,
                         stream<NetAXIS> &    pkt_out,
                         stream<SubChecksum> &sub_checksum);
 
-void CheckChecksum(stream<SubChecksum> &sub_checksum, stream<bool> &valid_pkt_out);
+void CheckChecksum(stream<SubChecksum> &sub_checksum, stream<ap_uint<16> > &valid_pkt_out);
 
 #endif

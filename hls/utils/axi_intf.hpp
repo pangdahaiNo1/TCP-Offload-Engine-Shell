@@ -23,7 +23,7 @@ struct NetAXIS {
   NetAXISDest dest;
   NetAXISKeep keep;
   ap_uint<1>  last;
-  NetAXIS() {}
+  NetAXIS() : data(0), id(0), user(0), dest(0), keep(0), last(0) {}
 };
 
 #endif  // _AXI_INTF_HPP_

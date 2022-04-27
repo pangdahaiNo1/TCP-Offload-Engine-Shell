@@ -37,18 +37,17 @@ void SaveNetAXISToFile(stream<NetAXIS> &net_axis_stream, const string &file_name
   while (!net_axis_stream.empty()) {
     NetAXIS one_data;
     net_axis_stream.read(one_data);
-    axis_outfile << hex;
-    axis_outfile << one_data.data;
+    axis_outfile << one_data.data.to_string(16);
     axis_outfile << " ";
-    axis_outfile << one_data.id;
+    axis_outfile << one_data.id.to_string(16);
     axis_outfile << " ";
-    axis_outfile << one_data.user;
+    axis_outfile << one_data.user.to_string(16);
     axis_outfile << " ";
-    axis_outfile << one_data.dest;
+    axis_outfile << one_data.dest.to_string(16);
     axis_outfile << " ";
-    axis_outfile << one_data.keep;
+    axis_outfile << one_data.keep.to_string(16);
     axis_outfile << " ";
-    axis_outfile << one_data.last;
+    axis_outfile << one_data.last.to_string(16);
     axis_outfile << " ";
     axis_outfile << endl;
   }
