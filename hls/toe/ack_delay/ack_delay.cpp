@@ -2,8 +2,8 @@
 
 using namespace hls;
 
-void                 ack_delay(stream<EventWithTuple> &any_to_ack_delay_event,
-                               stream<EventWithTuple> &ack_delay_to_any_event,
+void                 ack_delay(stream<EventWithTuple> &event_eng_to_ack_delay_event,
+                               stream<EventWithTuple> &ack_delay_to_tx_eng_event,
                                stream<ap_uint<1> > &   ack_delay_read_cnt_fifo,
                                stream<ap_uint<1> > &   ack_delay_write_cnt_fifo) {
 #pragma HLS PIPELINE II = 1
@@ -15,8 +15,8 @@ void                 ack_delay(stream<EventWithTuple> &any_to_ack_delay_event,
   // static ap_uint<4>	ad_readCounter = 0;
   EventWithTuple event;
 
-  if (!any_to_ack_delay_event.empty()) {
-    any_to_ack_delay_event.read(event);
+  if (!event_eng_to_ack_delay_event.empty()) {
+    event_eng_to_ack_delay_event.read(event);
     ack_delay_read_cnt_fifo.write(1);
     // Check if there is a delayed ACK
     if (event.type == ACK && ack_table[event.session_id] == 0) {
@@ -24,13 +24,13 @@ void                 ack_delay(stream<EventWithTuple> &any_to_ack_delay_event,
     } else {
       // Assumption no SYN/RST
       ack_table[event.session_id] = 0;
-      ack_delay_to_any_event.write(event);
+      ack_delay_to_tx_eng_event.write(event);
       ack_delay_write_cnt_fifo.write(1);
     }
   } else {
-    if (ack_table[ack_delay_cur_session_id] > 0 && !ack_delay_to_any_event.full()) {
+    if (ack_table[ack_delay_cur_session_id] > 0 && !ack_delay_to_tx_eng_event.full()) {
       if (ack_table[ack_delay_cur_session_id] == 1) {
-        ack_delay_to_any_event.write(Event(ACK, ack_delay_cur_session_id));
+        ack_delay_to_tx_eng_event.write(Event(ACK, ack_delay_cur_session_id));
         ack_delay_write_cnt_fifo.write(1);
       }
       // Decrease value
