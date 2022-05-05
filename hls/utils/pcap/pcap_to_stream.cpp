@@ -24,7 +24,9 @@ void PcapPacketHandler(unsigned char *     user_data,
 
   bytes_to_send = (packet_header->len);
 #ifdef DEBUG
+#ifdef DEBUG_PCAP
   cout << "Bytes to send " << bytes_to_send << endl;
+#endif
 #endif
   for (int h = 0; h < bytes_to_send; h += NET_TDATA_WIDTH / 8) {
     bytes_sent += NET_TDATA_WIDTH / 8;
@@ -57,11 +59,13 @@ void PcapPacketHandler(unsigned char *     user_data,
     transaction.data = data_value;
 #endif
 #ifdef DEBUG
+#ifdef DEBUG_PCAP
     cout << "Test Data [" << dec << pkt << "] Transaction [" << dec << h / (NET_TDATA_WIDTH / 8)
          << "]";
     cout << "\tComplete Data " << hex << transaction.data << "\t\tkeep " << transaction.keep
          << "\tlast " << transaction.last << endl;
     pkt = pkt + transaction.last;
+#endif
 #endif
 
     input_data.write(transaction);
@@ -228,19 +232,19 @@ unsigned KeepToLength(ap_uint<NET_TDATA_WIDTH / 8> keep) {
   return ones_count;
 }
 
-int StreamToPcap(char *file2save,                      // pcapfilename
-                 bool  insert_stream_ethernet_header,  // 0: No ethernet in the packet, 1:
-                                                       // ethernet include
-                 bool using_microseconds_precision,    // 1: microseconds precision 0:
-                                                       // nanoseconds precision
-                 stream<NetAXIS> &input_data,          // output data
+int StreamToPcap(const char *file2save,                      // pcapfilename
+                 bool        insert_stream_ethernet_header,  // 0: No ethernet in the packet, 1:
+                                                             // ethernet include
+                 bool using_microseconds_precision,          // 1: microseconds precision 0:
+                                                             // nanoseconds precision
+                 stream<NetAXIS> &input_data,                // output data
                  bool             close_file) {
   bool file_open              = false;
   int  pcap_open_write_return = 0;
 
   NetAXIS curr_word;
   uint8_t ethernet_header[14] = {
-      0x4A, 0xFD, 0x4B, 0xE0, 0x87, 0xBD, 0x0, 0x0A, 0x35, 0x02, 0x9D, 0xE5, 0x08, 0x00};
+      0x90, 0xE2, 0xBA, 0x84, 0x7D, 0x6C, 0x0, 0x0A, 0x35, 0x02, 0x9D, 0xE5, 0x08, 0x00};
   uint8_t packet[65536] = {0};  // Include the Ethernet header
   int     pointer       = 0;
 

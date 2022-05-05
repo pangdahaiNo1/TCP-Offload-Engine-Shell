@@ -196,7 +196,7 @@ void PcapWriteData(uint8_t *data, int data_size) {
   }
 }
 
-int PcapOpenWrite(char *path, bool microseconds) {
+int PcapOpenWrite(const char *path, bool microseconds) {
   if (file_write != NULL) { /* Ensure just one file is opened. */
     perror("An output file is already open\n");
     return -1;

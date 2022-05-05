@@ -103,7 +103,7 @@ int PcapLoop(int cnt, pcap_handler callback, unsigned char *user);
  *
  * @return if was create successful or not.
  */
-int PcapOpenWrite(char *path, bool microseconds);
+int PcapOpenWrite(const char *path, bool microseconds);
 
 void PcapWriteData(uint8_t *data, int data_size);
 
