@@ -1,5 +1,6 @@
 #ifndef _AXI_UTILS_HPP_
 #define _AXI_UTILS_HPP_
+#define __gmp_const const
 #include "ap_int.h"
 #include "axi_intf.hpp"
 #include "stdint.h"
@@ -25,6 +26,11 @@ ap_uint<BITWIDTH> SwapByte(const ap_uint<BITWIDTH> &w) {
   return temp;
 }
 
+/**
+ * Generic stream merger function
+ */
+template <typename T>
+void AxiStreamMerger(stream<T> &in1, stream<T> &in2, stream<T> &out);
 struct SubChecksum {
   ap_uint<17> sum[NET_TDATA_WIDTH / 16];
 
