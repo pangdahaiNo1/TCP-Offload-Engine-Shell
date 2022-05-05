@@ -54,4 +54,65 @@ void SaveNetAXISToFile(stream<NetAXIS> &net_axis_stream, const string &file_name
   axis_outfile.close();
 }
 
+int ComparePacpPacketsWithGolden(stream<NetAXIS> &dut_packets,
+                                 stream<NetAXIS> &golden_packets,
+                                 bool             debug_all_bytes) {
+  int  wordCount          = 0;
+  int  packets            = 0;
+  int  error_packets      = 0;
+  bool error_packets_flag = false;
+  while (!dut_packets.empty()) {
+    NetAXIS curr_word;
+    NetAXIS golden_word;
+    dut_packets.read(curr_word);
+    golden_packets.read(golden_word);
+    int error = 0;
+
+    for (int m = 0; m < 64; m++) {
+      if (curr_word.data((m * 8) + 7, m * 8) != golden_word.data((m * 8) + 7, m * 8)) {
+        if (debug_all_bytes) {
+          cout << "Packet [" << dec << setw(4) << packets << "] Word [" << setw(3) << wordCount
+               << " ]Byte [" << setw(2) << dec << m << "] does not match generated ";
+          cout << hex << curr_word.data((m * 8) + 7, m * 8) << " expected "
+               << golden_word.data((m * 8) + 7, m * 8) << endl;
+        }
+        error++;
+      }
+    }
+    if (error != 0) {
+      error_packets_flag = true;
+      cout << "dutPacket : \t" << hex << curr_word.data << "\tkeep: " << curr_word.keep
+           << "\tlast: " << dec << curr_word.last << endl;
+      cout << "goldenPacket : \t" << hex << golden_word.data << "\tkeep: " << golden_word.keep
+           << "\tlast: " << dec << golden_word.last << endl;
+    }
+    // return -1;
+    if (curr_word.keep != golden_word.keep) {
+      cout << "keep does not match generated " << hex << setw(18) << curr_word.keep << " expected "
+           << setw(18) << golden_word.keep << endl;
+      error_packets_flag = true;
+    }
+    if (curr_word.last != golden_word.last) {
+      cout << "Error last does not match " << endl;
+      error_packets_flag = true;
+    }
+
+    if (curr_word.last) {
+      packets++;
+      wordCount = 0;
+
+      if (error_packets_flag) {
+        error_packets++;
+      }
+      error_packets_flag = false;
+    } else {
+      wordCount++;
+    }
+  }
+
+  cout << "Compared packets " << dec << packets << endl;
+  return error_packets;
+  ;
+}
+
 #endif
