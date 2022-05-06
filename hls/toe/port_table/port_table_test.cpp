@@ -3,89 +3,141 @@
 
 using namespace hls;
 
-ap_uint<16> swappedBytes(ap_uint<16> in) {
-  ap_uint<16> swapped;
-  swapped(7, 0)  = in(15, 8);
-  swapped(15, 8) = in(7, 0);
-  return swapped;
+void EmptyFifos(std::ofstream &               out_stream,
+                stream<PtableToRxEngRsp> &    ptable_to_rx_eng_check_rsp,
+                stream<NetAXISListenPortRsp> &ptable_to_rx_app_listen_port_rsp,
+                stream<TcpPortNumber> &       ptable_to_tx_app_port_rsp,
+                int                           sim_cycle) {
+  PtableToRxEngRsp     to_rx_eng_rsp;
+  NetAXISListenPortRsp to_rx_app_rsp;
+  TcpPortNumber        to_tx_app_free_port;
+
+  while (!ptable_to_rx_eng_check_rsp.empty()) {
+    ptable_to_rx_eng_check_rsp.read(to_rx_eng_rsp);
+    out_stream << "Cycle " << std::dec << sim_cycle << ": Porttable to Rx Engine response\n";
+    out_stream << to_rx_eng_rsp.to_string() << "\n";
+  }
+  while (!ptable_to_rx_app_listen_port_rsp.empty()) {
+    ptable_to_rx_app_listen_port_rsp.read(to_rx_app_rsp);
+    out_stream << "Cycle " << std::dec << sim_cycle << ": Porttable to Rx App response\n";
+    out_stream << to_rx_app_rsp.data.to_string() << "\nRole ID: " << to_rx_app_rsp.dest << endl;
+  }
+  while (!ptable_to_tx_app_port_rsp.empty()) {
+    ptable_to_tx_app_port_rsp.read(to_tx_app_free_port);
+    out_stream << "Cycle " << std::dec << sim_cycle << ": Porttable to Tx App free port\n";
+    out_stream << to_tx_app_free_port << endl;
+  }
 }
 
 int main() {
-  stream<ap_uint<16> >         rx_eng_to_ptable_req;
+  stream<TcpPortNumber>        rx_eng_to_ptable_check_req;
   stream<NetAXISListenPortReq> rx_app_to_ptable_listen_port_req;
-  stream<ap_uint<16> >         slup_to_ptable_realease_port;
-  stream<bool>                 ptable_to_rx_eng_check_rsp;
+  stream<TcpPortNumber>        slup_to_ptable_realease_port;
+  stream<NetAXISDest>          tx_app_to_ptable_port_req;
+  stream<PtableToRxEngRsp>     ptable_to_rx_eng_check_rsp;
   stream<NetAXISListenPortRsp> ptable_to_rx_app_listen_port_rsp;
-  stream<ap_uint<16> >         ptable_to_tx_app_port_rsp;
+  stream<TcpPortNumber>        ptable_to_tx_app_port_rsp;
 
-  int pkgCount = 0;
+  // open output file
+  std::ofstream outputFile;
 
-  bool currBool = false;
-  // listenPortStatus currStat;
-  ap_uint<16>          currPort = 0;
-  ap_uint<16>          port;
-  bool                 isOpen = false;
-  int                  mod    = 0;
-  NetAXISListenPortReq randPort;
-  randPort.data = 32767;
-  randPort.dest = 1;
-  ap_uint<16> temp;
-  int         count = 0;
-  while (count < 500)  // was 250
-  {
-    mod = count % 10;
-    switch (mod) {
+  outputFile.open("./out.dat");
+  if (!outputFile) {
+    std::cout << "Error: could not open test output file." << std::endl;
+  }
+
+  // check net app listen req/rsp and check
+  NetAXISListenPortReq app_req;
+  app_req.data = 0x0080;
+  app_req.dest = 0x1;
+  TcpPortNumber rx_eng_req;
+
+  int sim_cycle = 0;
+  outputFile << "Test NetApp listen port req/rsp" << endl;
+  while (sim_cycle < 20) {
+    switch (sim_cycle) {
+      case 1:
+        rx_app_to_ptable_listen_port_req.write(app_req);
+        break;
       case 2:
-        port = 80;
-        rx_eng_to_ptable_req.write(swappedBytes(port));  // swap bytes, this is 80
+        app_req.data = 0x0081;
+        app_req.dest = 0x02;
+        rx_app_to_ptable_listen_port_req.write(app_req);
+        break;
+      case 3:
+        app_req.data = 0x0081;
+        app_req.dest = 0x03;
+        rx_app_to_ptable_listen_port_req.write(app_req);
         break;
       case 5:
-        std::cout << "[PORT_TABLE CLIENT]-Try to listen on " << randPort.data << std::endl;
-        rx_app_to_ptable_listen_port_req.write(randPort);
-        // randPort = rand() % 100;
+        rx_eng_req = 0x0080;
+        rx_eng_to_ptable_check_req.write(rx_eng_req);
+        break;
+      case 6:
+        rx_eng_req = 0x0081;
+        rx_eng_to_ptable_check_req.write(rx_eng_req);
         break;
       case 7:
-        if (!isOpen) {
-          randPort.data = 80;
-          rx_app_to_ptable_listen_port_req.write(randPort);
-          std::cout << "[PORT_TABLE CLIENT]-Start listening on port 80" << std::endl;
-          isOpen = true;
-        }
+        rx_eng_req = 0x0082;
+        rx_eng_to_ptable_check_req.write(rx_eng_req);
         break;
       default:
         break;
     }
-    port_table(rx_eng_to_ptable_req,
+    port_table(rx_eng_to_ptable_check_req,
                rx_app_to_ptable_listen_port_req,
                slup_to_ptable_realease_port,
+               tx_app_to_ptable_port_req,
                ptable_to_rx_eng_check_rsp,
                ptable_to_rx_app_listen_port_rsp,
                ptable_to_tx_app_port_rsp);
-
-    // if (count == 20) {
-    //   rxEng2portTable_req.write(0x0007);
-    // }
-    // if (count == 40) {
-    //   rxEng2portTable_req.write(0x0700);  // 0x0700 = 1792
-    // }
-    // if (!portTable2rxEng_check_rsp.empty()) {
-    //   portTable2rxEng_check_rsp.read(currBool);
-    //   std::cout << "[PORT_TABLE CLIENT]-Port 80 is open: " << (currBool ? "yes" : "no")
-    //             << std::endl;
-    // }
-    // if (!portTable2rxApp_listen_rsp.empty()) {
-    //   portTable2rxApp_listen_rsp.read(currStat);
-    //   std::cout << "[PORT_TABLE CLIENT]-Listening " << (currStat.open_successfully ? "" : "not")
-    //             << " successful" << std::endl;
-    // }
-    // if (!portTable2txApp_port_rsp.empty()) {
-    //   portTable2txApp_port_rsp.read(currPort);
-    //   assert(currPort >= 32768);
-    // }
-    count++;
+    EmptyFifos(outputFile,
+               ptable_to_rx_eng_check_rsp,
+               ptable_to_rx_app_listen_port_rsp,
+               ptable_to_tx_app_port_rsp,
+               sim_cycle);
+    sim_cycle++;
   }
+  outputFile << "--------------------------\n\n";
 
-  // should return comparison
+  // check tx app get free port and check
+  sim_cycle                = 0;
+  NetAXISDest tx_app_tdest = 1;
+  outputFile << "Test NetApp get free port req/rsp" << endl;
+  while (sim_cycle < 20) {
+    switch (sim_cycle) {
+      case 1:
+        tx_app_to_ptable_port_req.write(tx_app_tdest);
+        break;
+      case 2:
+        rx_eng_to_ptable_check_req.write(32789);
+        tx_app_tdest = 2;
+        tx_app_to_ptable_port_req.write(tx_app_tdest);
+        break;
+      case 3:
+        tx_app_tdest = 3;
+        tx_app_to_ptable_port_req.write(tx_app_tdest);
+        break;
+      case 4:
+        break;
+      default:
+        break;
+    }
+    port_table(rx_eng_to_ptable_check_req,
+               rx_app_to_ptable_listen_port_req,
+               slup_to_ptable_realease_port,
+               tx_app_to_ptable_port_req,
+               ptable_to_rx_eng_check_rsp,
+               ptable_to_rx_app_listen_port_rsp,
+               ptable_to_tx_app_port_rsp);
+    EmptyFifos(outputFile,
+               ptable_to_rx_eng_check_rsp,
+               ptable_to_rx_app_listen_port_rsp,
+               ptable_to_tx_app_port_rsp,
+               sim_cycle);
+    sim_cycle++;
+  }
+  outputFile << "--------------------------\n\n";
 
   return 0;
 }

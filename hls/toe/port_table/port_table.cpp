@@ -18,7 +18,7 @@ using namespace hls;
 void ListeningPortTable(stream<NetAXISListenPortReq> &rx_app_to_ptable_listen_port_req,
                         stream<ap_uint<15> > &        ptable_check_listening_req_fifo,
                         stream<NetAXISListenPortRsp> &ptable_to_rx_app_listen_port_rsp,
-                        stream<bool> &                ptable_check_listening_rsp_fifo) {
+                        stream<PtableToRxEngRsp> &    ptable_check_listening_rsp_fifo) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -37,8 +37,9 @@ void ListeningPortTable(stream<NetAXISListenPortReq> &rx_app_to_ptable_listen_po
     listen_rsp.data.wrong_port_number = (curr_req.data.bit(15));
     listen_rsp.data.port_number       = curr_req.data;
 
-    PortTableEntry cur_entry = listening_port_table[curr_req.data(14, 0)];
-    if ((cur_entry.is_open == false) && !listen_rsp.data.wrong_port_number) {
+    PortTableEntry cur_entry              = listening_port_table[curr_req.data(14, 0)];
+    bool           cur_entry_port_is_open = cur_entry.is_open;
+    if ((cur_entry_port_is_open == false) && !listen_rsp.data.wrong_port_number) {
       listening_port_table[curr_req.data(14, 0)].is_open = true;
       listening_port_table[curr_req.data(14, 0)].role_id = curr_req.dest;
 
@@ -52,7 +53,8 @@ void ListeningPortTable(stream<NetAXISListenPortReq> &rx_app_to_ptable_listen_po
     ptable_to_rx_app_listen_port_rsp.write(listen_rsp);
   } else if (!ptable_check_listening_req_fifo.empty()) {
     ptable_check_listening_req_fifo.read(check_port_15);
-    ptable_check_listening_rsp_fifo.write(listening_port_table[check_port_15].is_open);
+    ptable_check_listening_rsp_fifo.write(PtableToRxEngRsp(
+        listening_port_table[check_port_15].is_open, listening_port_table[check_port_15].role_id));
   }
 }
 /** @ingroup port_table
@@ -67,20 +69,17 @@ void ListeningPortTable(stream<NetAXISListenPortReq> &rx_app_to_ptable_listen_po
  *  @param[out]		ptable_check_used_rsp_fifo
  *  @param[out]		ptable_to_tx_app_port_rsp
  */
-void                 FreePortTable(stream<TcpPortNumber> &slup_to_ptable_realease_port_req,
-                                   stream<ap_uint<15> > & ptable_check_used_req_fifo,
-                                   stream<bool> &         ptable_check_used_rsp_fifo,
-                                   stream<TcpPortNumber> &ptable_to_tx_app_port_rsp) {
+void                 FreePortTable(stream<TcpPortNumber> &   slup_to_ptable_realease_port_req,
+                                   stream<ap_uint<15> > &    ptable_check_used_req_fifo,
+                                   stream<NetAXISDest> &     tx_app_to_ptable_port_req,
+                                   stream<PtableToRxEngRsp> &ptable_check_used_rsp_fifo,
+                                   stream<TcpPortNumber> &   ptable_to_tx_app_port_rsp) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
-  static bool free_port_table[FREE_PORT_CNT];
+  static PortTableEntry free_port_table[FREE_PORT_CNT];
 #pragma HLS RESOURCE variable = free_port_table core = RAM_T2P_BRAM
 #pragma HLS DEPENDENCE variable                      = free_port_table inter false
-
-  // Free Ports Cache
-  // static stream<TcpPortNumber > pt_freePortsFifo("pt_freePortsFifo");
-  //#pragma HLS STREAM variable=pt_freePortsFifo depth=8
 
   static ap_uint<15> pt_cursor = 0;
 #pragma HLS RESET variable = pt_cursor
@@ -92,24 +91,26 @@ void                 FreePortTable(stream<TcpPortNumber> &slup_to_ptable_realeas
   if (!slup_to_ptable_realease_port_req.empty()) {
     slup_to_ptable_realease_port_req.read(slup_port_req);
     if (slup_port_req.bit(15)) {
-      free_port_table[slup_port_req(14, 0)] = false;  // shift
+      free_port_table[slup_port_req(14, 0)].is_open = false;  // shift
     }
   } else if (!ptable_check_used_req_fifo.empty()) {
     ptable_check_used_req_fifo.read(port_check_used);
-    ptable_check_used_rsp_fifo.write(free_port_table[port_check_used]);
-  } else {
-    if (!free_port_table[pt_cursor] &&
-        !ptable_to_tx_app_port_rsp.full()) {  // This is not perfect, but yeah
-      cur_free_port(14, 0)       = pt_cursor;
-      cur_free_port[15]          = 1;
-      free_port_table[pt_cursor] = true;
+    ptable_check_used_rsp_fifo.write(PtableToRxEngRsp(free_port_table[port_check_used].is_open,
+                                                      free_port_table[port_check_used].role_id));
+  } else if (!tx_app_to_ptable_port_req.empty()) {
+    if (!free_port_table[pt_cursor].is_open && !ptable_to_tx_app_port_rsp.full()) {
+      cur_free_port(14, 0)               = pt_cursor;
+      cur_free_port[15]                  = 1;
+      free_port_table[pt_cursor].is_open = true;
+      free_port_table[pt_cursor].role_id = tx_app_to_ptable_port_req.read();
       ptable_to_tx_app_port_rsp.write(cur_free_port);
     }
+    // cout<<"here" <<endl;
   }
   pt_cursor++;
 }
 
-void                 CheckInMultiplexer(stream<TcpPortNumber> &rx_eng_to_ptable_req,
+void                 CheckInMultiplexer(stream<TcpPortNumber> &rx_eng_to_ptable_check_req,
                                         stream<ap_uint<15> > & ptable_check_listening_req_fifo,
                                         stream<ap_uint<15> > & ptable_check_used_req_fifo,
                                         stream<bool> &         ptable_check_dst_fifo_out) {
@@ -123,9 +124,10 @@ void                 CheckInMultiplexer(stream<TcpPortNumber> &rx_eng_to_ptable_
   TcpPortNumber     req_swapped_check_port = 0;
 
   // Forward request according to port number, store table to keep order
-  if (!rx_eng_to_ptable_req.empty()) {
-    rx_eng_to_ptable_req.read(req_check_port);
-    req_swapped_check_port = 0;  // SwapByte<16>(req_check_port);
+  if (!rx_eng_to_ptable_check_req.empty()) {
+    rx_eng_to_ptable_check_req.read(req_check_port);
+    // request port is swapped
+    req_swapped_check_port = (req_check_port);
 
     if (!req_swapped_check_port.bit(15)) {
       ptable_check_listening_req_fifo.write(req_swapped_check_port);
@@ -140,19 +142,19 @@ void                 CheckInMultiplexer(stream<TcpPortNumber> &rx_eng_to_ptable_
 /** @ingroup port_table
  *
  */
-void                 CheckOutMultiplexer(stream<bool> &ptable_check_dst_fifo_in,
-                                         stream<bool> &ptable_check_listening_rsp_fifo,
-                                         stream<bool> &ptable_check_used_rsp_fifo,
-                                         stream<bool> &ptable_to_rx_eng_check_rsp) {
+void                 CheckOutMultiplexer(stream<bool> &            ptable_check_dst_fifo_in,
+                                         stream<PtableToRxEngRsp> &ptable_check_listening_rsp_fifo,
+                                         stream<PtableToRxEngRsp> &ptable_check_used_rsp_fifo,
+                                         stream<PtableToRxEngRsp> &ptable_to_rx_eng_check_rsp) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
   static const bool dst_is_listening_table = true;
   static const bool dst_is_free_table      = false;
 
-  static bool dst = dst_is_listening_table;
-  bool        listening_table_rsp;
-  bool        free_table_rsp;
+  static bool      dst = dst_is_listening_table;
+  PtableToRxEngRsp listening_table_rsp;
+  PtableToRxEngRsp free_table_rsp;
 
   // Read out responses from tables in order and merge them
   enum cmFsmStateType { READ_DST, READ_LISTENING, READ_USED };
@@ -191,26 +193,25 @@ void                 CheckOutMultiplexer(stream<bool> &ptable_check_dst_fifo_in,
 
 /** @ingroup port_table
  *  The @ref port_table contains an array of 65536 entries, one for each port
- * number. It receives passive opening (listening) request from @ref rx_app_if,
+ * number. It receives passive opening (listening) request from @ref rx_app_intf,
  * Request to check if the port is open from the @ref rx_engine and requests for
  * a free port from the @ref tx_app_if.
- *  @param[in]		rx_eng_to_ptable_req
+ *  @param[in]		rx_eng_to_ptable_check_req
  *  @param[in]		rx_app_to_ptable_listen_port_req
- *  @param[in]		txApp2portTable_req
  *  @param[in]		slup_to_ptable_realease_port
+ *  @param[in]		tx_app_to_ptable_port_req
  *  @param[out]		ptable_to_rx_eng_check_rsp
  *  @param[out]		ptable_to_rx_app_listen_port_rsp
  *  @param[out]		portTable2txApp_rsp
  */
-void        port_table(stream<TcpPortNumber> &       rx_eng_to_ptable_req,
+void        port_table(stream<TcpPortNumber> &       rx_eng_to_ptable_check_req,
                        stream<NetAXISListenPortReq> &rx_app_to_ptable_listen_port_req,
                        stream<TcpPortNumber> &       slup_to_ptable_realease_port,
-                       stream<bool> &                ptable_to_rx_eng_check_rsp,
+                       stream<NetAXISDest> &         tx_app_to_ptable_port_req,
+                       stream<PtableToRxEngRsp> &    ptable_to_rx_eng_check_rsp,
                        stream<NetAXISListenPortRsp> &ptable_to_rx_app_listen_port_rsp,
                        stream<TcpPortNumber> &       ptable_to_tx_app_port_rsp) {
 #pragma HLS DATAFLOW
-  // #pragma HLS INLINE
-
   /*
    * Fifos necessary for multiplexing Check requests
    */
@@ -219,8 +220,9 @@ void        port_table(stream<TcpPortNumber> &       rx_eng_to_ptable_req,
 #pragma HLS STREAM variable = ptable_check_listening_req_fifo depth = 8
 #pragma HLS STREAM variable = ptable_check_used_req_fifo depth = 8
 
-  static stream<bool> ptable_check_listening_rsp_fifo("ptable_check_listening_rsp_fifo");
-  static stream<bool> ptable_check_used_rsp_fifo("ptable_check_used_rsp_fifo");
+  static stream<PtableToRxEngRsp> ptable_check_listening_rsp_fifo(
+      "ptable_check_listening_rsp_fifo");
+  static stream<PtableToRxEngRsp> ptable_check_used_rsp_fifo("ptable_check_used_rsp_fifo");
 #pragma HLS STREAM variable = ptable_check_listening_rsp_fifo depth = 8
 #pragma HLS STREAM variable = ptable_check_used_rsp_fifo depth = 8
 
@@ -240,13 +242,14 @@ void        port_table(stream<TcpPortNumber> &       rx_eng_to_ptable_req,
    */
   FreePortTable(slup_to_ptable_realease_port,
                 ptable_check_used_req_fifo,
+                tx_app_to_ptable_port_req,
                 ptable_check_used_rsp_fifo,
                 ptable_to_tx_app_port_rsp);
 
   /*
    * Multiplex this query
    */
-  CheckInMultiplexer(rx_eng_to_ptable_req,
+  CheckInMultiplexer(rx_eng_to_ptable_check_req,
                      ptable_check_listening_req_fifo,
                      ptable_check_used_req_fifo,
                      ptable_check_dst_fifo);
