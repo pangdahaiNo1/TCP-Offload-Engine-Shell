@@ -25,7 +25,6 @@ void                 close_timer(stream<TcpSessionID> &rx_eng_to_timer_set_ctime
   static TcpSessionID ctimer_set_session_id  = 0;
   static TcpSessionID ctimer_prev_session_id = 0;
   static bool         ctimer_wait_for_write  = false;
-  // TcpSessionID session_id;
 
   if (ctimer_wait_for_write) {
     if (ctimer_set_session_id != ctimer_prev_session_id) {
@@ -33,6 +32,7 @@ void                 close_timer(stream<TcpSessionID> &rx_eng_to_timer_set_ctime
       close_timer_table[ctimer_set_session_id].active = true;
       ctimer_wait_for_write                           = false;
     }
+    // cout << "Prev "<< ctimer_prev_session_id << " Set "<< ctimer_set_session_id<<endl;
     ctimer_prev_session_id--;
   } else if (!rx_eng_to_timer_set_ctimer.empty()) {
     rx_eng_to_timer_set_ctimer.read(ctimer_set_session_id);

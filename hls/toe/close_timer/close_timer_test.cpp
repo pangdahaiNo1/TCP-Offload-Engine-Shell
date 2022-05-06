@@ -3,51 +3,47 @@
 #include "toe/mock/mock_toe.hpp"
 using namespace hls;
 
-int                       main() {
-#pragma HLS inline region off
-  // axiWord inData;
-  ap_uint<16>          outData;
-  stream<ap_uint<16> > timeWaitFifo;
-  stream<ap_uint<16> > sessionReleaseFifo;
+void EmptyFifos(std::ofstream &       out_stream,
+                stream<TcpSessionID> &ctimer_to_sttable_release_state,
+                int                   sim_cycle) {
+  TcpSessionID session_id;
 
-  // std::ifstream inputFile;
-  std::ofstream outputFile;
+  while (!ctimer_to_sttable_release_state.empty()) {
+    ctimer_to_sttable_release_state.read(session_id);
+    out_stream << "Cycle " << std::dec << sim_cycle << ": Close Timer to State Table for release\n";
+    out_stream << session_id.to_string(16) << "\n";
+  }
+}
 
-  /*inputFile.open("/home/dsidler/workspace/toe/retransmit_timer/in.dat");
+int main() {
+  stream<TcpSessionID> rx_eng_to_timer_set_ctimer;
+  stream<TcpSessionID> ctimer_to_sttable_release_state;
 
-  if (!inputFile)
-  {
-    std::cout << "Error: could not open test input file." << std::endl;
-    return -1;
-  }*/
-  outputFile.open("./out.dat");
-  if (!outputFile) {
+  std::ofstream outfile_stream;
+
+  outfile_stream.open("./out.dat");
+  if (!outfile_stream) {
     std::cout << "Error: could not open test output file." << std::endl;
   }
+  int          sim_cycle    = 0;
+  TcpSessionID to_ctimer_id = 1;
+  while (sim_cycle < 12800) {
+    switch (sim_cycle) {
+      case 1:
+        rx_eng_to_timer_set_ctimer.write(to_ctimer_id);
+        break;
+      case 2:
+        to_ctimer_id = 0x2;
+        rx_eng_to_timer_set_ctimer.write(to_ctimer_id);
+        break;
 
-  uint32_t count    = 0;
-  uint32_t setCount = 0;
-  timeWaitFifo.write(1);
-  timeWaitFifo.write(2);
-  while (count < 2147483647) {
-    if ((count % 1000000000) == 0) {
-      outputFile << "set new timer, count: " << count << std::endl;
-      timeWaitFifo.write(1);
-      setCount = count;
+      default:
+        break;
     }
-
-    close_timer(timeWaitFifo, sessionReleaseFifo);
-    while (!sessionReleaseFifo.empty()) {
-      double dbcount = count - setCount;
-      sessionReleaseFifo.read(outData);
-      outputFile << "Event fired at count: " << count;
-      outputFile << " ID: " << outData;  // << std::endl;
-      outputFile << " Time[s]: " << ((dbcount * 6.66) / 1000000000) << std::endl;
-    }
-    count++;
+    close_timer(rx_eng_to_timer_set_ctimer, ctimer_to_sttable_release_state);
+    EmptyFifos(outfile_stream, ctimer_to_sttable_release_state, sim_cycle);
+    sim_cycle++;
   }
-
-  // should return comparison
 
   return 0;
 }
