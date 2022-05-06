@@ -1,47 +1,58 @@
 
 #include "probe_timer.hpp"
+#include "toe/mock/mock_toe.hpp"
 
 #include <iostream>
 
 using namespace hls;
 
-int main() {
-  static stream<ap_uint<16> > clearTimerFifo;
-  static stream<ap_uint<16> > setTimerFifo;
-  static stream<Event>        eventFifo;
-
+void EmptyFifos(std::ofstream &out_stream,
+                stream<Event> &ptimer_to_event_eng_set_event,
+                int            sim_cycle) {
   Event ev;
 
-  int count = 0;
+  while (!ptimer_to_event_eng_set_event.empty()) {
+    ptimer_to_event_eng_set_event.read(ev);
+    out_stream << "Cycle " << std::dec << sim_cycle << ": Probe Timer to Event Eng\n";
+    out_stream << ev.to_string() << "\n";
+  }
+}
 
-  // for (int i=0; i < 10; i++)
-  //{
-  setTimerFifo.write(7);
-  //}
+int main() {
+  stream<TcpSessionID> rx_eng_to_timer_clear_ptimer;
+  stream<TcpSessionID> tx_eng_to_timer_set_ptimer;
+  stream<Event>        ptimer_to_event_eng_set_event;
 
-  while (count < 50000) {
-    /*if (count < 100)
-    {
-      setTimerFifo.write(count);
-      std::cout << "set Timer for: " << count << std::endl;
-    }*/
-    if (count == 9 || count == 12) {
-      // for (int i=0; i < 10; i++)
-      //{
-      setTimerFifo.write(7);  // try 33
-      //}
+  std::ofstream outfile_stream;
+
+  outfile_stream.open("./out.dat");
+  if (!outfile_stream) {
+    std::cout << "Error: could not open test output file." << std::endl;
+  }
+  int          sim_cycle   = 0;
+  TcpSessionID to_timer_id = 1;
+  while (sim_cycle < 12800) {
+    switch (sim_cycle) {
+      case 1:
+        rx_eng_to_timer_clear_ptimer.write(to_timer_id);
+        break;
+      case 2:
+        to_timer_id = 0x2;
+        tx_eng_to_timer_set_ptimer.write(to_timer_id);
+        break;
+      case 10:
+        to_timer_id = 0x2;
+        rx_eng_to_timer_clear_ptimer.write(to_timer_id);
+        break;
+
+      default:
+        break;
     }
-    if (count == 21) {
-      clearTimerFifo.write(22);
-      setTimerFifo.write(22);
-    }
-    probe_timer(clearTimerFifo, setTimerFifo, eventFifo);
-    if (!eventFifo.empty()) {
-      eventFifo.read(ev);
-      std::cout << "ev happened, ID: " << ev.session_id;  // << std::endl;
-      std::cout << "\t\tcount: " << count << std::endl;
-    }
-    count++;
+    probe_timer(
+        rx_eng_to_timer_clear_ptimer, tx_eng_to_timer_set_ptimer, ptimer_to_event_eng_set_event);
+    EmptyFifos(outfile_stream, ptimer_to_event_eng_set_event, sim_cycle);
+
+    sim_cycle++;
   }
 
   return 0;
