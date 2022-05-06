@@ -8,12 +8,11 @@ void                 ack_delay(stream<EventWithTuple> &event_eng_to_ack_delay_ev
                                stream<ap_uint<1> > &   ack_delay_write_cnt_fifo) {
 #pragma HLS PIPELINE II = 1
 
-  static ap_uint<12> ack_table[TCP_MAX_SESSIONS];  // TODO why is it 12
+  static ap_uint<12> ack_table[TCP_MAX_SESSIONS];
 #pragma HLS RESOURCE variable = ack_table core = RAM_2P_BRAM
 #pragma HLS DEPENDENCE variable                = ack_table inter false
   static TcpSessionID ack_delay_cur_session_id = 0;
-  // static ap_uint<4>	ad_readCounter = 0;
-  EventWithTuple event;
+  EventWithTuple      event;
 
   if (!event_eng_to_ack_delay_event.empty()) {
     event_eng_to_ack_delay_event.read(event);
@@ -25,6 +24,7 @@ void                 ack_delay(stream<EventWithTuple> &event_eng_to_ack_delay_ev
       // Assumption no SYN/RST
       ack_table[event.session_id] = 0;
       ack_delay_to_tx_eng_event.write(event);
+     // cout << "here event Type" << event.type <<endl;
       ack_delay_write_cnt_fifo.write(1);
     }
   } else {
