@@ -30,7 +30,16 @@ ap_uint<BITWIDTH> SwapByte(const ap_uint<BITWIDTH> &w) {
  * Generic stream merger function
  */
 template <typename T>
-void AxiStreamMerger(stream<T> &in1, stream<T> &in2, stream<T> &out);
+void                 AxiStreamMerger(stream<T> &in1, stream<T> &in2, stream<T> &out) {
+#pragma HLS PIPELINE II = 1
+
+  if (!in1.empty()) {
+    out.write(in1.read());
+  } else if (!in2.empty()) {
+    out.write(in2.read());
+  }
+}
+
 struct SubChecksum {
   ap_uint<17> sum[NET_TDATA_WIDTH / 16];
 

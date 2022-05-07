@@ -72,17 +72,3 @@ void CheckChecksum(stream<SubChecksum> &sub_checksum, stream<ap_uint<16> > &fina
     final_checksum.write(subsums.sum[0](15, 0));
   }
 }
-
-/** @ingroup tcp_module
- * Generic stream merger function
- */
-template <typename T>
-void                 AxiStreamMerger(stream<T> &in1, stream<T> &in2, stream<T> &out) {
-#pragma HLS PIPELINE II = 1
-
-  if (!in1.empty()) {
-    out.write(in1.read());
-  } else if (!in2.empty()) {
-    out.write(in2.read());
-  }
-}
