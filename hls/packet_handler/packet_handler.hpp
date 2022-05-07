@@ -1,17 +1,8 @@
 
 #ifndef _PACKET_HANDLER_HPP_
 #define _PACKET_HANDLER_HPP_
-#include "ap_int.h"
 #include "utils/axi_utils.hpp"
 
-#include <cstdlib>
-#include <fstream>
-#include <hls_stream.h>
-#include <iostream>
-#include <math.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string>
 
 using namespace hls;
 

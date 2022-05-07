@@ -1,58 +1,9 @@
 #include "packet_handler.hpp"
+#include "utils/axi_utils_test.hpp"
 #include "utils/pcap/pcap_to_stream.hpp"
 
 using namespace hls;
 using namespace std;
-
-int ComparePacpPacketsWithGolden(stream<NetAXIS> &dut_packets, stream<NetAXIS> &golden_packets) {
-  int wordCount     = 0;
-  int packets       = 0;
-  int error_packets = 0;
-  while (!dut_packets.empty()) {
-    NetAXIS curr_word;
-    NetAXIS golden_word;
-    dut_packets.read(curr_word);
-    golden_packets.read(golden_word);
-    int  error              = 0;
-    bool error_packets_flag = false;
-
-    for (int m = 0; m < 64; m++) {
-      if (curr_word.data((m * 8) + 7, m * 8) != golden_word.data((m * 8) + 7, m * 8)) {
-        error++;
-      }
-    }
-    if (error != 0) {
-      error_packets_flag = true;
-      cout << "dutPacket : \t\t" << hex << curr_word.data << "\tkeep: " << curr_word.keep
-           << "\tlast: " << dec << curr_word.last << endl;
-      cout << "goldenPacket : \t" << hex << golden_word.data << "\tkeep: " << golden_word.keep
-           << "\tlast: " << dec << golden_word.last << endl;
-    }
-    // return -1;
-    if (curr_word.keep != golden_word.keep) {
-      cout << "keep does not match generated " << hex << setw(18) << curr_word.keep << " expected "
-           << setw(18) << golden_word.keep << endl;
-      error_packets_flag = true;
-    }
-    if (curr_word.last != golden_word.last) {
-      cout << "Error last does not match " << endl;
-      error_packets_flag = true;
-    }
-
-    if (curr_word.last) {
-      packets++;
-      wordCount = 0;
-      if (error_packets_flag) {
-        error_packets++;
-      }
-    } else
-      wordCount++;
-  }
-
-  cout << "Compared packets " << dec << packets << endl;
-  return error_packets;
-  ;
-}
 
 void AxiStreamSplitter(stream<NetAXIS> &output_ethernet_packets,
                        stream<NetAXIS> &arp_packets,
@@ -169,10 +120,14 @@ int main(int argc, char **argv) {
                     dut_output_udp_packets,
                     dut_output_tcp_packets);
   int error_packets = 0;
-  error_packets += ComparePacpPacketsWithGolden(dut_output_arp_packets, input_golden_arp_packets);
-  error_packets += ComparePacpPacketsWithGolden(dut_output_icmp_packets, input_golden_icmp_packets);
-  error_packets += ComparePacpPacketsWithGolden(dut_output_udp_packets, input_golden_udp_packets);
-  error_packets += ComparePacpPacketsWithGolden(dut_output_tcp_packets, input_golden_tcp_packets);
+  error_packets +=
+      ComparePacpPacketsWithGolden(dut_output_arp_packets, input_golden_arp_packets, false);
+  error_packets +=
+      ComparePacpPacketsWithGolden(dut_output_icmp_packets, input_golden_icmp_packets, false);
+  error_packets +=
+      ComparePacpPacketsWithGolden(dut_output_udp_packets, input_golden_udp_packets, false);
+  error_packets +=
+      ComparePacpPacketsWithGolden(dut_output_tcp_packets, input_golden_tcp_packets, false);
 
   cout << "Error packets " << dec << error_packets << endl;
   return error_packets;

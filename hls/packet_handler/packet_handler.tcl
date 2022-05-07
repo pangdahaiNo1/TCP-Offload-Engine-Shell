@@ -22,6 +22,7 @@ add_files "${prj_src_dir}/packet_handler.cpp" -cflags "-I${src_top_dir}"
 
 add_files -tb  "${prj_src_dir}/packet_handler_test.cpp \
                ${src_top_dir}/utils/pcap/pcap_to_stream.cpp \
+               ${src_top_dir}/utils/axi_utils_test.hpp \
                ${src_top_dir}/utils/pcap/pcap.cpp " -csimflags "-I${src_top_dir} -DDEBUG " 
 
 if {$hls_act == "csim"} {
@@ -33,6 +34,9 @@ if {$hls_act == "csim"} {
                      ${pcap_output_dir}/packet_handler_output"
 }
 
+
+csynth_design
+
 if {$hls_act == "cosim"} {
    cosim_design -rtl verilog -argv "${pcap_input_dir}/packet_handler_input.pcap \
                      ${pcap_input_dir}/packet_handler_input_arp.pcap \
@@ -41,8 +45,6 @@ if {$hls_act == "cosim"} {
                      ${pcap_input_dir}/packet_handler_input_udp.pcap \
                      ${pcap_output_dir}/packet_handler_output"
 }
-
-csynth_design
 export_design -rtl verilog -format ip_catalog
 
 if {$hls_act == "install_ip"} {
