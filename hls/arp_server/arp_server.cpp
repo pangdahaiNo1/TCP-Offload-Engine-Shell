@@ -282,13 +282,13 @@ void                 GenArpScan(stream<ap_uint<32> > &mac_ip_encode_req_in,
         checkArpScan = 1;
 
       if ((checkArpScan == 1) && (arp_scan_1d == 0) && (arp_scan == 1)) {
-        arp_scan      = 0;
+        arp_scan  = 0;
         fsm_state = SETUP;
       }
       break;
     // Clear variables
     case SETUP:
-      ip_lsb        = 0;
+      ip_lsb    = 0;
       fsm_state = GEN_IP;
       break;
   }

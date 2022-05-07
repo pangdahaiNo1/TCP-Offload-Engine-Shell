@@ -2,14 +2,6 @@
 #include "ap_int.h"
 #include "toe/toe_intf.hpp"
 
-#include <fstream>
-#include <hls_stream.h>
-#include <iostream>
-#include <math.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string>
-
 #ifndef _ARP_SERVER_HPP_
 #define _ARP_SERVER_HPP_
 
@@ -44,7 +36,7 @@ struct ArpTableRsp {
   ap_uint<48> mac_addr;
   bool        hit;
   ArpTableRsp() {}
-  ArpTableRsp(ap_uint<48> macAdd, bool hit) : mac_addr(macAdd), hit(hit) {}
+  ArpTableRsp(ap_uint<48> mac_addr_rsp, bool hit) : mac_addr(mac_addr_rsp), hit(hit) {}
 };
 
 struct ArpMetaRsp {
@@ -59,15 +51,15 @@ struct ArpMetaRsp {
   ArpMetaRsp() {}
 };
 
-void arp_server(stream<NetAXIS> &     arpDataIn,
-                stream<ap_uint<32> > &macIpEncode_req,
-                stream<NetAXIS> &     arpDataOut,
-                stream<ArpTableRsp> & macIpEncode_rsp,
-                ArpTableEntry         arpTable[256],
+void arp_server(stream<NetAXIS> &     arp_data_in,
+                stream<ap_uint<32> > &mac_ip_encode_req,
+                stream<NetAXIS> &     arp_data_out,
+                stream<ArpTableRsp> & mac_ip_encode_rsp,
+                ArpTableEntry         arp_cache_table[256],
                 ap_uint<1> &          arp_scan,
-                ap_uint<48> &         myMacAddress,
-                ap_uint<32> &         myIpAddress,
-                ap_uint<32> &         gatewayIP,
-                ap_uint<32> &         networkMask);
+                ap_uint<48> &         my_mac_addr,
+                ap_uint<32> &         my_ip_addr,
+                ap_uint<32> &         gateway_ip_addr,
+                ap_uint<32> &         subnet_mask);
 
 #endif
