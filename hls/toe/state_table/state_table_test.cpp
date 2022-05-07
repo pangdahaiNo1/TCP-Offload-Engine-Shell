@@ -86,7 +86,7 @@ int main() {
         timerIn.write(id);
         break;
       case 3:
-        rxIn.write(StateTableReq(id, FIN_WAIT_1, 1));
+        rxIn.write(StateTableReq(id));
         break;
       default:
         break;

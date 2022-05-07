@@ -9,132 +9,136 @@ using namespace hls;
  *  It also receives Session-IDs from the @ref close_timer, those sessions
  *  are closed and the IDs forwarded to the @ref session_lookup_controller which
  *  releases this ID.
- *  @param[in]		rx_eng_to_sttable_upd_req
- *  @param[in]		tx_app_to_sttable_upd_req
- *  @param[in]		tx_app_to_sttable_lup_req
- *  @param[in]		timer_to_sttable_release_session_req
- *  @param[out]		sttable_to_rx_eng_upd_rsp
- *  @param[out]		sttable_to_tx_app_upd_rsp
+ *  @param[in]		rx_eng_to_sttable_req read or write
+ *  @param[in]		tx_app_to_sttable_req read or write
+ *  @param[in]		tx_app_to_sttable_lup_req only read
+ *  @param[in]		timer_to_sttable_release_req release session id
+ *  @param[out]		sttable_to_rx_eng_rsp read response
+ *  @param[out]		sttable_to_tx_app_rsp read response
  *  @param[out]		sttable_to_tx_app_lup_rsp
- *  @param[out]		sttable_to_slookup_release_session_req
+ *  @param[out]		sttable_to_slookup_release_req release session id
  */
-void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_upd_req,
-                                 stream<StateTableReq> &tx_app_to_sttable_upd_req,
+void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_req,
+                                 stream<StateTableReq> &tx_app_to_sttable_req,
                                  stream<TcpSessionID> & tx_app_to_sttable_lup_req,
-                                 stream<TcpSessionID> & timer_to_sttable_release_session_req,
-                                 stream<SessionState> & sttable_to_rx_eng_upd_rsp,
-                                 stream<SessionState> & sttable_to_tx_app_upd_rsp,
+                                 stream<TcpSessionID> & timer_to_sttable_release_req,
+                                 stream<SessionState> & sttable_to_rx_eng_rsp,
+                                 stream<SessionState> & sttable_to_tx_app_rsp,
                                  stream<SessionState> & sttable_to_tx_app_lup_rsp,
-                                 stream<TcpSessionID> & sttable_to_slookup_release_session_req) {
+                                 stream<TcpSessionID> & sttable_to_slookup_release_req) {
 #pragma HLS PIPELINE II = 1
 
   static SessionState state_table[TCP_MAX_SESSIONS];
 #pragma HLS RESOURCE variable = state_table core = RAM_2P_BRAM
 #pragma HLS DEPENDENCE variable                  = state_table inter false
 
-  static TcpSessionID stt_tx_locked_session_id;
-  static TcpSessionID stt_rx_locked_session_id;
-  static bool         stt_rx_session_locked = false;
-  static bool         stt_tx_session_locked = false;
+  static TcpSessionID tx_app_rw_req_session_id;
+  static TcpSessionID rx_eng_rw_req_session_id;
+  static bool         rx_eng_rw_req_session_id_locked = false;
+  static bool         tx_app_rw_req_session_id_locked = false;
 
-  static StateTableReq stt_tx_req;
-  static StateTableReq stt_rx_req;
-  static bool          stt_tx_wait = false;
-  static bool          stt_rx_wait = false;
+  static StateTableReq tx_app_rw_req;
+  static StateTableReq rx_eng_rw_req;
+  static bool          tx_app_rw_locked = false;
+  static bool          rx_eng_rw_locked = false;
 
-  static TcpSessionID stt_close_session_id;
-  static bool         stt_close_wait = false;
+  static TcpSessionID timer_release_req_session_id;
+  static bool         timer_release_locked = false;
 
   TcpSessionID session_id;
 
-  // TX App If
-  if (!tx_app_to_sttable_upd_req.empty() && !stt_tx_wait) {
-    tx_app_to_sttable_upd_req.read(stt_tx_req);
-    if ((stt_tx_req.session_id == stt_rx_locked_session_id) && stt_rx_session_locked)  // delay
-    {
-      stt_tx_wait = true;
+  // TX App connection handler, write or write
+  if (!tx_app_to_sttable_req.empty() && !tx_app_rw_locked) {
+    tx_app_to_sttable_req.read(tx_app_rw_req);
+    if ((tx_app_rw_req.session_id == rx_eng_rw_req_session_id) && rx_eng_rw_req_session_id_locked) {
+      tx_app_rw_locked = true;
     } else {
-      if (stt_tx_req.write) {
-        state_table[stt_tx_req.session_id] = stt_tx_req.state;
-        stt_tx_session_locked              = false;
+      if (tx_app_rw_req.write) {
+        state_table[tx_app_rw_req.session_id] = tx_app_rw_req.state;
+        tx_app_rw_req_session_id_locked       = false;
       } else {
-        sttable_to_tx_app_upd_rsp.write(state_table[stt_tx_req.session_id]);
+        sttable_to_tx_app_rsp.write(state_table[tx_app_rw_req.session_id]);
         // lock on every read
-        stt_tx_locked_session_id = stt_tx_req.session_id;
-        stt_tx_session_locked    = true;
+        tx_app_rw_req_session_id        = tx_app_rw_req.session_id;
+        tx_app_rw_req_session_id_locked = true;
       }
     }
   }
-  // TX App Stream If
+  // TX App Stream If, read only
   else if (!tx_app_to_sttable_lup_req.empty()) {
     tx_app_to_sttable_lup_req.read(session_id);
     sttable_to_tx_app_lup_rsp.write(state_table[session_id]);
   }
-  // RX Engine
-  else if (!rx_eng_to_sttable_upd_req.empty() && !stt_rx_wait) {
-    rx_eng_to_sttable_upd_req.read(stt_rx_req);
-    if ((stt_rx_req.session_id == stt_tx_locked_session_id) && stt_tx_session_locked) {
-      stt_rx_wait = true;
+  // RX Engine, read or write
+  else if (!rx_eng_to_sttable_req.empty() && !rx_eng_rw_locked) {
+    rx_eng_to_sttable_req.read(rx_eng_rw_req);
+    if ((rx_eng_rw_req.session_id == tx_app_rw_req_session_id) && tx_app_rw_req_session_id_locked) {
+      rx_eng_rw_locked = true;
     } else {
-      if (stt_rx_req.write) {
+      if (rx_eng_rw_req.write) {
         // We check if it was not closed before, not sure if necessary
-        if (stt_rx_req.state == CLOSED) {
-          sttable_to_slookup_release_session_req.write(stt_rx_req.session_id);
+        if (rx_eng_rw_req.state == CLOSED) {
+          sttable_to_slookup_release_req.write(rx_eng_rw_req.session_id);
         }
-        state_table[stt_rx_req.session_id] = stt_rx_req.state;
-        stt_rx_session_locked              = false;
+        state_table[rx_eng_rw_req.session_id] = rx_eng_rw_req.state;
+        rx_eng_rw_req_session_id_locked       = false;
       } else {
-        sttable_to_rx_eng_upd_rsp.write(state_table[stt_rx_req.session_id]);
-        stt_rx_locked_session_id = stt_rx_req.session_id;
-        stt_rx_session_locked    = true;
+        sttable_to_rx_eng_rsp.write(state_table[rx_eng_rw_req.session_id]);
+        rx_eng_rw_req_session_id        = rx_eng_rw_req.session_id;
+        rx_eng_rw_req_session_id_locked = true;
       }
     }
   }
-  // Timer release
-  else if (!timer_to_sttable_release_session_req.empty() && !stt_close_wait)  // can only be a close
-  {
-    timer_to_sttable_release_session_req.read(stt_close_session_id);
+  // Timer to release session
+  else if (!timer_to_sttable_release_req.empty() && !timer_release_locked) {
+    timer_to_sttable_release_req.read(timer_release_req_session_id);
     // Check if locked
-    if (((stt_close_session_id == stt_rx_locked_session_id) && stt_rx_session_locked) ||
-        ((stt_close_session_id == stt_tx_locked_session_id) && stt_tx_session_locked)) {
-      stt_close_wait = true;
+    if (((timer_release_req_session_id == rx_eng_rw_req_session_id) &&
+         rx_eng_rw_req_session_id_locked) ||
+        ((timer_release_req_session_id == tx_app_rw_req_session_id) &&
+         tx_app_rw_req_session_id_locked)) {
+      timer_release_locked = true;
     } else {
-      state_table[stt_close_session_id] = CLOSED;
-      sttable_to_slookup_release_session_req.write(stt_close_session_id);
+      state_table[timer_release_req_session_id] = CLOSED;
+      sttable_to_slookup_release_req.write(timer_release_req_session_id);
     }
-  } else if (stt_tx_wait) {
-    if ((stt_tx_req.session_id != stt_rx_locked_session_id) || !stt_rx_session_locked) {
-      if (stt_tx_req.write) {
-        state_table[stt_tx_req.session_id] = stt_tx_req.state;
-        stt_tx_session_locked              = false;
+  } else if (tx_app_rw_locked) {
+    if ((tx_app_rw_req.session_id != rx_eng_rw_req_session_id) ||
+        !rx_eng_rw_req_session_id_locked) {
+      if (tx_app_rw_req.write) {
+        state_table[tx_app_rw_req.session_id] = tx_app_rw_req.state;
+        tx_app_rw_req_session_id_locked       = false;
       } else {
-        sttable_to_tx_app_upd_rsp.write(state_table[stt_tx_req.session_id]);
-        stt_tx_locked_session_id = stt_tx_req.session_id;
-        stt_tx_session_locked    = true;
+        sttable_to_tx_app_rsp.write(state_table[tx_app_rw_req.session_id]);
+        tx_app_rw_req_session_id        = tx_app_rw_req.session_id;
+        tx_app_rw_req_session_id_locked = true;
       }
-      stt_tx_wait = false;
+      tx_app_rw_locked = false;
     }
-  } else if (stt_rx_wait) {
-    if ((stt_rx_req.session_id != stt_tx_locked_session_id) || !stt_tx_session_locked) {
-      if (stt_rx_req.write) {
-        if (stt_rx_req.state == CLOSED) {
-          sttable_to_slookup_release_session_req.write(stt_rx_req.session_id);
+  } else if (rx_eng_rw_locked) {
+    if ((rx_eng_rw_req.session_id != tx_app_rw_req_session_id) ||
+        !tx_app_rw_req_session_id_locked) {
+      if (rx_eng_rw_req.write) {
+        if (rx_eng_rw_req.state == CLOSED) {
+          sttable_to_slookup_release_req.write(rx_eng_rw_req.session_id);
         }
-        state_table[stt_rx_req.session_id] = stt_rx_req.state;
-        stt_rx_session_locked              = false;
+        state_table[rx_eng_rw_req.session_id] = rx_eng_rw_req.state;
+        rx_eng_rw_req_session_id_locked       = false;
       } else {
-        sttable_to_rx_eng_upd_rsp.write(state_table[stt_rx_req.session_id]);
-        stt_rx_locked_session_id = stt_rx_req.session_id;
-        stt_rx_session_locked    = true;
+        sttable_to_rx_eng_rsp.write(state_table[rx_eng_rw_req.session_id]);
+        rx_eng_rw_req_session_id        = rx_eng_rw_req.session_id;
+        rx_eng_rw_req_session_id_locked = true;
       }
-      stt_rx_wait = false;
+      rx_eng_rw_locked = false;
     }
-  } else if (stt_close_wait) {
-    if (((stt_close_session_id != stt_rx_locked_session_id) || !stt_rx_session_locked) &&
-        ((stt_close_session_id != stt_tx_locked_session_id) || !stt_tx_session_locked)) {
-      state_table[stt_close_session_id] = CLOSED;
-      sttable_to_slookup_release_session_req.write(stt_close_session_id);
-      stt_close_wait = false;
+  } else if (timer_release_locked) {
+    if (((timer_release_req_session_id != rx_eng_rw_req_session_id) ||
+         !rx_eng_rw_req_session_id_locked) &&
+        ((timer_release_req_session_id != tx_app_rw_req_session_id) ||
+         !tx_app_rw_req_session_id_locked)) {
+      state_table[timer_release_req_session_id] = CLOSED;
+      sttable_to_slookup_release_req.write(timer_release_req_session_id);
+      timer_release_locked = false;
     }
   }
 }
