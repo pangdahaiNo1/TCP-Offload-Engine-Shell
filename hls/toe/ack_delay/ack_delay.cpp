@@ -24,7 +24,7 @@ void                 ack_delay(stream<EventWithTuple> &event_eng_to_ack_delay_ev
       // Assumption no SYN/RST
       ack_table[event.session_id] = 0;
       ack_delay_to_tx_eng_event.write(event);
-     // cout << "here event Type" << event.type <<endl;
+      // cout << "here event Type" << event.type <<endl;
       ack_delay_write_cnt_fifo.write(1);
     }
   } else {
