@@ -6,7 +6,7 @@ MEMORY_ACCESS_SRC=$(TOE_SRC)/memory_access
 PORT_TABLE_SRC=$(TOE_SRC)/port_table
 RETRANSMIT_TIMER_SRC=$(TOE_SRC)/retransmit_timer
 RX_APP_INTF_SRC=$(TOE_SRC)/rx_app_intf
-RX_APP_STREAM_IF_SRC=$(TOE_SRC)/rx_app_stream_if
+RX_APP_STREAM_INTF_SRC=$(TOE_SRC)/rx_app_stream_intf
 RX_ENGINE_SRC=$(TOE_SRC)/rx_engine
 RX_SAR_TABLE_SRC=$(TOE_SRC)/rx_sar_table
 SESSION_LOOKUP_SRC=$(TOE_SRC)/session_lookup_controller
@@ -17,13 +17,14 @@ TX_APP_INTERFACE_SRC=$(TOE_SRC)/tx_app_interface
 TX_APP_STREAM_IF_SRC=$(TOE_SRC)/tx_app_stream_if
 TX_ENGINE_SRC=$(TOE_SRC)/tx_engine
 TX_SAR_TABLE_SRC=$(TOE_SRC)/tx_sar_table
+TIMER_WRAPPER_SRC=$(TOE_SRC)/timer_wrapper
 TEST_PORT_SRC=$(TOE_SRC)/test_port
 
 IPERF_SRC=$(HLS_SRC_DIR)/iperf2_client
 HASH_TABLE_SRC=$(HLS_SRC_DIR)/hash_table
 ECHO_SRC=$(HLS_SRC_DIR)/echo_replay
 ARP_SRC=$(HLS_SRC_DIR)/arp_server
-ETHERNET_SRC=$(HLS_SRC_DIR)/ethernet_inserter
+ETHERNET_SRC=$(HLS_SRC_DIR)/ethernet_header_inserter
 ICMP_SRC=$(HLS_SRC_DIR)/icmp_server
 PKT_SRC=$(HLS_SRC_DIR)/packet_handler
 USR_ABS_SRC=$(HLS_SRC_DIR)/user_abstraction
@@ -53,7 +54,7 @@ project = TOE \
 		probe_timer \
 		retransmit_timer \
 		rx_app_intf \
-		rx_app_stream_if \
+		rx_app_stream_intf \
 		rx_engine \
 		rx_sar_table \
 		session_lookup_controller \
@@ -63,7 +64,8 @@ project = TOE \
 		tx_app_interface \
 		tx_app_stream_if \
 		tx_engine \
-		tx_sar_table 
+		tx_sar_table \
+		timer_wrapper
 
 
 all: build
@@ -99,7 +101,7 @@ arp_server: $(shell find $(ARP_SRC) -type f)
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
-ethernet_inserter: $(shell find $(ETHERNET_SRC) -type f) 
+ethernet_header_inserter: $(shell find $(ETHERNET_SRC) -type f) 
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
@@ -156,7 +158,7 @@ rx_app_intf: $(shell find $($RX_APP_INTF_SRC) -type f)
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
-rx_app_stream_if: $(shell find $($RX_APP_STREAM_IF_SRC) -type f)  
+rx_app_stream_intf: $(shell find $($RX_APP_STREAM_INTF_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
@@ -176,17 +178,10 @@ state_table: $(shell find $(STATE_TABLE_SRC) -type f)
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
-# statistics: $(shell find $(STATISTICS_SRC) -type f)  
-# 	mkdir -p $(HLS_PRJ_DIR)/$@
-# 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 tx_app_if: $(shell find $(TX_APP_IF_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
-
-# tx_app_interface: $(shell find $(TX_APP_INTERFACE_SRC) -type f)  
-# 	mkdir -p $(HLS_PRJ_DIR)/$@
-# 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 tx_app_stream_if: $(shell find $(TX_APP_STREAM_IF_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
@@ -197,6 +192,10 @@ tx_engine: $(shell find $(TX_ENGINE_SRC) -type f)
 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 tx_sar_table: $(shell find $(TX_SAR_TABLE_SRC) -type f)  
+	mkdir -p $(HLS_PRJ_DIR)/$@
+	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+
+timer_wrapper: $(shell find $(TIMER_WRAPPER_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
