@@ -11,7 +11,6 @@ void MockCam(stream<RtlSLookupToCamLupReq> &slookup_to_cam_lup_req,
              stream<RtlCamToSlookupLupRsp> &cam_to_slookup_lup_rsp,
              stream<RtlSlookupToCamUpdReq> &slookup_to_cam_upd_req,
              stream<RtlCamToSlookupUpdRsp> &cam_to_slookup_upd_rsp) {
-
   RtlSLookupToCamLupReq lookup_req;
   RtlSlookupToCamUpdReq upddate_req;
 
@@ -22,7 +21,7 @@ void MockCam(stream<RtlSLookupToCamLupReq> &slookup_to_cam_lup_req,
     iter = mock_cam.find(lookup_req.key);
     if (iter != mock_cam.end())  // hit
     {
-      cout << "Current lookup session: "<< iter->second << endl;
+      cout << "Current lookup session: " << iter->second << endl;
       cam_to_slookup_lup_rsp.write(RtlCamToSlookupLupRsp(true, iter->second, lookup_req.source));
     } else {
       cam_to_slookup_lup_rsp.write(RtlCamToSlookupLupRsp(false, lookup_req.source));
@@ -37,7 +36,7 @@ void MockCam(stream<RtlSLookupToCamLupReq> &slookup_to_cam_lup_req,
         mock_cam[upddate_req.key] = upddate_req.value;
         cam_to_slookup_upd_rsp.write(
             RtlCamToSlookupUpdRsp(upddate_req.value, INSERT, upddate_req.source));
-        cout << "Current Update session: "<< upddate_req.value << endl;
+        cout << "Current Update session: " << upddate_req.value << endl;
 
       } else {
         cerr << "delete a non-existing one" << endl;
@@ -158,7 +157,7 @@ int main() {
         break;
       case 4:
         rx_eng_req.allow_creation = true;
-        rx_eng_req.four_tuple     = mock_tuple; // is the another key
+        rx_eng_req.four_tuple     = mock_tuple;  // is the another key
         rx_eng_req.role_id        = 0x3;
         rx_eng_to_slookup_req.write(rx_eng_req);
         tx_app_to_slookup_check_tdest_req.write(0);
