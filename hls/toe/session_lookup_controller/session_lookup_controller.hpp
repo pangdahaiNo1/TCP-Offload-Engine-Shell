@@ -45,11 +45,11 @@ struct ThreeTuple {
   }
 };
 
-struct ReverseTableEntry {
+struct RevTableEntry {
   ThreeTuple  three_tuple;
   NetAXISDest role_id;
-  ReverseTableEntry() {}
-  ReverseTableEntry(ThreeTuple tuple, NetAXISDest role) : three_tuple(tuple), role_id(role) {}
+  RevTableEntry() {}
+  RevTableEntry(ThreeTuple tuple, NetAXISDest role) : three_tuple(tuple), role_id(role) {}
 };
 /** @ingroup session_lookup_controller
  *
@@ -67,79 +67,91 @@ struct SlookupReqInternal {
 /** @ingroup session_lookup_controller
  *
  */
-struct RtlSLookupToCamReq {
+struct RtlSLookupToCamLupReq {
   ThreeTuple    key;
   SlookupSource source;
-  RtlSLookupToCamReq() {}
-  RtlSLookupToCamReq(ThreeTuple tuple, SlookupSource src) : key(tuple), source(src) {}
+  RtlSLookupToCamLupReq() {}
+  RtlSLookupToCamLupReq(ThreeTuple tuple, SlookupSource src) : key(tuple), source(src) {}
 };
 
 /** @ingroup session_lookup_controller
  *
  */
-struct RtlSlookupToCamUpdateReq {
+struct RtlSlookupToCamUpdReq {
   SlookupOp     op;
   ThreeTuple    key;
   TcpSessionID  value;
   SlookupSource source;
-  RtlSlookupToCamUpdateReq() {}
-  RtlSlookupToCamUpdateReq(ThreeTuple key, TcpSessionID value, SlookupOp op, SlookupSource src)
+  RtlSlookupToCamUpdReq() {}
+  RtlSlookupToCamUpdReq(ThreeTuple key, TcpSessionID value, SlookupOp op, SlookupSource src)
       : key(key), value(value), op(op), source(src) {}
 };
 
 /** @ingroup session_lookup_controller
  *
  */
-struct RtlCamToSlookupRsp {
+struct RtlCamToSlookupLupRsp {
   ThreeTuple    key;
   TcpSessionID  session_id;
   bool          hit;
   SlookupSource source;
-  RtlCamToSlookupRsp() {}
-  RtlCamToSlookupRsp(bool hit, SlookupSource src) : hit(hit), session_id(0), source(src) {}
-  RtlCamToSlookupRsp(bool hit, TcpSessionID id, SlookupSource src)
+  RtlCamToSlookupLupRsp() {}
+  RtlCamToSlookupLupRsp(bool hit, SlookupSource src) : hit(hit), session_id(0), source(src) {}
+  RtlCamToSlookupLupRsp(bool hit, TcpSessionID id, SlookupSource src)
       : hit(hit), session_id(id), source(src) {}
 };
 
 /** @ingroup session_lookup_controller
  *
  */
-struct RtlCamToSlookupUpdateRsp {
+struct RtlCamToSlookupUpdRsp {
   SlookupOp     op;
   ThreeTuple    key;
   TcpSessionID  session_id;
   bool          success;
   SlookupSource source;
-  RtlCamToSlookupUpdateRsp() {}
-  RtlCamToSlookupUpdateRsp(SlookupOp op, SlookupSource src) : op(op), source(src) {}
-  RtlCamToSlookupUpdateRsp(TcpSessionID id, SlookupOp op, SlookupSource src)
+  RtlCamToSlookupUpdRsp() {}
+  RtlCamToSlookupUpdRsp(SlookupOp op, SlookupSource src) : op(op), source(src) {}
+  RtlCamToSlookupUpdRsp(TcpSessionID id, SlookupOp op, SlookupSource src)
       : session_id(id), op(op), source(src) {}
 };
 
-struct SlookupReverseTableInsertReq {
+struct SlookupToRevTableUpdReq {
   TcpSessionID key;
   ThreeTuple   tuple_value;
   NetAXISDest  role_value;
-  SlookupReverseTableInsertReq(){};
-  SlookupReverseTableInsertReq(TcpSessionID key, ThreeTuple tuple, NetAXISDest role)
+  SlookupToRevTableUpdReq(){};
+  SlookupToRevTableUpdReq(TcpSessionID key, ThreeTuple tuple, NetAXISDest role)
       : key(key), tuple_value(tuple), role_value(role) {}
 };
 
 /** @defgroup session_lookup_controller Session Lookup Controller
  *  @ingroup tcp_module
  */
-void session_lookup_controller(stream<RxEngToSlookupReq> &       rxEng2sLookup_req,
-                               stream<SessionLookupRsp> &        sLookup2rxEng_rsp,
-                               stream<ap_uint<16> > &            stateTable2sLookup_releaseSession,
-                               stream<ap_uint<16> > &            sLookup2portTable_releasePort,
-                               stream<FourTuple> &               txApp2sLookup_req,
-                               stream<SessionLookupRsp> &        sLookup2txApp_rsp,
-                               stream<ap_uint<16> > &            txEng2sLookup_rev_req,
-                               stream<FourTuple> &               sLookup2txEng_rev_rsp,
-                               stream<RtlSLookupToCamReq> &      sessionLookup_req,
-                               stream<RtlCamToSlookupRsp> &      sessionLookup_rsp,
-                               stream<RtlSlookupToCamUpdateReq> &sessionUpdate_req,
-                               stream<RtlCamToSlookupUpdateRsp> &sessionUpdate_rsp,
-                               // ap_uint<16>&						relSessionCount,
-                               ap_uint<16> &regSessionCount,
-                               ap_uint<32>  myIpAddress);
+void session_lookup_controller(
+    // from sttable
+    stream<TcpSessionID> &sttable_to_slookup_release_session_req,
+    // rx app
+    stream<TcpSessionID> &rx_app_to_slookup_req,
+    stream<NetAXISDest> & slookup_to_rx_app_rsp,
+    // rx eng
+    stream<RxEngToSlookupReq> &rx_eng_to_slookup_req,
+    stream<SessionLookupRsp> & slookup_to_rx_eng_rsp,
+    // tx app
+    stream<TxAppToSlookupReq> &tx_app_to_slookup_req,
+    stream<SessionLookupRsp> & slookup_to_tx_app_rsp,
+    stream<TcpSessionID> &     tx_app_to_slookup_check_tdest_req,
+    stream<NetAXISDest> &      slookup_to_tx_app_check_tdest_rsp,
+    // tx eng
+    stream<ap_uint<16> > &          tx_eng_to_slookup_rev_table_req,
+    stream<ReverseTableToTxEngRsp> &slookup_rev_table_to_tx_eng_rsp,
+    // CAM
+    stream<RtlSLookupToCamLupReq> &rtl_slookup_to_cam_lookup_req,
+    stream<RtlCamToSlookupLupRsp> &rtl_cam_to_slookup_lookup_rsp,
+    stream<RtlSlookupToCamUpdReq> &rtl_slookup_to_cam_update_req,
+    stream<RtlCamToSlookupUpdRsp> &rtl_cam_to_slookup_update_rsp,
+    // to ptable
+    stream<TcpPortNumber> &slookup_to_ptable_release_port_req,
+    // registers
+    ap_uint<16> &reg_session_cnt,
+    IpAddr &     my_ip_addr);
