@@ -6,149 +6,145 @@ using namespace hls;
  *  This data structure stores the TX(transmitting) sliding window
  *  and handles concurrent access from the @ref rx_engine, @ref tx_app_if
  *  and @ref tx_engine
- *  @TODO check if locking is actually required, especially for rxOut
- *  @param[in] rx_eng_to_tx_sar_upd_req
- *  @param[in] tx_eng_to_tx_sar_req  read or write
- *  @param[in] tx_app_to_tx_sar_update_req
- *  @param[out] tx_sar_to_rx_eng_lookup_rsp
- *  @param[out] tx_sar_to_tx_eng_lookup_rsp
- *  @param[out] tx_sar_to_app_rsp
  */
-void                 tx_sar_table(stream<TxSarUpdateFromAckedSegReq> &rx_eng_to_tx_sar_upd_req,
-                                  stream<TxEngToTxSarReq> &           tx_eng_to_tx_sar_req,
-                                  stream<TxSarUpdateAppReq> &         tx_app_to_tx_sar_update_req,
-                                  stream<TxSarToRxEngRsp> &           tx_sar_to_rx_eng_lookup_rsp,
-                                  stream<TxSarToTxEngRsp> &           tx_sar_to_tx_eng_lookup_rsp,
-                                  stream<TxSarToAppRsp> &             tx_sar_to_app_rsp) {
-#pragma HLS PIPELINE II = 1
+void                 tx_sar_table(stream<RxEngToTxSarReq> &rx_eng_to_tx_sar_req,
+                                  stream<TxSarToRxEngRsp> &tx_sar_to_rx_eng_rsp,
+                                  stream<TxEngToTxSarReq> &tx_eng_to_tx_sar_req,
+                                  stream<TxSarToTxEngRsp> &tx_sar_to_tx_eng_rsp,
+                                  stream<TxAppToTxSarReq> &tx_app_to_tx_sar_req,
+                                  stream<TxSarToTxAppRsp> &tx_sar_to_tx_app_rsp) {
+#pragma HLS LATENCY  max = 3
+#pragma HLS PIPELINE II  = 1
 
   static TxSarTableEntry tx_sar_table[TCP_MAX_SESSIONS];
 #pragma HLS DEPENDENCE variable = tx_sar_table inter false
 #pragma HLS RESOURCE variable = tx_sar_table core = RAM_T2P_BRAM
 
-  // TX Engine
+  TxEngToTxSarReq        tx_eng_req;
+  TxEngToTxSarRetransReq tx_eng_to_tx_sar_rt_req;
+
+  RxEngToTxSarReq rx_eng_req;
+  TxAppToTxSarReq tx_app_req;
+
+  TxSarTableEntry  tmp_entry;
+  TxSarToTxEngRsp  to_tx_eng_rsp;
+  TcpSessionBuffer tx_sar_min_win;
+  TcpSessionBuffer scaled_recv_window = 0;
+
+  // TX Engine read or write
   if (!tx_eng_to_tx_sar_req.empty()) {
-    TxEngToTxSarReq tx_eng_req = tx_eng_to_tx_sar_req.read();
+    tx_eng_to_tx_sar_req.read(tx_eng_req);
     if (tx_eng_req.write) {
-      if (!tx_eng_req.isRtQuery) {
-        tx_sar_table[tx_eng_req.sessionID].not_ackd = tx_eng_req.not_ackd;
+      if (!tx_eng_req.retrans_req) {
+        tx_sar_table[tx_eng_req.session_id].not_ackd = tx_eng_req.not_ackd;
         if (tx_eng_req.init) {
-          tx_sar_table[tx_eng_req.sessionID].app_written         = tx_eng_req.not_ackd;
-          tx_sar_table[tx_eng_req.sessionID].ackd                = tx_eng_req.not_ackd - 1;
-          tx_sar_table[tx_eng_req.sessionID].cong_window         = TCP_MSS_TEN_TIMES;
-          tx_sar_table[tx_eng_req.sessionID].slowstart_threshold = 0xFFFF;
-          tx_sar_table[tx_eng_req.sessionID].fin_is_ready        = tx_eng_req.fin_is_ready;
-          tx_sar_table[tx_eng_req.sessionID].fin_is_sent         = tx_eng_req.fin_is_sent;
+          tx_sar_table[tx_eng_req.session_id].app_written         = tx_eng_req.not_ackd;
+          tx_sar_table[tx_eng_req.session_id].ackd                = tx_eng_req.not_ackd - 1;
+          tx_sar_table[tx_eng_req.session_id].cong_window         = TCP_MSS_TEN_TIMES;
+          tx_sar_table[tx_eng_req.session_id].slowstart_threshold = (BUFFER_SIZE - 1);
+          tx_sar_table[tx_eng_req.session_id].fin_is_ready        = tx_eng_req.fin_is_ready;
+          tx_sar_table[tx_eng_req.session_id].fin_is_sent         = tx_eng_req.fin_is_sent;
           // Init ACK to txAppInterface
 #if !(TCP_NODELAY)
-          tx_sar_to_app_rsp.write(TxSarToAppRsp(tx_eng_req.sessionID, tx_eng_req.not_ackd, 1));
+          tx_sar_to_tx_app_rsp.write(
+              TxSarToTxAppRsp(tx_eng_req.session_id, tx_eng_req.not_ackd, 1));
 #else
-          tx_sar_to_app_rsp.write(
-              TxSarToAppRsp(tx_eng_req.sessionID, tx_eng_req.not_ackd, TCP_MSS_TEN_TIMES, 1));
+          tx_sar_to_tx_app_rsp.write(
+              TxSarToTxAppRsp(tx_eng_req.session_id, tx_eng_req.not_ackd, TCP_MSS_TEN_TIMES, 1));
 #endif
         }
         if (tx_eng_req.fin_is_ready) {
-          tx_sar_table[tx_eng_req.sessionID].fin_is_ready = tx_eng_req.fin_is_ready;
+          tx_sar_table[tx_eng_req.session_id].fin_is_ready = tx_eng_req.fin_is_ready;
         }
         if (tx_eng_req.fin_is_sent) {
-          tx_sar_table[tx_eng_req.sessionID].fin_is_sent = tx_eng_req.fin_is_sent;
+          tx_sar_table[tx_eng_req.session_id].fin_is_sent = tx_eng_req.fin_is_sent;
         }
       } else {
-        TxSarRtReq txEngRtUpdate                               = tx_eng_req;
-        tx_sar_table[tx_eng_req.sessionID].slowstart_threshold = txEngRtUpdate.getThreshold();
-        // TODO is this correct or less, eg. 1/2 * MSS
-        tx_sar_table[tx_eng_req.sessionID].cong_window = TCP_MSS_TEN_TIMES;
+        tx_eng_to_tx_sar_rt_req = tx_eng_req;
+        tx_sar_table[tx_eng_req.session_id].slowstart_threshold =
+            tx_eng_to_tx_sar_rt_req.get_threshold();
+        // maybe less
+        tx_sar_table[tx_eng_req.session_id].cong_window = TCP_MSS_TEN_TIMES;
       }
-    } else  // Read
+    } else
+    // tx engine read
     {
-      TxSarTableEntry entry = tx_sar_table[tx_eng_req.sessionID];
-      // Pre-calculated usedLength, min_transmit_window to improve timing in metaLoader
-      // When calculating the usedLength we also consider if the FIN was already sent
-      ap_uint<WINDOW_BITS> usedLength        = ((ap_uint<WINDOW_BITS>)entry.not_ackd - entry.ackd);
-      ap_uint<WINDOW_BITS> usedLengthWithFIN = ((ap_uint<WINDOW_BITS>)entry.not_ackd - entry.ackd);
-      if (entry.fin_is_sent) {
-        usedLengthWithFIN--;
-      }
-      ap_uint<WINDOW_BITS> min_transmit_window;
-#if !(WINDOW_SCALE)
-      if (entry.cong_window < entry.recv_window) {
-        min_transmit_window = entry.cong_window;
+      tmp_entry = tx_sar_table[tx_eng_req.session_id];
+
+      to_tx_eng_rsp.ackd         = tmp_entry.ackd;
+      to_tx_eng_rsp.not_ackd     = tmp_entry.not_ackd;
+      to_tx_eng_rsp.app_written  = tmp_entry.app_written;
+      to_tx_eng_rsp.fin_is_ready = tmp_entry.fin_is_ready;
+      to_tx_eng_rsp.fin_is_sent  = tmp_entry.fin_is_sent;
+      to_tx_eng_rsp.curr_length  = tmp_entry.app_written - tmp_entry.not_ackd(WINDOW_BITS - 1, 0);
+      to_tx_eng_rsp.used_length  = tmp_entry.not_ackd(WINDOW_BITS - 1, 0) - tmp_entry.ackd;
+      to_tx_eng_rsp.used_length_rst =
+          tmp_entry.not_ackd(WINDOW_BITS - 1, 0) - tmp_entry.ackd - tmp_entry.fin_is_sent;
+
+      to_tx_eng_rsp.ackd_eq_not_ackd  = (tmp_entry.ackd == tmp_entry.not_ackd);
+      to_tx_eng_rsp.not_ackd_plus_mss = tmp_entry.not_ackd + TCP_MSS;
+
+      scaled_recv_window(tmp_entry.win_shift + 15, tmp_entry.win_shift) = tmp_entry.recv_window;
+      if (tmp_entry.cong_window < scaled_recv_window) {
+        tx_sar_min_win = tmp_entry.cong_window;
       } else {
-        min_transmit_window = entry.recv_window;
+        tx_sar_min_win = scaled_recv_window;
       }
-#else
-      ap_uint<4> win_shift = entry.win_shift;
-      ap_uint<30> scaled_recv_window;
-      scaled_recv_window(win_shift + 15, win_shift) = entry.recv_window;
-      if (entry.cong_window < scaled_recv_window) {
-        min_transmit_window = entry.cong_window;
+
+      to_tx_eng_rsp.win_shift = tmp_entry.win_shift;
+
+      if (tx_sar_min_win > to_tx_eng_rsp.used_length) {
+        to_tx_eng_rsp.usable_window = tx_sar_min_win - to_tx_eng_rsp.used_length;
       } else {
-        min_transmit_window = scaled_recv_window;
+        to_tx_eng_rsp.usable_window = 0;
       }
-#endif
-      ap_uint<WINDOW_BITS> usableWindow = 0;
-      if (min_transmit_window < usedLength) {
-        usableWindow = min_transmit_window - usedLength;
-      }
-      tx_sar_to_tx_eng_lookup_rsp.write(TxSarToTxEngRsp(entry.ackd,
-                                                        entry.not_ackd,
-                                                        usableWindow,  // min_transmit_window,
-                                                        entry.app_written,
-                                                        usedLength,
-                                                        entry.fin_is_ready,
-                                                        entry.fin_is_sent));
+      to_tx_eng_rsp.min_window     = tx_sar_min_win;
+      to_tx_eng_rsp.not_ackd_short = tmp_entry.not_ackd + to_tx_eng_rsp.curr_length;
+
+      tx_sar_to_tx_eng_rsp.write(to_tx_eng_rsp);
     }
   }
-  // TX App Stream If
-  else if (!tx_app_to_tx_sar_update_req.empty())  // write only
-  {
-    TxSarUpdateAppReq tx_sar_upd_app_req                    = tx_app_to_tx_sar_update_req.read();
-    tx_sar_table[tx_sar_upd_app_req.session_id].app_written = tx_sar_upd_app_req.app_written;
+  // TX App update app written only
+  else if (!tx_app_to_tx_sar_req.empty()) {
+    tx_app_to_tx_sar_req.read(tx_app_req);
+    tx_sar_table[tx_app_req.session_id].app_written = tx_app_req.app_written;
   }
-  // RX Engine
-  else if (!rx_eng_to_tx_sar_upd_req.empty()) {
-    TxSarUpdateFromAckedSegReq new_acked_upd_req = rx_eng_to_tx_sar_upd_req.read();
-    if (new_acked_upd_req.write) {
-      tx_sar_table[new_acked_upd_req.session_id].ackd         = new_acked_upd_req.ackd;
-      tx_sar_table[new_acked_upd_req.session_id].recv_window  = new_acked_upd_req.recv_window;
-      tx_sar_table[new_acked_upd_req.session_id].cong_window  = new_acked_upd_req.cong_window;
-      tx_sar_table[new_acked_upd_req.session_id].count        = new_acked_upd_req.count;
-      tx_sar_table[new_acked_upd_req.session_id].fast_retrans = new_acked_upd_req.fast_retrans;
-
-      TcpSessionBufferScale win_shift;
-      if (new_acked_upd_req.init) {
-        win_shift                                            = new_acked_upd_req.win_shift;
-        tx_sar_table[new_acked_upd_req.session_id].win_shift = new_acked_upd_req.win_shift;
-      } else {
-        win_shift = tx_sar_table[new_acked_upd_req.session_id].win_shift;
+  // RX Engine read or write
+  else if (!rx_eng_to_tx_sar_req.empty()) {
+    rx_eng_to_tx_sar_req.read(rx_eng_req);
+    if (rx_eng_req.write) {
+      if (rx_eng_req.win_shift_write) {
+        tx_sar_table[rx_eng_req.session_id].win_shift = rx_eng_req.win_shift;
       }
 
-      // Push ACK to txAppInterface
-#if !(TCP_NODELAY)
-      tx_sar_to_app_rsp.write(TxSarToAppRsp(new_acked_upd_req.sessionID, new_acked_upd_req.ackd));
+      tx_sar_table[rx_eng_req.session_id].ackd          = rx_eng_req.ackd;
+      tx_sar_table[rx_eng_req.session_id].recv_window   = rx_eng_req.recv_window;
+      tx_sar_table[rx_eng_req.session_id].cong_window   = rx_eng_req.cong_window;
+      tx_sar_table[rx_eng_req.session_id].retrans_count = rx_eng_req.retrans_count;
+      tx_sar_table[rx_eng_req.session_id].fast_retrans  = rx_eng_req.fast_retrans;
+
+#if (!TCP_NODELAY)
+      tx_sar_to_tx_app_rsp.write(TxSarToTxAppRsp(rx_eng_req.session_id, rx_eng_req.ackd));
 #else
-      // right shift recv window
-      ap_uint<30> scaled_recv_window;
-      scaled_recv_window(win_shift + 15, win_shift) = new_acked_upd_req.recv_window;
 
-      TcpSessionBuffer min_transmit_window;
-      if (new_acked_upd_req.cong_window < scaled_recv_window)  // new_acked_upd_req.recv_window)
-      {
-        min_transmit_window = new_acked_upd_req.cong_window;
+      scaled_recv_window(rx_eng_req.win_shift + 15, rx_eng_req.win_shift) = rx_eng_req.recv_window;
+      if (rx_eng_req.cong_window < scaled_recv_window) {
+        tx_sar_min_win = rx_eng_req.cong_window;
       } else {
-        min_transmit_window = scaled_recv_window;
+        tx_sar_min_win = scaled_recv_window;
       }
-      tx_sar_to_app_rsp.write(
-          TxSarToAppRsp(new_acked_upd_req.session_id, new_acked_upd_req.ackd, min_transmit_window));
+      tx_sar_to_tx_app_rsp.write(
+          TxSarToTxAppRsp(rx_eng_req.session_id, rx_eng_req.ackd, tx_sar_min_win));
 #endif
     } else {
-      tx_sar_to_rx_eng_lookup_rsp.write(
-          TxSarToRxEngRsp(tx_sar_table[new_acked_upd_req.session_id].ackd,
-                          tx_sar_table[new_acked_upd_req.session_id].not_ackd,
-                          tx_sar_table[new_acked_upd_req.session_id].cong_window,
-                          tx_sar_table[new_acked_upd_req.session_id].slowstart_threshold,
-                          tx_sar_table[new_acked_upd_req.session_id].count,
-                          tx_sar_table[new_acked_upd_req.session_id].fast_retrans));
+      tx_sar_to_rx_eng_rsp.write(
+          TxSarToRxEngRsp(tx_sar_table[rx_eng_req.session_id].ackd,
+                          tx_sar_table[rx_eng_req.session_id].not_ackd,
+                          tx_sar_table[rx_eng_req.session_id].cong_window,
+                          tx_sar_table[rx_eng_req.session_id].slowstart_threshold,
+                          tx_sar_table[rx_eng_req.session_id].retrans_count,
+                          tx_sar_table[rx_eng_req.session_id].fast_retrans,
+                          tx_sar_table[rx_eng_req.session_id].win_shift));
     }
   }
 }

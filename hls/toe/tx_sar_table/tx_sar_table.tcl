@@ -22,10 +22,14 @@ set_top tx_sar_table
 add_files "${prj_src_dir}/${prj_name}.cpp \
              ${src_top_dir}/utils/axi_utils.hpp " -cflags "-I${src_top_dir} -DDEBUG"
 
-add_files -tb "${prj_src_dir}/${prj_name}_test.cpp"
+add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
+               ${src_top_dir}/toe/tcp_conn.hpp" -cflags "-I${src_top_dir} -DDEBUG" 
 
 if {$hls_act == "csim"} {
    csim_design -clean  
 }
 csynth_design
+if {$hls_act == "cosim"} {
+   cosim_design -rtl verilog
+}
 exit
