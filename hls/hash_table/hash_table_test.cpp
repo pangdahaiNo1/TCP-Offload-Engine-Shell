@@ -31,6 +31,8 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <map>
 #include <random>
 
+using namespace std;
+
 std::default_random_engine              gen;
 std::uniform_int_distribution<uint64_t> distr(0, std::numeric_limits<uint64_t>::max());
 
