@@ -3,7 +3,6 @@
 #define _PACKET_HANDLER_HPP_
 #include "utils/axi_utils.hpp"
 
-
 using namespace hls;
 
 const ap_uint<16> TYPE_IPV4 = 0x0800;
