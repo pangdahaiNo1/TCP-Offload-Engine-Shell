@@ -6,15 +6,12 @@ MEMORY_ACCESS_SRC=$(TOE_SRC)/memory_access
 PORT_TABLE_SRC=$(TOE_SRC)/port_table
 RETRANSMIT_TIMER_SRC=$(TOE_SRC)/retransmit_timer
 RX_APP_INTF_SRC=$(TOE_SRC)/rx_app_intf
-RX_APP_STREAM_INTF_SRC=$(TOE_SRC)/rx_app_stream_intf
 RX_ENGINE_SRC=$(TOE_SRC)/rx_engine
 RX_SAR_TABLE_SRC=$(TOE_SRC)/rx_sar_table
 SESSION_LOOKUP_SRC=$(TOE_SRC)/session_lookup_controller
 STATE_TABLE_SRC=$(TOE_SRC)/state_table
 STATISTICS_SRC=$(TOE_SRC)/statistics
-TX_APP_IF_SRC=$(TOE_SRC)/tx_app_if
-TX_APP_INTERFACE_SRC=$(TOE_SRC)/tx_app_interface
-TX_APP_STREAM_IF_SRC=$(TOE_SRC)/tx_app_stream_if
+TX_APP_INTF_SRC=$(TOE_SRC)/tx_app_intf
 TX_ENGINE_SRC=$(TOE_SRC)/tx_engine
 TX_SAR_TABLE_SRC=$(TOE_SRC)/tx_sar_table
 TIMER_WRAPPER_SRC=$(TOE_SRC)/timer_wrapper
@@ -54,15 +51,12 @@ project = TOE \
 		probe_timer \
 		retransmit_timer \
 		rx_app_intf \
-		rx_app_stream_intf \
 		rx_engine \
 		rx_sar_table \
 		session_lookup_controller \
 		state_table \
 		statistics \
-		tx_app_if \
-		tx_app_interface \
-		tx_app_stream_if \
+		tx_app_intf \
 		tx_engine \
 		tx_sar_table \
 		timer_wrapper
@@ -158,10 +152,6 @@ rx_app_intf: $(shell find $($RX_APP_INTF_SRC) -type f)
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
-rx_app_stream_intf: $(shell find $($RX_APP_STREAM_INTF_SRC) -type f)  
-	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
-
 rx_engine: $(shell find $(RX_ENGINE_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
@@ -178,12 +168,7 @@ state_table: $(shell find $(STATE_TABLE_SRC) -type f)
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
-
-tx_app_if: $(shell find $(TX_APP_IF_SRC) -type f)  
-	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
-
-tx_app_stream_if: $(shell find $(TX_APP_STREAM_IF_SRC) -type f)  
+tx_app_intf: $(shell find $(TX_APP_INTF_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
