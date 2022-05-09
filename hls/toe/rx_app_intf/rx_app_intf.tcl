@@ -22,10 +22,20 @@ set_top rx_app_intf
 add_files "${prj_src_dir}/${prj_name}.cpp \
              ${src_top_dir}/utils/axi_utils.hpp " -cflags "-I${src_top_dir} -DDEBUG"
 
-add_files -tb "${prj_src_dir}/${prj_name}_test.cpp"
+add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
+                  ${src_top_dir}/utils/pcap/pcap_to_stream.cpp \
+                  ${src_top_dir}/utils/pcap/pcap.cpp \  
+                  ${src_top_dir}/utils/axi_utils.cpp \
+                  ${src_top_dir}/toe/tcp_conn.hpp"  -cflags "-I${src_top_dir} -DDEBUG"
 
 if {$hls_act == "csim"} {
-   csim_design -clean  
+   csim_design -clean   -argv "${pcap_input_dir}/echo_out.pcap"
+   exit
 }
 csynth_design
+
+if {$hls_act == "cosim"} {
+   cosim_design -rtl verilog -argv "${pcap_input_dir}/echo_out.pcap"
+   exit
+}
 exit
