@@ -44,6 +44,57 @@ void EmptyTxAppConnFifos(std::ofstream &                out_stream,
   }
 }
 
+void EmptyTxAppDataFifos(std::ofstream &                 out_stream,
+                         stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_tans_data_rsp,
+                         stream<TxAppToTxAppTableReq> &  tx_app_to_tx_app_table_req,
+                         stream<TcpSessionID> &          tx_app_to_sttable_lup_req,
+                         stream<Event> &                 tx_app_to_event_eng_set_event,
+                         int                             sim_cycle) {
+  NetAXISAppTransDataRsp to_net_app_rsp;
+  TxAppToTxAppTableReq   to_app_table;
+  TcpSessionID           to_sttable;
+  Event                  to_event_engine;
+  while (!tx_app_to_net_app_tans_data_rsp.empty()) {
+    tx_app_to_net_app_tans_data_rsp.read(to_net_app_rsp);
+    out_stream << "Cycle " << std::dec << sim_cycle << ": Tx App to NetAPP Trans Data Rsp: ";
+    out_stream << to_net_app_rsp.to_string() << "\n";
+  }
+  while (!tx_app_to_tx_app_table_req.empty()) {
+    tx_app_to_tx_app_table_req.read(to_app_table);
+    out_stream << "Cycle " << std::dec << sim_cycle << ": Tx App to Tx APP Table Req\t";
+    out_stream << to_app_table.to_string() << "\n";
+  }
+  while (!tx_app_to_sttable_lup_req.empty()) {
+    tx_app_to_sttable_lup_req.read(to_sttable);
+    out_stream << "Cycle " << std::dec << sim_cycle << ": Tx App to State Table SessionID: \t";
+    out_stream << to_sttable.to_string(16) << "\n";
+  }
+  while (!tx_app_to_event_eng_set_event.empty()) {
+    tx_app_to_event_eng_set_event.read(to_event_engine);
+    out_stream << "Cycle " << std::dec << sim_cycle << ": Tx App to Event eng set Event: \t";
+    out_stream << to_event_engine.to_string() << "\n";
+  }
+}
+
+void EmptyDataMoverFifos(std::ofstream &       out_stream,
+                         stream<DataMoverCmd> &tx_app_to_mem_write_cmd,
+                         stream<NetAXIS> &     tx_app_to_mem_write_data,
+                         int                   sim_cycle) {
+  DataMoverCmd cmd_out;
+  NetAXIS      data_out;
+
+  while (!tx_app_to_mem_write_cmd.empty()) {
+    tx_app_to_mem_write_cmd.read(cmd_out);
+    out_stream << "Cycle " << std::dec << sim_cycle << ": Tx App write cmd: \t";
+    out_stream << cmd_out.to_string() << "\n";
+  }
+  while (!tx_app_to_mem_write_data.empty()) {
+    tx_app_to_mem_write_data.read(data_out);
+    out_stream << "Cycle " << std::dec << sim_cycle << ": Tx App write \t";
+    out_stream << dec << KeepToLength(data_out.keep) << " Bytes word to mem\n";
+  }
+}
+
 void TestTxAppConn() {
   // net app
   stream<NetAXISAppOpenConnReq>  net_app_to_tx_app_open_conn_req;
@@ -104,7 +155,7 @@ void TestTxAppConn() {
         break;
       case 5:
         rx_eng_to_tx_app_notification.write(OpenSessionStatus(0x1, true));
-        slookup_to_tx_app_check_tdest_rsp.write(0x1);
+        slookup_to_tx_app_check_tdest_rsp.write(0x2);
         break;
       case 6:
         break;
@@ -137,8 +188,124 @@ void TestTxAppConn() {
   }
 }
 
+void TestTxAppData(stream<NetAXIS> &input_tcp_packets) {
+  // net app
+  stream<NetAXISAppTransDataReq> net_app_to_tx_app_trans_data_req;
+  stream<NetAXISAppTransDataRsp> tx_app_to_net_app_tans_data_rsp;
+  stream<NetAXIS>                net_app_trans_data;
+  // tx app table
+  stream<TxAppToTxAppTableReq> tx_app_to_tx_app_table_req;
+  stream<TxAppTableToTxAppRsp> tx_app_table_to_tx_app_rsp;
+  // state table
+  stream<TcpSessionID> tx_app_to_sttable_lup_req;
+  stream<SessionState> sttable_to_tx_app_lup_rsp;
+  // to event eng
+  stream<Event> tx_app_to_event_eng_set_event;
+  // to datamover
+  stream<DataMoverCmd> tx_app_to_mem_write_cmd;
+  stream<NetAXIS>      tx_app_to_mem_write_data;
+
+  // open output file
+  std::ofstream outputFile;
+
+  outputFile.open("./out_data_handler.dat");
+  if (!outputFile) {
+    std::cout << "Error: could not open test output file." << std::endl;
+  }
+  NetAXISAppTransDataReq net_app_req{};
+
+  NetAXIS          cur_word{};
+  TcpSessionBuffer cur_word_length = 0;
+  // consume two words
+  input_tcp_packets.read();
+  input_tcp_packets.read();
+  int sim_cycle = 0;
+  while (sim_cycle < 20) {
+    switch (sim_cycle) {
+      case 1:
+        // session 1 write 11FF Bytes
+        net_app_req.data = 0x11FF;
+        net_app_req.id   = 0x1;
+        net_app_req.dest = 0xF;
+        net_app_to_tx_app_trans_data_req.write(net_app_req);
+        // session 2 write 12FF Bytes
+        net_app_req.data = 0x12FF;
+        net_app_req.id   = 0x2;
+        net_app_req.dest = 0xF;
+        net_app_to_tx_app_trans_data_req.write(net_app_req);
+        // session 3 write 13FF Bytes
+        net_app_req.data = 0x1234;
+        net_app_req.id   = 0x3;
+        net_app_req.dest = 0xD;
+        net_app_to_tx_app_trans_data_req.write(net_app_req);
+        break;
+      case 2:
+        // for session 1, write buffer is empty
+        sttable_to_tx_app_lup_rsp.write(ESTABLISHED);
+        tx_app_table_to_tx_app_rsp.write(TxAppTableToTxAppRsp(0x1, 0x0, 0x0));
+        // session 2
+        sttable_to_tx_app_lup_rsp.write(ESTABLISHED);
+        tx_app_table_to_tx_app_rsp.write(TxAppTableToTxAppRsp(0x2, 0x0, 0xFFFFF));
+        // session 3, for session 3 write buffer is full
+        sttable_to_tx_app_lup_rsp.write(ESTABLISHED);
+        tx_app_table_to_tx_app_rsp.write(TxAppTableToTxAppRsp(0x3, 0x0, 0xFFFFF));
+        break;
+      case 3:
+        break;
+      case 4:
+        do {
+          input_tcp_packets.read(cur_word);
+          net_app_trans_data.write(cur_word);
+          cur_word_length += KeepToLength(cur_word.keep);
+        } while (cur_word.last != 1);
+        break;
+      case 5:
+      case 6:
+
+        do {
+          input_tcp_packets.read(cur_word);
+          net_app_trans_data.write(cur_word);
+          cur_word_length += KeepToLength(cur_word.keep);
+        } while (cur_word.last != 1);
+
+      default:
+        break;
+    }
+    TxAppDataHandler(net_app_to_tx_app_trans_data_req,
+                     tx_app_to_net_app_tans_data_rsp,
+                     net_app_trans_data,
+                     tx_app_to_tx_app_table_req,
+                     tx_app_table_to_tx_app_rsp,
+                     tx_app_to_sttable_lup_req,
+                     sttable_to_tx_app_lup_rsp,
+                     tx_app_to_event_eng_set_event,
+                     tx_app_to_mem_write_cmd,
+                     tx_app_to_mem_write_data);
+    EmptyTxAppDataFifos(outputFile,
+                        tx_app_to_net_app_tans_data_rsp,
+                        tx_app_to_tx_app_table_req,
+                        tx_app_to_sttable_lup_req,
+                        tx_app_to_event_eng_set_event,
+                        sim_cycle);
+
+    EmptyDataMoverFifos(outputFile, tx_app_to_mem_write_cmd, tx_app_to_mem_write_data, sim_cycle);
+
+    sim_cycle++;
+  }
+}
+
 int main(int argc, char **argv) {
+  if (argc < 2) {
+    std::cerr << "[ERROR] missing arguments " __FILE__ << " <INPUT_PCAP_FILE>" << endl;
+    return -1;
+  }
+  char *input_tcp_pcap_file = argv[1];
+  cout << "Read TCP Packets from " << input_tcp_pcap_file << endl;
+  stream<NetAXIS> input_tcp_packets("input_tcp_packets");
+  PcapToStream(input_tcp_pcap_file, true, input_tcp_packets);
+
   TestTxAppConn();
+  TestTxAppData(input_tcp_packets);
 
   return 0;
 }
