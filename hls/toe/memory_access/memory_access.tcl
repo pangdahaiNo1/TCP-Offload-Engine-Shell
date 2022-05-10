@@ -30,13 +30,13 @@ add_files -tb " ${prj_src_dir}/${prj_name}_test.cpp \
 
 
 if {$hls_act == "csim"} {
-   csim_design -clean -argv "${pcap_input_dir}/echo_out.pcap"
+   csim_design -clean -argv "${pcap_input_dir}/echo_golden.pcap"
    exit
 }
 csynth_design
 
 if {$hls_act == "cosim"} {
-   cosim_design -rtl verilog -argv "${pcap_input_dir}/echo_out.pcap"
+   cosim_design -rtl verilog -argv "${pcap_input_dir}/echo_golden.pcap"
    exit
 }
 

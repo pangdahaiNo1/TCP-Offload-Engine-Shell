@@ -17,7 +17,6 @@ void timer_wrapper(
     stream<TcpSessionID> &timer_to_sttable_release_state
 
 ) {
-
 #pragma HLS        DATAFLOW
 #pragma HLS INLINE off
 
@@ -26,14 +25,14 @@ void timer_wrapper(
 
   static stream<Event> rtimer_to_event_eng_set_event("rtimer_to_event_eng_set_event");
 #pragma HLS STREAM variable = rtimer_to_event_eng_set_event depth    = 4
-#pragma HLS DATA_PACK                                      variable = rtimer_to_event_eng_set_event
+#pragma HLS DATA_PACK                                       variable = rtimer_to_event_eng_set_event
 
   static stream<TcpSessionID> rtimer_to_sttable_release_state("rtimer_to_sttable_release_state");
 #pragma HLS STREAM variable = rtimer_to_sttable_release_state depth = 4
 
   static stream<Event> ptimer_to_event_eng_set_event("ptimer_to_event_eng_set_event");
 #pragma HLS STREAM variable = ptimer_to_event_eng_set_event depth    = 4
-#pragma HLS DATA_PACK                                      variable = ptimer_to_event_eng_set_event
+#pragma HLS DATA_PACK                                       variable = ptimer_to_event_eng_set_event
 
   close_timer(rx_eng_to_timer_set_ctimer, ctimer_to_sttable_release_state);
 
