@@ -25,12 +25,6 @@ void EmptyFifos(std::ofstream &       out_stream,
 }
 
 int main(int argc, char **argv) {
-  stream<EventWithTuple> event_eng_to_ack_delay_event;
-  stream<EventWithTuple> ack_delay_to_tx_eng_event;
-  stream<ap_uint<1> >    ack_delay_read_cnt_fifo;
-  stream<ap_uint<1> >    ack_delay_write_cnt_fifo;
-
-  EventWithTuple ev;
 
   char *input_tcp_pcap_file = argv[1];
   cout << "Read TCP Packets from " << input_tcp_pcap_file << endl;

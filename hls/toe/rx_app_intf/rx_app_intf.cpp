@@ -16,7 +16,7 @@ void RxAppPortHandler(stream<NetAXISListenPortReq> &net_app_to_rx_app_listen_por
                       stream<NetAXISListenPortRsp> &rx_app_to_net_app_listen_port_rsp,
                       stream<NetAXISListenPortReq> &rx_app_to_ptable_listen_port_req,
                       stream<NetAXISListenPortRsp> &ptable_to_rx_app_listen_port_rsp) {
-#pragma HLS PIPELINE II = 1
+#pragma HLS PIPELINE off
 
   enum RxAppPortFsmState { WAIT_NET, WAIT_PTABLE };
   static RxAppPortFsmState fsm_state = WAIT_NET;
