@@ -68,6 +68,9 @@ void TxAppConnectionHandler(
     stream<NetAXISAppOpenConnReq> & net_app_to_tx_app_open_conn_req,
     stream<NetAXISAppOpenConnRsp> & tx_app_to_net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_to_tx_app_close_conn_req,
+    // rx eng -> net app
+    stream<PassiveOpenSessionStatus> &    rx_eng_to_tx_app_passive_notification,
+    stream<NetAXISAppPassiveOpenConnRsp> &net_app_passive_open_notification,
     // rx eng
     stream<OpenSessionStatus> &rx_eng_to_tx_app_notification,
     // retrans timer
@@ -109,6 +112,9 @@ void tx_app_intf(
     stream<NetAXISAppOpenConnReq> & net_app_to_tx_app_open_conn_req,
     stream<NetAXISAppOpenConnRsp> & tx_app_to_net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_to_tx_app_close_conn_req,
+    // rx eng -> net app
+    stream<PassiveOpenSessionStatus> &    rx_eng_to_tx_app_passive_notification,
+    stream<NetAXISAppPassiveOpenConnRsp> &net_app_passive_open_notification,
     // rx eng
     stream<OpenSessionStatus> &rx_eng_to_tx_app_notification,
     // retrans timer

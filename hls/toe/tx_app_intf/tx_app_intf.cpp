@@ -44,6 +44,9 @@ void TxAppConnectionHandler(
     stream<NetAXISAppOpenConnReq> & net_app_to_tx_app_open_conn_req,
     stream<NetAXISAppOpenConnRsp> & tx_app_to_net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_to_tx_app_close_conn_req,
+    // rx eng -> net app
+    stream<PassiveOpenSessionStatus> &    rx_eng_to_tx_app_passive_notification,
+    stream<NetAXISAppPassiveOpenConnRsp> &net_app_passive_open_notification,
     // rx eng
     stream<OpenSessionStatus> &rx_eng_to_tx_app_notification,
     // retrans timer
@@ -65,7 +68,12 @@ void TxAppConnectionHandler(
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
-  enum TxAppConnFsmState { IDLE, CLOSE_CONN, WAIT_FOR_TDEST };
+  enum TxAppConnFsmState {
+    IDLE,
+    CLOSE_CONN,
+    WAIT_FOR_TDEST_ACTIVE_OPEN,
+    WAIT_FOR_TDEST_PASSIVE_OPEN
+  };
   static TxAppConnFsmState fsm_state = IDLE;
 
   static NetAXISAppOpenConnReq app_open_req_reg;
@@ -87,10 +95,11 @@ void TxAppConnectionHandler(
     tx_app_wait_for_free_port_lock = false;
   }
 
-  SessionLookupRsp              slookup_rsp;
-  SessionState                  sttable_rsp;
-  static OpenSessionStatus      open_session_reg;
-  static NetAXISAppCloseConnReq app_close_session_reg;
+  SessionLookupRsp                slookup_rsp;
+  SessionState                    sttable_rsp;
+  static PassiveOpenSessionStatus passive_open_session_reg;
+  static OpenSessionStatus        open_session_reg;
+  static NetAXISAppCloseConnReq   app_close_session_reg;
   // handle net app open/close connection request
   switch (fsm_state) {
     case IDLE:
@@ -109,11 +118,15 @@ void TxAppConnectionHandler(
       } else if (!rx_eng_to_tx_app_notification.empty()) {
         rx_eng_to_tx_app_notification.read(open_session_reg);
         tx_app_to_slookup_check_tdest_req.write(open_session_reg.session_id);
-        fsm_state = WAIT_FOR_TDEST;
+        fsm_state = WAIT_FOR_TDEST_ACTIVE_OPEN;
       } else if (!rtimer_to_tx_app_notification.empty()) {
         rtimer_to_tx_app_notification.read(open_session_reg);
         tx_app_to_slookup_check_tdest_req.write(open_session_reg.session_id);
-        fsm_state = WAIT_FOR_TDEST;
+        fsm_state = WAIT_FOR_TDEST_ACTIVE_OPEN;
+      } else if (!rx_eng_to_tx_app_passive_notification.empty()) {
+        rx_eng_to_tx_app_passive_notification.read(passive_open_session_reg);
+        tx_app_to_slookup_check_tdest_req.write(passive_open_session_reg.session_id);
+        fsm_state = WAIT_FOR_TDEST_PASSIVE_OPEN;
       } else if (!net_app_to_tx_app_close_conn_req.empty()) {
         net_app_to_tx_app_close_conn_req.read(app_close_session_reg);
         // read current session state
@@ -121,11 +134,19 @@ void TxAppConnectionHandler(
         fsm_state = CLOSE_CONN;
       }
       break;
-    case WAIT_FOR_TDEST:
+    case WAIT_FOR_TDEST_ACTIVE_OPEN:
       if (!slookup_to_tx_app_check_tdest_rsp.empty()) {
         // TODO: need a lock for session lookup zelin 22-05-08
         NetAXISDest temp_dest = slookup_to_tx_app_check_tdest_rsp.read();
         tx_app_to_net_app_open_conn_rsp.write(NetAXISAppOpenConnRsp(open_session_reg, temp_dest));
+        fsm_state = IDLE;
+      }
+      break;
+    case WAIT_FOR_TDEST_PASSIVE_OPEN:
+      if (!slookup_to_tx_app_check_tdest_rsp.empty()) {
+        NetAXISDest temp_dest = slookup_to_tx_app_check_tdest_rsp.read();
+        net_app_passive_open_notification.write(
+            NetAXISAppPassiveOpenConnRsp(passive_open_session_reg, temp_dest));
         fsm_state = IDLE;
       }
       break;
@@ -402,6 +423,9 @@ void tx_app_intf(
     stream<NetAXISAppOpenConnReq> & net_app_to_tx_app_open_conn_req,
     stream<NetAXISAppOpenConnRsp> & tx_app_to_net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_to_tx_app_close_conn_req,
+    // rx eng -> net app
+    stream<PassiveOpenSessionStatus> &    rx_eng_to_tx_app_passive_notification,
+    stream<NetAXISAppPassiveOpenConnRsp> &net_app_passive_open_notification,
     // rx eng
     stream<OpenSessionStatus> &rx_eng_to_tx_app_notification,
     // retrans timer
@@ -478,6 +502,9 @@ void tx_app_intf(
       net_app_to_tx_app_open_conn_req,
       tx_app_to_net_app_open_conn_rsp,
       net_app_to_tx_app_close_conn_req,
+      // rx eng
+      rx_eng_to_tx_app_passive_notification,
+      net_app_passive_open_notification,
       // rx eng
       rx_eng_to_tx_app_notification,
       // retrans timer
