@@ -1,274 +1,204 @@
 #include "memory_access.hpp"
 
-/**
- * Concat two word into one word
- *
- *   512                              k                               0
- *   ------------------------------------------------------------------
- *   |           cur_word(k,0)       |      prev_word(511,k)          |
- *   ------------------------------------------------------------------
- *   Note: k = byte_offset * 8
- *
- */
-void ConcatTwoWords(NetAXIS cur_word, NetAXIS prev_word, ap_uint<6> byte_offset, NetAXIS &send_word
+void                 TxEngReadDataSendCmd(stream<MemBufferRWCmd> &            tx_eng_to_mem_cmd_in,
+                                          stream<DataMoverCmd> &              mover_read_mem_cmd_out,
+                                          stream<MemBufferRWCmdDoubleAccess> &mem_buffer_double_access) {
+#pragma HLS pipeline II = 1
+#pragma HLS INLINE   off
+  static bool                read_cmd_is_breakdown = false;
+  static MemBufferRWCmd      buf_rw_cmd;
+  static ap_uint<16>         first_cmd_bbt = 0;
+  DataMoverCmd               to_mem_read_cmd;
+  MemBufferRWCmdDoubleAccess double_access_cmd = MemBufferRWCmdDoubleAccess(false, 0);
 
-) {
-  switch (byte_offset) {
-    case 0:
-      send_word.data = cur_word.data;
-      send_word.keep = cur_word.keep;
+  if (read_cmd_is_breakdown == false) {
+    if (!tx_eng_to_mem_cmd_in.empty()) {
+      tx_eng_to_mem_cmd_in.read(buf_rw_cmd);
+      to_mem_read_cmd = DataMoverCmd(buf_rw_cmd.addr, buf_rw_cmd.length);
+      // Check for overflow
+      if (buf_rw_cmd.next_addr.bit(WINDOW_BITS)) {
+        // Compute remaining space in the buffer before overflow
+        first_cmd_bbt   = BUFFER_SIZE - buf_rw_cmd.addr;
+        to_mem_read_cmd = DataMoverCmd(buf_rw_cmd.addr, first_cmd_bbt);
+
+        read_cmd_is_breakdown           = true;
+        double_access_cmd.double_access = true;
+        // Offset of MSB byte valid in the last beat of the first trans
+        double_access_cmd.byte_offset = first_cmd_bbt(5, 0);
+      }
+      mover_read_mem_cmd_out.write(to_mem_read_cmd);
+      mem_buffer_double_access.write(double_access_cmd);
+    }
+  } else if (read_cmd_is_breakdown == true) {
+    // Clear the least significant bits of the address
+    buf_rw_cmd.addr.range(WINDOW_BITS - 1, 0) = 0;
+    mover_read_mem_cmd_out.write(DataMoverCmd(buf_rw_cmd.addr, buf_rw_cmd.length - first_cmd_bbt));
+    read_cmd_is_breakdown = false;
+  }
+}
+
+/** @ingroup tx_engine
+ *  See app_MemDataRead_aligner description
+ */
+void TxEngReadDataFromMem(stream<NetAXIS> &                   mover_read_mem_data_in,
+                          stream<MemBufferRWCmdDoubleAccess> &mem_buffer_double_access,
+#if (TCP_NODELAY)
+                          stream<bool> &   tx_eng_is_ddr_bypass,
+                          stream<NetAXIS> &tx_eng_read_data_in,
+#endif
+                          stream<NetAXIS> &to_tx_eng_read_data) {
+#pragma HLS INLINE   off
+#pragma HLS pipeline II = 1
+
+  enum TxEngReadDataFsmState {
+    READ_ACCESS,
+    NO_BREAKDOWN,
+    BREAKDOWN_BLOCK_0,
+    BREAKDOWN_ALIGNED,
+    FIRST_MERGE,
+    BREAKDOWN_BLOCK_1,
+    EXTRA_DATA
+#if (TCP_NODELAY)
+    ,
+    NO_USE_DDR,
+    READ_BYPASS
+#endif
+  };
+
+#if (TCP_NODELAY)
+  const TxEngReadDataFsmState INITIAL_STATE = READ_BYPASS;
+#else
+  const TxEngReadDataFsmState INITIAL_STATE = READ_ACCESS;
+#endif
+  static TxEngReadDataFsmState fsm_state = INITIAL_STATE;
+
+  static ap_uint<6> offset_block0;
+  static ap_uint<6> offset_block1;
+
+  MemBufferRWCmdDoubleAccess mem_double_access;
+  static NetAXIS             prev_beat_word;
+  NetAXIS                    cur_beat_word;
+  NetAXIS                    send_beat_word;
+
+  bool is_ddr_bypass;
+  bool to_tx_eng_word_need_to_align = true;
+
+  switch (fsm_state) {
+#if (TCP_NODELAY)
+    case READ_BYPASS:
+      if (!tx_eng_is_ddr_bypass.empty()) {
+        tx_eng_is_ddr_bypass.read(is_ddr_bypass);
+        if (is_ddr_bypass) {
+          fsm_state = NO_USE_DDR;
+        } else {
+          fsm_state = READ_ACCESS;
+        }
+      }
       break;
-    case 1:
-      send_word.data = (cur_word.data(7, 0), prev_word.data(511, 8));
-      send_word.keep = (cur_word.keep(0, 0), prev_word.keep(63, 1));
+    case NO_USE_DDR:
+      if (!tx_eng_read_data_in.empty() && !to_tx_eng_read_data.full()) {
+        tx_eng_read_data_in.read(cur_beat_word);
+        to_tx_eng_read_data.write(cur_beat_word);
+        if (cur_beat_word.last) {
+          fsm_state = READ_BYPASS;
+        }
+      }
       break;
-    case 2:
-      send_word.data = (cur_word.data(15, 0), prev_word.data(511, 16));
-      send_word.keep = (cur_word.keep(1, 0), prev_word.keep(63, 2));
+#endif
+    case READ_ACCESS:
+      if (!mem_buffer_double_access.empty()) {
+        mem_buffer_double_access.read(mem_double_access);
+        offset_block0 = mem_double_access.byte_offset;
+        offset_block1 = 64 - mem_double_access.byte_offset;
+
+        if (mem_double_access.double_access) {
+          fsm_state = BREAKDOWN_BLOCK_0;
+        } else {
+          fsm_state = NO_BREAKDOWN;
+        }
+      }
       break;
-    case 3:
-      send_word.data = (cur_word.data(23, 0), prev_word.data(511, 24));
-      send_word.keep = (cur_word.keep(2, 0), prev_word.keep(63, 3));
+    case NO_BREAKDOWN:
+    case BREAKDOWN_ALIGNED:
+      if (!mover_read_mem_data_in.empty() && !to_tx_eng_read_data.full()) {
+        mover_read_mem_data_in.read(cur_beat_word);
+        to_tx_eng_read_data.write(cur_beat_word);
+
+        if (cur_beat_word.last) {
+          fsm_state = INITIAL_STATE;
+        }
+      }
       break;
-    case 4:
-      send_word.data = (cur_word.data(31, 0), prev_word.data(511, 32));
-      send_word.keep = (cur_word.keep(3, 0), prev_word.keep(63, 4));
+    case BREAKDOWN_BLOCK_0:
+      if (!mover_read_mem_data_in.empty() && !to_tx_eng_read_data.full()) {
+        mover_read_mem_data_in.read(cur_beat_word);
+
+        send_beat_word.data = cur_beat_word.data;
+        send_beat_word.keep = cur_beat_word.keep;
+        send_beat_word.last = 0;
+        if (cur_beat_word.last) {
+          if (offset_block0 == 0) {
+            to_tx_eng_word_need_to_align = false;
+            fsm_state                    = BREAKDOWN_ALIGNED;
+          } else {  // This mean that the last not has all byte valid
+            to_tx_eng_word_need_to_align = true;
+            fsm_state                    = FIRST_MERGE;
+          }
+        }
+        if (!to_tx_eng_word_need_to_align) {
+          to_tx_eng_read_data.write(send_beat_word);
+        }
+
+        prev_beat_word = cur_beat_word;
+      }
       break;
-    case 5:
-      send_word.data = (cur_word.data(39, 0), prev_word.data(511, 40));
-      send_word.keep = (cur_word.keep(4, 0), prev_word.keep(63, 5));
+    case FIRST_MERGE:
+      if (!mover_read_mem_data_in.empty() && !to_tx_eng_read_data.full()) {
+        mover_read_mem_data_in.read(cur_beat_word);
+        MergeTwoWordsHead(cur_beat_word, prev_beat_word, offset_block0, send_beat_word);
+        send_beat_word.last = 0;
+
+        if (cur_beat_word.last) {
+          if (cur_beat_word.keep.bit(offset_block1)) {
+            fsm_state = EXTRA_DATA;
+          } else {
+            send_beat_word.last = 1;
+            fsm_state           = INITIAL_STATE;
+          }
+        } else {
+          fsm_state = BREAKDOWN_BLOCK_1;
+        }
+        prev_beat_word = cur_beat_word;
+        to_tx_eng_read_data.write(send_beat_word);
+      }
       break;
-    case 6:
-      send_word.data = (cur_word.data(47, 0), prev_word.data(511, 48));
-      send_word.keep = (cur_word.keep(5, 0), prev_word.keep(63, 6));
+    case BREAKDOWN_BLOCK_1:
+      if (!mover_read_mem_data_in.empty() && !to_tx_eng_read_data.full()) {
+        mover_read_mem_data_in.read(cur_beat_word);
+        ConcatTwoWords(cur_beat_word, prev_beat_word, offset_block1, send_beat_word);
+
+        send_beat_word.last = 0;
+        if (cur_beat_word.last) {
+          if (cur_beat_word.keep.bit(offset_block1)) {
+            fsm_state = EXTRA_DATA;
+          } else {
+            send_beat_word.last = 1;
+            fsm_state           = INITIAL_STATE;
+          }
+        }
+
+        prev_beat_word = cur_beat_word;
+        to_tx_eng_read_data.write(send_beat_word);
+      }
       break;
-    case 7:
-      send_word.data = (cur_word.data(55, 0), prev_word.data(511, 56));
-      send_word.keep = (cur_word.keep(6, 0), prev_word.keep(63, 7));
-      break;
-    case 8:
-      send_word.data = (cur_word.data(63, 0), prev_word.data(511, 64));
-      send_word.keep = (cur_word.keep(7, 0), prev_word.keep(63, 8));
-      break;
-    case 9:
-      send_word.data = (cur_word.data(71, 0), prev_word.data(511, 72));
-      send_word.keep = (cur_word.keep(8, 0), prev_word.keep(63, 9));
-      break;
-    case 10:
-      send_word.data = (cur_word.data(79, 0), prev_word.data(511, 80));
-      send_word.keep = (cur_word.keep(9, 0), prev_word.keep(63, 10));
-      break;
-    case 11:
-      send_word.data = (cur_word.data(87, 0), prev_word.data(511, 88));
-      send_word.keep = (cur_word.keep(10, 0), prev_word.keep(63, 11));
-      break;
-    case 12:
-      send_word.data = (cur_word.data(95, 0), prev_word.data(511, 96));
-      send_word.keep = (cur_word.keep(11, 0), prev_word.keep(63, 12));
-      break;
-    case 13:
-      send_word.data = (cur_word.data(103, 0), prev_word.data(511, 104));
-      send_word.keep = (cur_word.keep(12, 0), prev_word.keep(63, 13));
-      break;
-    case 14:
-      send_word.data = (cur_word.data(111, 0), prev_word.data(511, 112));
-      send_word.keep = (cur_word.keep(13, 0), prev_word.keep(63, 14));
-      break;
-    case 15:
-      send_word.data = (cur_word.data(119, 0), prev_word.data(511, 120));
-      send_word.keep = (cur_word.keep(14, 0), prev_word.keep(63, 15));
-      break;
-    case 16:
-      send_word.data = (cur_word.data(127, 0), prev_word.data(511, 128));
-      send_word.keep = (cur_word.keep(15, 0), prev_word.keep(63, 16));
-      break;
-    case 17:
-      send_word.data = (cur_word.data(135, 0), prev_word.data(511, 136));
-      send_word.keep = (cur_word.keep(16, 0), prev_word.keep(63, 17));
-      break;
-    case 18:
-      send_word.data = (cur_word.data(143, 0), prev_word.data(511, 144));
-      send_word.keep = (cur_word.keep(17, 0), prev_word.keep(63, 18));
-      break;
-    case 19:
-      send_word.data = (cur_word.data(151, 0), prev_word.data(511, 152));
-      send_word.keep = (cur_word.keep(18, 0), prev_word.keep(63, 19));
-      break;
-    case 20:
-      send_word.data = (cur_word.data(159, 0), prev_word.data(511, 160));
-      send_word.keep = (cur_word.keep(19, 0), prev_word.keep(63, 20));
-      break;
-    case 21:
-      send_word.data = (cur_word.data(167, 0), prev_word.data(511, 168));
-      send_word.keep = (cur_word.keep(20, 0), prev_word.keep(63, 21));
-      break;
-    case 22:
-      send_word.data = (cur_word.data(175, 0), prev_word.data(511, 176));
-      send_word.keep = (cur_word.keep(21, 0), prev_word.keep(63, 22));
-      break;
-    case 23:
-      send_word.data = (cur_word.data(183, 0), prev_word.data(511, 184));
-      send_word.keep = (cur_word.keep(22, 0), prev_word.keep(63, 23));
-      break;
-    case 24:
-      send_word.data = (cur_word.data(191, 0), prev_word.data(511, 192));
-      send_word.keep = (cur_word.keep(23, 0), prev_word.keep(63, 24));
-      break;
-    case 25:
-      send_word.data = (cur_word.data(199, 0), prev_word.data(511, 200));
-      send_word.keep = (cur_word.keep(24, 0), prev_word.keep(63, 25));
-      break;
-    case 26:
-      send_word.data = (cur_word.data(207, 0), prev_word.data(511, 208));
-      send_word.keep = (cur_word.keep(25, 0), prev_word.keep(63, 26));
-      break;
-    case 27:
-      send_word.data = (cur_word.data(215, 0), prev_word.data(511, 216));
-      send_word.keep = (cur_word.keep(26, 0), prev_word.keep(63, 27));
-      break;
-    case 28:
-      send_word.data = (cur_word.data(223, 0), prev_word.data(511, 224));
-      send_word.keep = (cur_word.keep(27, 0), prev_word.keep(63, 28));
-      break;
-    case 29:
-      send_word.data = (cur_word.data(231, 0), prev_word.data(511, 232));
-      send_word.keep = (cur_word.keep(28, 0), prev_word.keep(63, 29));
-      break;
-    case 30:
-      send_word.data = (cur_word.data(239, 0), prev_word.data(511, 240));
-      send_word.keep = (cur_word.keep(29, 0), prev_word.keep(63, 30));
-      break;
-    case 31:
-      send_word.data = (cur_word.data(247, 0), prev_word.data(511, 248));
-      send_word.keep = (cur_word.keep(30, 0), prev_word.keep(63, 31));
-      break;
-    case 32:
-      send_word.data = (cur_word.data(255, 0), prev_word.data(511, 256));
-      send_word.keep = (cur_word.keep(31, 0), prev_word.keep(63, 32));
-      break;
-    case 33:
-      send_word.data = (cur_word.data(263, 0), prev_word.data(511, 264));
-      send_word.keep = (cur_word.keep(32, 0), prev_word.keep(63, 33));
-      break;
-    case 34:
-      send_word.data = (cur_word.data(271, 0), prev_word.data(511, 272));
-      send_word.keep = (cur_word.keep(33, 0), prev_word.keep(63, 34));
-      break;
-    case 35:
-      send_word.data = (cur_word.data(279, 0), prev_word.data(511, 280));
-      send_word.keep = (cur_word.keep(34, 0), prev_word.keep(63, 35));
-      break;
-    case 36:
-      send_word.data = (cur_word.data(287, 0), prev_word.data(511, 288));
-      send_word.keep = (cur_word.keep(35, 0), prev_word.keep(63, 36));
-      break;
-    case 37:
-      send_word.data = (cur_word.data(295, 0), prev_word.data(511, 296));
-      send_word.keep = (cur_word.keep(36, 0), prev_word.keep(63, 37));
-      break;
-    case 38:
-      send_word.data = (cur_word.data(303, 0), prev_word.data(511, 304));
-      send_word.keep = (cur_word.keep(37, 0), prev_word.keep(63, 38));
-      break;
-    case 39:
-      send_word.data = (cur_word.data(311, 0), prev_word.data(511, 312));
-      send_word.keep = (cur_word.keep(38, 0), prev_word.keep(63, 39));
-      break;
-    case 40:
-      send_word.data = (cur_word.data(319, 0), prev_word.data(511, 320));
-      send_word.keep = (cur_word.keep(39, 0), prev_word.keep(63, 40));
-      break;
-    case 41:
-      send_word.data = (cur_word.data(327, 0), prev_word.data(511, 328));
-      send_word.keep = (cur_word.keep(40, 0), prev_word.keep(63, 41));
-      break;
-    case 42:
-      send_word.data = (cur_word.data(335, 0), prev_word.data(511, 336));
-      send_word.keep = (cur_word.keep(41, 0), prev_word.keep(63, 42));
-      break;
-    case 43:
-      send_word.data = (cur_word.data(343, 0), prev_word.data(511, 344));
-      send_word.keep = (cur_word.keep(42, 0), prev_word.keep(63, 43));
-      break;
-    case 44:
-      send_word.data = (cur_word.data(351, 0), prev_word.data(511, 352));
-      send_word.keep = (cur_word.keep(43, 0), prev_word.keep(63, 44));
-      break;
-    case 45:
-      send_word.data = (cur_word.data(359, 0), prev_word.data(511, 360));
-      send_word.keep = (cur_word.keep(44, 0), prev_word.keep(63, 45));
-      break;
-    case 46:
-      send_word.data = (cur_word.data(367, 0), prev_word.data(511, 368));
-      send_word.keep = (cur_word.keep(45, 0), prev_word.keep(63, 46));
-      break;
-    case 47:
-      send_word.data = (cur_word.data(375, 0), prev_word.data(511, 376));
-      send_word.keep = (cur_word.keep(46, 0), prev_word.keep(63, 47));
-      break;
-    case 48:
-      send_word.data = (cur_word.data(383, 0), prev_word.data(511, 384));
-      send_word.keep = (cur_word.keep(47, 0), prev_word.keep(63, 48));
-      break;
-    case 49:
-      send_word.data = (cur_word.data(391, 0), prev_word.data(511, 392));
-      send_word.keep = (cur_word.keep(48, 0), prev_word.keep(63, 49));
-      break;
-    case 50:
-      send_word.data = (cur_word.data(399, 0), prev_word.data(511, 400));
-      send_word.keep = (cur_word.keep(49, 0), prev_word.keep(63, 50));
-      break;
-    case 51:
-      send_word.data = (cur_word.data(407, 0), prev_word.data(511, 408));
-      send_word.keep = (cur_word.keep(50, 0), prev_word.keep(63, 51));
-      break;
-    case 52:
-      send_word.data = (cur_word.data(415, 0), prev_word.data(511, 416));
-      send_word.keep = (cur_word.keep(51, 0), prev_word.keep(63, 52));
-      break;
-    case 53:
-      send_word.data = (cur_word.data(423, 0), prev_word.data(511, 424));
-      send_word.keep = (cur_word.keep(52, 0), prev_word.keep(63, 53));
-      break;
-    case 54:
-      send_word.data = (cur_word.data(431, 0), prev_word.data(511, 432));
-      send_word.keep = (cur_word.keep(53, 0), prev_word.keep(63, 54));
-      break;
-    case 55:
-      send_word.data = (cur_word.data(439, 0), prev_word.data(511, 440));
-      send_word.keep = (cur_word.keep(54, 0), prev_word.keep(63, 55));
-      break;
-    case 56:
-      send_word.data = (cur_word.data(447, 0), prev_word.data(511, 448));
-      send_word.keep = (cur_word.keep(55, 0), prev_word.keep(63, 56));
-      break;
-    case 57:
-      send_word.data = (cur_word.data(455, 0), prev_word.data(511, 456));
-      send_word.keep = (cur_word.keep(56, 0), prev_word.keep(63, 57));
-      break;
-    case 58:
-      send_word.data = (cur_word.data(463, 0), prev_word.data(511, 464));
-      send_word.keep = (cur_word.keep(57, 0), prev_word.keep(63, 58));
-      break;
-    case 59:
-      send_word.data = (cur_word.data(471, 0), prev_word.data(511, 472));
-      send_word.keep = (cur_word.keep(58, 0), prev_word.keep(63, 59));
-      break;
-    case 60:
-      send_word.data = (cur_word.data(479, 0), prev_word.data(511, 480));
-      send_word.keep = (cur_word.keep(59, 0), prev_word.keep(63, 60));
-      break;
-    case 61:
-      send_word.data = (cur_word.data(487, 0), prev_word.data(511, 488));
-      send_word.keep = (cur_word.keep(60, 0), prev_word.keep(63, 61));
-      break;
-    case 62:
-      send_word.data = (cur_word.data(495, 0), prev_word.data(511, 496));
-      send_word.keep = (cur_word.keep(61, 0), prev_word.keep(63, 62));
-      break;
-    case 63:
-      send_word.data = (cur_word.data(503, 0), prev_word.data(511, 504));
-      send_word.keep = (cur_word.keep(62, 0), prev_word.keep(63, 63));
+    case EXTRA_DATA:
+      if (!to_tx_eng_read_data.full()) {
+        ConcatTwoWords(NetAXIS(0, 0, 0, 1), prev_beat_word, offset_block1, send_beat_word);
+        send_beat_word.last = 1;
+
+        to_tx_eng_read_data.write(send_beat_word);
+        fsm_state = INITIAL_STATE;
+      }
       break;
   }
 }
@@ -282,15 +212,16 @@ void ConcatTwoWords(NetAXIS cur_word, NetAXIS prev_word, ap_uint<6> byte_offset,
  * @param      tx_app_to_mem_data_in   Packet payload if any
  * @param      tx_app_to_mem_cmd_in    Internal command to write data into the memory. It does
  * not take into account buffer overflow
- * @param      mover_mem_cmd_out   Command to the data mover. It takes into account buffer
+ * @param      mover_write_mem_cmd_out   Command to the data mover. It takes into account buffer
  * overflow. Two write commands when buffer overflows
- * @param      mover_mem_data_out  Data to memory. If the buffer overflows, the second part
+ * @param      mover_write_mem_data_out  Data to memory. If the buffer overflows, the second part
  * of the data has to be realigned
  */
+// TODO: use MemBufferRWCMD struct zelin 220511
 void                 TxAppWriteDataToMem(stream<NetAXIS> &     tx_app_to_mem_data_in,
                                          stream<DataMoverCmd> &tx_app_to_mem_cmd_in,
-                                         stream<NetAXIS> &     mover_mem_data_out,
-                                         stream<DataMoverCmd> &mover_mem_cmd_out) {
+                                         stream<NetAXIS> &     mover_write_mem_data_out,
+                                         stream<DataMoverCmd> &mover_write_mem_cmd_out) {
 #pragma HLS pipeline II = 1
 #pragma HLS INLINE   off
 
@@ -309,19 +240,19 @@ void                 TxAppWriteDataToMem(stream<NetAXIS> &     tx_app_to_mem_dat
   // if not equal to 64B, record the offset for concating to the new words
   static ap_uint<6> byte_offset;
   // last word in the first cmd
-  static ap_uint<64> first_cmd_last_word_keep;
-  // first word send word total and counter
-  static ap_uint<10> first_cmd_send_words;
-  static ap_uint<10> first_cmd_send_cnt = 1;
+  static ap_uint<64> first_cmd_last_beat_keep;
+  // first word want to transfer several beats
+  static ap_uint<10> first_cmd_trans_beats;
+  static ap_uint<10> first_cmd_trans_beats_cnt = 1;
 
   static DataMoverCmd to_mem_cmd;
   static DataMoverCmd send_cmd;
 
   ap_uint<WINDOW_BITS + 1> buffer_overflow_addr;
 
-  NetAXIS        cur_word;
-  NetAXIS        send_word;
-  static NetAXIS prev_word;
+  NetAXIS        cur_beat_word;
+  NetAXIS        send_beat_word;
+  static NetAXIS prev_beat_word;
 
   switch (fsm_state) {
     case WAIT_CMD:
@@ -339,45 +270,46 @@ void                 TxAppWriteDataToMem(stream<NetAXIS> &     tx_app_to_mem_dat
           byte_offset   = send_cmd.bbt.range(5, 0);
           first_cmd_bbt = send_cmd.bbt;
           // Get the keep of the last transaction of  the first memory offset;
-          first_cmd_last_word_keep = DataLengthToAxisKeep(byte_offset);
+          first_cmd_last_beat_keep = DataLengthToAxisKeep(byte_offset);
           // Determines how many transaction are in the first memory access
           if (byte_offset != 0) {
-            first_cmd_send_words = send_cmd.bbt.range(WINDOW_BITS - 1, 6) + 1;
+            first_cmd_trans_beats = send_cmd.bbt.range(WINDOW_BITS - 1, 6) + 1;
           } else {
-            first_cmd_send_words = send_cmd.bbt.range(WINDOW_BITS - 1, 6);
+            first_cmd_trans_beats = send_cmd.bbt.range(WINDOW_BITS - 1, 6);
           }
-          first_cmd_send_cnt = 1;
-          fsm_state          = FWD_BREAKDOWN_0;
+          first_cmd_trans_beats_cnt = 1;
+          fsm_state                 = FWD_BREAKDOWN_0;
         } else {
           send_cmd  = to_mem_cmd;
           fsm_state = FWD_NO_BREAKDOWN;
         }
         // issue the first command
-        mover_mem_cmd_out.write(send_cmd);
+        mover_write_mem_cmd_out.write(send_cmd);
       }
       break;
     case FWD_NO_BREAKDOWN:
       if (!tx_app_to_mem_data_in.empty()) {
-        tx_app_to_mem_data_in.read(cur_word);
-        send_word.data = cur_word.data;
-        send_word.keep = cur_word.keep;
-        send_word.last = cur_word.last;
+        tx_app_to_mem_data_in.read(cur_beat_word);
+        send_beat_word.data = cur_beat_word.data;
+        send_beat_word.keep = cur_beat_word.keep;
+        send_beat_word.last = cur_beat_word.last;
 
-        if (cur_word.last) {
+        if (cur_beat_word.last) {
           fsm_state = WAIT_CMD;
         }
-        mover_mem_data_out.write(send_word);
+        mover_write_mem_data_out.write(send_beat_word);
       }
       break;
     case FWD_BREAKDOWN_0:
       // the first cmd write state
       if (!tx_app_to_mem_data_in.empty()) {
-        tx_app_to_mem_data_in.read(cur_word);
-        send_word.last = 0;
-        if (first_cmd_send_cnt == first_cmd_send_words) {
-          send_word.data = cur_word.data;
-          send_word.keep = first_cmd_last_word_keep;  // last word length = byte_offset
-          send_word.last = 1;
+        tx_app_to_mem_data_in.read(cur_beat_word);
+        send_beat_word.last = 0;
+        if (first_cmd_trans_beats_cnt == first_cmd_trans_beats) {
+          send_beat_word.data = cur_beat_word.data;
+          // last beat in first trans length = byte_offset
+          send_beat_word.keep = first_cmd_last_beat_keep;
+          send_beat_word.last = 1;
           // the session buffer start address
           send_cmd.saddr(31, WINDOW_BITS)    = to_mem_cmd.saddr(31, WINDOW_BITS);
           send_cmd.saddr(WINDOW_BITS - 1, 0) = 0;
@@ -385,44 +317,44 @@ void                 TxAppWriteDataToMem(stream<NetAXIS> &     tx_app_to_mem_dat
           // Recompute the bytes to transfer in the second memory access
           send_cmd.bbt = to_mem_cmd.bbt - first_cmd_bbt;
           // Issue the second command
-          mover_mem_cmd_out.write(send_cmd);
-          if (cur_word.last) {
+          mover_write_mem_cmd_out.write(send_cmd);
+          if (cur_beat_word.last) {
             fsm_state = FWD_EXTRA;
           } else {
             fsm_state = FWD_BREAKDOWN_1;
           }
         } else {
-          send_word = cur_word;
+          send_beat_word = cur_beat_word;
         }
-        first_cmd_send_cnt++;
-        prev_word = cur_word;
-        mover_mem_data_out.write(send_word);
+        first_cmd_trans_beats_cnt++;
+        prev_beat_word = cur_beat_word;
+        mover_write_mem_data_out.write(send_beat_word);
       }
       break;
     case FWD_BREAKDOWN_1:
       // the second cmd write state
       if (!tx_app_to_mem_data_in.empty()) {
-        tx_app_to_mem_data_in.read(cur_word);
-        ConcatTwoWords(cur_word, prev_word, byte_offset, send_word);
+        tx_app_to_mem_data_in.read(cur_beat_word);
+        ConcatTwoWords(cur_beat_word, prev_beat_word, byte_offset, send_beat_word);
 
-        send_word.last = 0;
-        if (cur_word.last) {
-          if (cur_word.keep.bit(byte_offset) && byte_offset != 0) {
+        send_beat_word.last = 0;
+        if (cur_beat_word.last) {
+          if (cur_beat_word.keep.bit(byte_offset) && byte_offset != 0) {
             fsm_state = FWD_EXTRA;
           } else {
-            fsm_state      = WAIT_CMD;
-            send_word.last = 1;
+            fsm_state           = WAIT_CMD;
+            send_beat_word.last = 1;
           }
         }
-        prev_word = cur_word;
-        mover_mem_data_out.write(send_word);
+        prev_beat_word = cur_beat_word;
+        mover_write_mem_data_out.write(send_beat_word);
       }
       break;
     case FWD_EXTRA:
       // The EXTRA part of the memory write has less than 64 bytes
-      ConcatTwoWords(NetAXIS(), prev_word, byte_offset, send_word);
-      send_word.last = 1;
-      mover_mem_data_out.write(send_word);
+      ConcatTwoWords(NetAXIS(0, 0, 0, 1), prev_beat_word, byte_offset, send_beat_word);
+      send_beat_word.last = 1;
+      mover_write_mem_data_out.write(send_beat_word);
       fsm_state = WAIT_CMD;
       break;
   }
