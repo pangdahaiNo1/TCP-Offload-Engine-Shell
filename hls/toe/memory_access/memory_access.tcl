@@ -26,17 +26,18 @@ add_files -tb " ${prj_src_dir}/${prj_name}_test.cpp \
                   ${src_top_dir}/utils/pcap/pcap_to_stream.cpp \
                   ${src_top_dir}/utils/pcap/pcap.cpp \  
                   ${src_top_dir}/utils/axi_utils.cpp \
-                  ${src_top_dir}/toe/tcp_conn.hpp"  -cflags "-I${src_top_dir} -DDEBUG"
+                  ${src_top_dir}/toe/mock/mock_memory.hpp \
+                  ${src_top_dir}/toe/tcp_conn.hpp"   -cflags "  -std=c++14 -I${src_top_dir} -DDEBUG"
 
 
 if {$hls_act == "csim"} {
-   csim_design -clean -argv "${pcap_input_dir}/echo_golden.pcap"
+   csim_design -clean -argv "${pcap_input_dir}/packet_handler_input_tcp.pcap"
    exit
 }
 csynth_design
 
 if {$hls_act == "cosim"} {
-   cosim_design -rtl verilog -argv "${pcap_input_dir}/echo_golden.pcap"
+   cosim_design -rtl verilog -argv "${pcap_input_dir}/packet_handler_input_tcp.pcap"
    exit
 }
 
