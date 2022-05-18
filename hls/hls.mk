@@ -1,5 +1,5 @@
 TOE_SRC=$(HLS_SRC_DIR)/toe
-ARK_DELAY_SRC=$(TOE_SRC)/ack_delay
+ACK_DELAY_SRC=$(TOE_SRC)/ack_delay
 CLOSE_TIMER_SRC=$(TOE_SRC)/close_timer
 EVENT_ENGINE_SRC=$(TOE_SRC)/event_engine
 MEMORY_ACCESS_SRC=$(TOE_SRC)/memory_access
@@ -17,32 +17,31 @@ TX_SAR_TABLE_SRC=$(TOE_SRC)/tx_sar_table
 TIMER_WRAPPER_SRC=$(TOE_SRC)/timer_wrapper
 TEST_PORT_SRC=$(TOE_SRC)/test_port
 
-IPERF_SRC=$(HLS_SRC_DIR)/iperf2_client
 HASH_TABLE_SRC=$(HLS_SRC_DIR)/hash_table
-ECHO_SRC=$(HLS_SRC_DIR)/echo_replay
 ARP_SRC=$(HLS_SRC_DIR)/arp_server
 ETHERNET_SRC=$(HLS_SRC_DIR)/ethernet_header_inserter
 ICMP_SRC=$(HLS_SRC_DIR)/icmp_server
 PKT_SRC=$(HLS_SRC_DIR)/packet_handler
-USR_ABS_SRC=$(HLS_SRC_DIR)/user_abstraction
-UDP_SRC=$(HLS_SRC_DIR)/udp
-PORT_SRC=$(HLS_SRC_DIR)/port_handler
+
+# net app
+APP_SRC=$(HLS_SRC_DIR)/net_app
+IPERF_SRC=$(APP_SRC)/iperf2_client
+ECHO_SRC=$(APP_SRC)/echo_server
+
 
 
 VIVADO_HLS_ARGS ?= $(HLS_SRC_DIR) $@ $(FPGA_PART) $(HLS_ACT) $(IP_REPO_DIR)
 
 
 
-project = TOE \
+project = toe \
 		iperf2_client \
-		echo_replay \
+		echo_server \
 		arp_server \
 		ethernet_inserter \
 		icmp_server \
 		packet_handler \
-		user_abstraction \
 		udp \
-		port_handler \
 		ack_delay \
 		close_timer \
 		event_engine \
@@ -75,19 +74,12 @@ distclean: clean
 	rm -rf $(project)
 
 
-TOE: $(shell find $(TOE_SRC) -type f)  
+toe: $(shell find $(TOE_SRC) -type f)  
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
-iperf2_client: $(shell find $(IPERF_SRC) -type f) 
-	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 hash_table: $(shell find $(HASH_TABLE_SRC) -type f) 
-	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
-
-echo_replay: $(shell find $(ECHO_SRC) -type f) 
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
@@ -104,14 +96,6 @@ icmp_server: $(shell find $(ICMP_SRC) -type f)
 	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 packet_handler: $(shell find $(PKT_SRC) -type f) 
-	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
-
-user_abstraction: $(shell find $(USR_ABS_SRC) -type f) 
-	mkdir -p $(HLS_PRJ_DIR)/$@
-	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
-
-port_handler: $(shell find $(PORT_SRC) -type f) 
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(HLS_SRC_DIR)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
@@ -188,6 +172,14 @@ test_port: $(shell find $(TEST_PORT_SRC) -type f)
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(TOE_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
+
+echo_server: $(shell find $(ECHO_SRC) -type f) 
+	mkdir -p $(HLS_PRJ_DIR)/$@
+	$(VIVADO_HLS) -f $(APP_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
+
+iperf2_client: $(shell find $(IPERF_SRC) -type f) 
+	mkdir -p $(HLS_PRJ_DIR)/$@
+	$(VIVADO_HLS) -f $(APP_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
 .PHONY: list help
 list:

@@ -24,7 +24,7 @@ public:
     return *this;
   }
 
-  void FromWord(ap_uint<DATA_WIDTH> &w) {
+  void FromWord(const ap_uint<DATA_WIDTH> &w) {
     if (ready)
       return;
 

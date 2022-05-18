@@ -154,4 +154,5 @@ void session_lookup_controller(
     stream<TcpPortNumber> &slookup_to_ptable_release_port_req,
     // registers
     ap_uint<16> &reg_session_cnt,
-    IpAddr &     my_ip_addr);
+    // in big endian
+    IpAddr &my_ip_addr);

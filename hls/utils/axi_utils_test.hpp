@@ -17,11 +17,10 @@ int LoadNetAXISFromFile(stream<NetAXIS> &net_axis_stream, const string &file_nam
   }
   NetAXIS one_data;
   string  one_data_data, one_data_id, one_data_user, one_data_dest, one_data_keep, one_data_last;
-  while (axis_infile >> one_data_data >> one_data_id >> one_data_user >> one_data_dest >>
-         one_data_keep >> one_data_last) {
+  while (axis_infile >> one_data_data >> one_data_dest >> one_data_keep >> one_data_last) {
     one_data.data = NetAXISData(one_data_data.c_str(), 16);
-    one_data.id   = NetAXISId(one_data_id.c_str(), 16);
-    one_data.user = NetAXISUser(one_data_user.c_str(), 16);
+    // one_data.id   = NetAXISId(one_data_id.c_str(), 16);
+    // one_data.user = NetAXISUser(one_data_user.c_str(), 16);
     one_data.dest = NetAXISDest(one_data_dest.c_str(), 16);
     one_data.keep = NetAXISKeep(one_data_keep.c_str(), 16);
     one_data.last = ap_uint<1>(one_data_last.c_str(), 16);
@@ -39,10 +38,10 @@ void SaveNetAXISToFile(stream<NetAXIS> &net_axis_stream, const string &file_name
     net_axis_stream.read(one_data);
     axis_outfile << one_data.data.to_string(16);
     axis_outfile << " ";
-    axis_outfile << one_data.id.to_string(16);
-    axis_outfile << " ";
-    axis_outfile << one_data.user.to_string(16);
-    axis_outfile << " ";
+    // axis_outfile << one_data.id.to_string(16);
+    // axis_outfile << " ";
+    // axis_outfile << one_data.user.to_string(16);
+    // axis_outfile << " ";
     axis_outfile << one_data.dest.to_string(16);
     axis_outfile << " ";
     axis_outfile << one_data.keep.to_string(16);

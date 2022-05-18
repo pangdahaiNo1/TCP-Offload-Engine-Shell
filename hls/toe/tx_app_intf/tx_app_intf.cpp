@@ -45,8 +45,8 @@ void TxAppConnectionHandler(
     stream<NetAXISAppOpenConnRsp> & tx_app_to_net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_to_tx_app_close_conn_req,
     // rx eng -> net app
-    stream<PassiveOpenSessionStatus> &    rx_eng_to_tx_app_passive_notification,
-    stream<NetAXISAppPassiveOpenConnRsp> &net_app_passive_open_notification,
+    stream<NewClientNotification> &      rx_eng_to_tx_app_new_client_notification,
+    stream<NetAXISNewClientNotificaion> &net_app_new_client_notification,
     // rx eng
     stream<OpenSessionStatus> &rx_eng_to_tx_app_notification,
     // retrans timer
@@ -95,11 +95,11 @@ void TxAppConnectionHandler(
     tx_app_wait_for_free_port_lock = false;
   }
 
-  SessionLookupRsp                slookup_rsp;
-  SessionState                    sttable_rsp;
-  static PassiveOpenSessionStatus passive_open_session_reg;
-  static OpenSessionStatus        open_session_reg;
-  static NetAXISAppCloseConnReq   app_close_session_reg;
+  SessionLookupRsp              slookup_rsp;
+  SessionState                  sttable_rsp;
+  static NewClientNotification  passive_open_session_reg;
+  static OpenSessionStatus      open_session_reg;
+  static NetAXISAppCloseConnReq app_close_session_reg;
   // handle net app open/close connection request
   switch (fsm_state) {
     case IDLE:
@@ -123,8 +123,8 @@ void TxAppConnectionHandler(
         rtimer_to_tx_app_notification.read(open_session_reg);
         tx_app_to_slookup_check_tdest_req.write(open_session_reg.session_id);
         fsm_state = WAIT_FOR_TDEST_ACTIVE_OPEN;
-      } else if (!rx_eng_to_tx_app_passive_notification.empty()) {
-        rx_eng_to_tx_app_passive_notification.read(passive_open_session_reg);
+      } else if (!rx_eng_to_tx_app_new_client_notification.empty()) {
+        rx_eng_to_tx_app_new_client_notification.read(passive_open_session_reg);
         tx_app_to_slookup_check_tdest_req.write(passive_open_session_reg.session_id);
         fsm_state = WAIT_FOR_TDEST_PASSIVE_OPEN;
       } else if (!net_app_to_tx_app_close_conn_req.empty()) {
@@ -145,8 +145,8 @@ void TxAppConnectionHandler(
     case WAIT_FOR_TDEST_PASSIVE_OPEN:
       if (!slookup_to_tx_app_check_tdest_rsp.empty()) {
         NetAXISDest temp_dest = slookup_to_tx_app_check_tdest_rsp.read();
-        net_app_passive_open_notification.write(
-            NetAXISAppPassiveOpenConnRsp(passive_open_session_reg, temp_dest));
+        net_app_new_client_notification.write(
+            NetAXISNewClientNotificaion(passive_open_session_reg, temp_dest));
         fsm_state = IDLE;
       }
       break;
@@ -424,8 +424,8 @@ void tx_app_intf(
     stream<NetAXISAppOpenConnRsp> & tx_app_to_net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_to_tx_app_close_conn_req,
     // rx eng -> net app
-    stream<PassiveOpenSessionStatus> &    rx_eng_to_tx_app_passive_notification,
-    stream<NetAXISAppPassiveOpenConnRsp> &net_app_passive_open_notification,
+    stream<NewClientNotification> &      rx_eng_to_tx_app_new_client_notification,
+    stream<NetAXISNewClientNotificaion> &net_app_new_client_notification,
     // rx eng
     stream<OpenSessionStatus> &rx_eng_to_tx_app_notification,
     // retrans timer
@@ -503,8 +503,8 @@ void tx_app_intf(
       tx_app_to_net_app_open_conn_rsp,
       net_app_to_tx_app_close_conn_req,
       // rx eng
-      rx_eng_to_tx_app_passive_notification,
-      net_app_passive_open_notification,
+      rx_eng_to_tx_app_new_client_notification,
+      net_app_new_client_notification,
       // rx eng
       rx_eng_to_tx_app_notification,
       // retrans timer

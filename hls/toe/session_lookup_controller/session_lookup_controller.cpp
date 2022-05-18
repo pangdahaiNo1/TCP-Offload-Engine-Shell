@@ -242,16 +242,6 @@ void SlookupReverseTableInterface(
         RevTableEntry(insert_req.tuple_value, insert_req.role_value);
     valid_tuple[insert_req.key] = true;
 
-  } else if (!sttable_to_slookup_release_session_req.empty()) {
-    sttable_to_slookup_release_session_req.read(session_id);
-    cur_tuple_to_release = slookup_rev_table[session_id].three_tuple;
-    if (valid_tuple[session_id])  // if valid
-    {
-      slookup_to_ptable_release_port_req.write(cur_tuple_to_release.here_tcp_port);
-      slookup_to_cam_delete_req.write(
-          RtlSlookupToCamUpdReq(cur_tuple_to_release, session_id, DELETE, RX));
-    }
-    valid_tuple[session_id] = false;
   } else if (!tx_eng_to_slookup_rev_table_req.empty()) {
     tx_eng_to_slookup_rev_table_req.read(session_id);
     tx_eng_rsp.four_tuple.src_ip_addr  = my_ip_addr;
@@ -274,6 +264,16 @@ void SlookupReverseTableInterface(
     } else {
       slookup_to_tx_app_check_tdest_rsp.write(INVALID_TDEST);
     }
+  } else if (!sttable_to_slookup_release_session_req.empty()) {
+    sttable_to_slookup_release_session_req.read(session_id);
+    cur_tuple_to_release = slookup_rev_table[session_id].three_tuple;
+    if (valid_tuple[session_id])  // if valid
+    {
+      slookup_to_ptable_release_port_req.write(cur_tuple_to_release.here_tcp_port);
+      slookup_to_cam_delete_req.write(
+          RtlSlookupToCamUpdReq(cur_tuple_to_release, session_id, DELETE, RX));
+    }
+    valid_tuple[session_id] = false;
   }
 }
 
@@ -320,7 +320,7 @@ void session_lookup_controller(
 
   static stream<RtlSlookupToCamUpdReq> slookup_to_cam_insert_req_fifo(
       "slookup_to_cam_insert_req_fifo");
-#pragma HLS STREAM variable = rtl_slookup_to_cam_insert_req_fifo depth = 4
+#pragma HLS STREAM variable = slookup_to_cam_insert_req_fifo depth = 4
 
   static stream<RtlSlookupToCamUpdReq> slookup_to_cam_delete_req_fifo(
       "slookup_to_cam_delete_req_fifo");

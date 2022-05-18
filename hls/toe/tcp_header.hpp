@@ -76,11 +76,11 @@ public:
  * [271:264] = option length
  * [287:272] = MSS
  */
-class TcpFullHeaderWithPseudo : public PacketHeader<NET_TDATA_WIDTH, TCP_HEADER_WITH_PSEUDO_WIDTH> {
+class TcpPseudoFullHeader : public PacketHeader<NET_TDATA_WIDTH, TCP_HEADER_WITH_PSEUDO_WIDTH> {
   using PacketHeader<NET_TDATA_WIDTH, TCP_HEADER_WITH_PSEUDO_WIDTH>::header;
 
 public:
-  TcpFullHeaderWithPseudo() {
+  TcpPseudoFullHeader() {
     header(71, 64)   = 0x00;  // zeros
     header(79, 72)   = 0x06;  // protocol
     header[192]      = 0;     // NS bit
@@ -119,7 +119,27 @@ public:
   void        set_window_size(const ap_uint<16> &size) { header(223, 208) = SwapByte<16>(size); }
   ap_uint<16> get_window_size() { return SwapByte<16>((ap_uint<16>)header(223, 208)); }
   void        set_checksum(const ap_uint<16> &checksum) { header(239, 224) = checksum; }
-  ap_uint<16> get_checksum() { return header(239, 224); }
+  ap_uint<16> get_checksum() { return SwapByte<16>(header(239, 224)); }
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "TCP PseudoHeader: \n";
+    sstream << "Source Addr: " << SwapByte(this->get_src_addr()).to_string(16) << endl;
+    sstream << "Dest Addr: " << SwapByte(this->get_dst_addr()).to_string(16) << endl;
+    sstream << "TCP Packet length(Header+Payload): " << this->get_length().to_string(16) << endl;
+    sstream << "TCP Packet: \n";
+    sstream << "Flag: " << (this->get_syn_flag() == 1 ? "S" : "")
+            << (this->get_fin_flag() == 1 ? "F" : "") << (this->get_ack_flag() == 1 ? "A" : "")
+            << (this->get_rst_flag() == 1 ? "R" : "") << endl;
+    sstream << "Source Port: " << SwapByte<16>(this->get_src_port()).to_string(16) << endl;
+    sstream << "Dest Port: " << SwapByte<16>(this->get_dst_port()).to_string(16) << endl;
+    sstream << "Seqence Number: " << this->get_seq_number().to_string(16) << endl;
+    sstream << "Acknowlegnement Number: " << this->get_ack_number().to_string(16) << endl;
+    sstream << "Window Size: " << this->get_window_size().to_string(16) << endl;
+    sstream << "Checksum: " << this->get_checksum().to_string(16) << endl;
+    return sstream.str();
+  }
+#endif
 };
 
 /**
@@ -188,12 +208,13 @@ public:
 
 // used by Rx engine and Tx eng
 struct TcpHeaderMeta {
+  // big endian
   ap_uint<16> src_port;
+  // big endian
   ap_uint<16> dest_port;
   ap_uint<32> seq_number;
   ap_uint<32> ack_number;
   ap_uint<16> win_size;
-  ap_uint<16> length;
   ap_uint<4>  data_offset;  // data offset = tcp header length, in 32bit word
   ap_uint<1>  cwr;
   ap_uint<1>  ecn;
@@ -204,14 +225,16 @@ struct TcpHeaderMeta {
   ap_uint<1>  syn;
   ap_uint<1>  fin;
   // options field
+  // receive window scale
   TcpSessionBufferScale win_scale;
+  // not in the header field, but necessary
+  ap_uint<16> payload_length;
   TcpHeaderMeta()
       : src_port(0)
       , dest_port(0)
       , seq_number(0)
       , ack_number(0)
       , win_size(0)
-      , length(0)
       , data_offset(0)
       , cwr(0)
       , ecn(0)
@@ -222,18 +245,25 @@ struct TcpHeaderMeta {
       , syn(0)
       , fin(0)
       , win_scale(0) {}
+  // for generate next ack no
+  ap_uint<16> get_payload_length() {
+#pragma HLS INLINE
+    return payload_length + fin + syn;
+  }
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
     sstream << "TCP Packet: \n" << std::hex;
-    sstream << "Flag: " << (this->syn == 1 ? "S" : "") << (this->fin == 1 ? "F" : "")
-            << (this->ack == 1 ? "A" : "") << (this->rst == 1 ? "R" : "") << endl;
+    sstream << "Flag: " << (this->urg == 1 ? "U/" : "") << (this->ack == 1 ? "A/" : "")
+            << (this->psh == 1 ? "P/" : "") << (this->rst == 1 ? "R/" : "")
+            << (this->syn == 1 ? "S/" : "") << (this->fin == 1 ? "F" : "") << endl;
     sstream << "Source Port: " << SwapByte<16>(this->src_port) << endl;
     sstream << "Dest Port: " << SwapByte<16>(this->dest_port) << endl;
     sstream << "Seqence Number: " << this->seq_number << endl;
     sstream << "Acknowlegnement Number: " << this->ack_number << endl;
     sstream << "Window Size: " << this->win_size << endl;
-    sstream << "Data Offset: " << this->data_offset << endl;
+    sstream << "Window Scale: " << this->win_scale << endl;
+    sstream << "Data Offset: " << this->data_offset;
     return sstream.str();
   }
 #endif
@@ -241,7 +271,9 @@ struct TcpHeaderMeta {
 
 // TCP pseudo header + TCP header
 struct TcpPseudoHeaderMeta {
+  // not swapped
   IpAddr src_ip;
+  // not swapped
   IpAddr dest_ip;
   // header only contains window scale option
   TcpHeaderMeta header;
@@ -250,7 +282,7 @@ struct TcpPseudoHeaderMeta {
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
-    sstream << "TCP Full Segment: \t" << std::hex;
+    sstream << "TCP/IP: \t" << std::hex;
     sstream << "Source IP: " << SwapByte<32>(src_ip) << "\t"
             << " Dest IP: " << SwapByte<32>(dest_ip) << endl;
     sstream << header.to_string() << endl;

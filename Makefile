@@ -3,7 +3,7 @@ FPGA_PART=xczu19eg-ffvc1760-2-e
 BOARD_PART=sugon:nf_card:part0:2.0
 # Toolchains set
 VIVADO_HLS=/opt/Xilinx_2019.1/Vivado/2019.1/bin/vivado_hls
-#VIVADO_HLS=/opt/Xilinx_2021.2/Vitis_HLS/2021.2/bin/vitis_hls
+#VIVADO_HLS=/opt/Xilinx_2022.1/Vitis_HLS/2022.1/bin/vitis_hls
 # Top directory for ucas-cod-shell design
 TOP_DIR=$(shell dirname `pwd`)
 

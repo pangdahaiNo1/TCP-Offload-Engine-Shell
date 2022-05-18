@@ -8,14 +8,12 @@
 #include <iostream>
 using hls::stream;
 
-
 /**
  * NOTE: all varibles are in big endian
-*/
+ */
 
 // test mac addr
 ap_uint<48> mock_my_mac_addr     = SwapByte<48>(0x000A35029DE5);
-ap_uint<32> mock_my_ip_addr      = SwapByte<32>(0xC0A80005);
 ap_uint<32> mock_gateway_ip_addr = SwapByte<32>(0xC0A80001);
 ap_uint<32> mock_subnet_mask     = SwapByte<32>(0xFFFFFF00);
 // test tuple

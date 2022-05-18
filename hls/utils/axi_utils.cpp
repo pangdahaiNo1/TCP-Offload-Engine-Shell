@@ -2,7 +2,7 @@
 
 void ComputeSubChecksum(stream<NetAXIS> &pkt_in, stream<SubChecksum> &sub_checksum) {
 #pragma HLS PIPELINE II = 1
-#pragma HLS          INLINE
+#pragma HLS INLINE   off
   static SubChecksum tcp_checksums;
   if (!pkt_in.empty()) {
     NetAXIS cur_word = pkt_in.read();
@@ -33,7 +33,7 @@ void ComputeSubChecksum(stream<NetAXIS> &pkt_in, stream<SubChecksum> &sub_checks
 
 void CheckChecksum(stream<SubChecksum> &sub_checksum, stream<ap_uint<16> > &final_checksum) {
 #pragma HLS PIPELINE II = 1
-#pragma HLS          INLINE
+#pragma HLS INLINE   off
 
   if (!sub_checksum.empty()) {
     SubChecksum subsums = sub_checksum.read();

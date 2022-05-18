@@ -101,8 +101,8 @@ void TestTxAppConn() {
   stream<NetAXISAppOpenConnRsp>  tx_app_to_net_app_open_conn_rsp;
   stream<NetAXISAppCloseConnReq> net_app_to_tx_app_close_conn_req;
   // passive open
-  stream<PassiveOpenSessionStatus>     rx_eng_to_tx_app_passive_notification;
-  stream<NetAXISAppPassiveOpenConnRsp> net_app_passive_open_notification;
+  stream<NewClientNotification>       rx_eng_to_tx_app_new_client_notification;
+  stream<NetAXISNewClientNotificaion> net_app_new_client_notification;
   // rx eng
   stream<OpenSessionStatus> rx_eng_to_tx_app_notification;
   // retrans timer
@@ -168,8 +168,8 @@ void TestTxAppConn() {
     TxAppConnectionHandler(net_app_to_tx_app_open_conn_req,
                            tx_app_to_net_app_open_conn_rsp,
                            net_app_to_tx_app_close_conn_req,
-                           rx_eng_to_tx_app_passive_notification,
-                           net_app_passive_open_notification,
+                           rx_eng_to_tx_app_new_client_notification,
+                           net_app_new_client_notification,
                            rx_eng_to_tx_app_notification,
                            rtimer_to_tx_app_notification,
                            tx_app_to_slookup_req,

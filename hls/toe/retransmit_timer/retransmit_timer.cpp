@@ -49,9 +49,7 @@ void                 retransmit_timer(stream<RxEngToRetransTimerReq> &rx_eng_to_
   ap_uint<1>             cur_op_is_tx_eng_or_default = 0;
   TxEngToRetransTimerReq tx_eng_req;
 
-  if (rtimer_wait_for_write &&
-      rx_eng_upd_req.session_id != rtimer_prev_session_id)  // TODO maybe prevprev too
-  {
+  if (rtimer_wait_for_write && rx_eng_upd_req.session_id != rtimer_prev_session_id) {
     if (!rx_eng_upd_req.stop) {
       retrans_timer_table[rx_eng_upd_req.session_id].time = TIME_1s;
     } else {
@@ -60,9 +58,7 @@ void                 retransmit_timer(stream<RxEngToRetransTimerReq> &rx_eng_to_
     }
     retrans_timer_table[rx_eng_upd_req.session_id].retries = 0;
     rtimer_wait_for_write                                  = false;
-  } else if (!rx_eng_to_timer_clear_rtimer.empty() &&
-             !rtimer_wait_for_write)  // FIXME rx path has priority over tx path
-  {
+  } else if (!rx_eng_to_timer_clear_rtimer.empty() && !rtimer_wait_for_write) {
     rx_eng_to_timer_clear_rtimer.read(rx_eng_upd_req);
     rtimer_wait_for_write = true;
   } else {
