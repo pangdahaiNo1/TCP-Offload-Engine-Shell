@@ -1,7 +1,8 @@
 #ifndef _AXI_INTF_HPP_
 #define _AXI_INTF_HPP_
-#include "ap_int.h"
 #include "ap_axi_sdata.h"
+#include "ap_int.h"
+
 #include <hls_stream.h>
 
 #define NET_TDATA_WIDTH 512
