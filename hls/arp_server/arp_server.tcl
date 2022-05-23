@@ -13,7 +13,7 @@ open_project ${prj_name}
 
 
 open_solution "solution1"
-set_part ${fpga_part} -tool vivado
+set_part ${fpga_part}
 create_clock -period 3.1 -name default
 set_clock_uncertainty 0.2
 

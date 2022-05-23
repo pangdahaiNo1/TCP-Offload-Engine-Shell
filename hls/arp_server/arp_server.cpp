@@ -225,7 +225,7 @@ void                 GenArpScan(stream<ap_uint<32> > &mac_ip_encode_req_in,
                                 ap_uint<1> &          arp_scan,
                                 ap_uint<32> &         my_ip_addr) {
 #pragma HLS PIPELINE II = 1
-#pragma INLINE       off
+#pragma HLS INLINE   off
 
   enum GenScanFsmState { SETUP, WAIT_TIME, GEN_IP, FWD, WAIT_RESPONSE };
 #if SCANNING
@@ -328,31 +328,31 @@ void                               arp_server(stream<NetAXIS> &     arp_data_in,
 #pragma HLS INTERFACE ap_none register port = gateway_ip_addr
 #pragma HLS INTERFACE ap_none register port = subnet_mask
 
-#pragma HLS INTERFACE axis register both port     = arp_data_in
-#pragma HLS INTERFACE axis register both port     = arp_data_out
-#pragma HLS INTERFACE axis register both port     = mac_ip_encode_req
-#pragma HLS INTERFACE axis register both port     = mac_ip_encode_rsp
-#pragma HLS DATA_PACK                    variable = mac_ip_encode_rsp
+#pragma HLS INTERFACE axis register both port = arp_data_in
+#pragma HLS INTERFACE axis register both port = arp_data_out
+#pragma HLS INTERFACE axis register both port = mac_ip_encode_req
+#pragma HLS INTERFACE axis register both port = mac_ip_encode_rsp
+#pragma HLS aggregate variable = mac_ip_encode_rsp compact = bit
 #pragma HLS INTERFACE s_axilite port = arp_scan bundle = s_axilite
 #pragma HLS INTERFACE s_axilite port = arp_cache_table bundle = s_axilite
 
   static stream<ArpMetaRsp> arp_reply_fifo("arp_reply_fifo");
-#pragma HLS STREAM variable = arp_reply_fifo depth    = 4
-#pragma HLS DATA_PACK                        variable = arp_reply_fifo
+#pragma HLS STREAM variable = arp_reply_fifo depth = 4
+#pragma HLS aggregate variable = arp_reply_fifo compact = bit
 
   static stream<ap_uint<32> > arp_request_fifo("arp_request_fifo");
 #pragma HLS STREAM variable = arp_request_fifo depth = 4
 
   static stream<ArpTableEntry> arp_cache_table_insert_fifo("arp_cache_table_insert_fifo");
-#pragma HLS STREAM variable = arp_cache_table_insert_fifo depth    = 4
-#pragma HLS DATA_PACK                                     variable = arp_cache_table_insert_fifo
+#pragma HLS STREAM variable = arp_cache_table_insert_fifo depth = 4
+#pragma HLS aggregate variable = arp_cache_table_insert_fifo compact = bit
 
   static stream<ap_uint<32> > mac_ip_encode_req_fifo("mac_ip_encode_req_fifo");
 #pragma HLS STREAM variable = mac_ip_encode_req_fifo depth = 4
 
   static stream<ArpTableRsp> mac_ip_encode_rsp_in_fifo("mac_ip_encode_rsp_in_fifo");
-#pragma HLS STREAM variable = mac_ip_encode_rsp_in_fifo depth    = 4
-#pragma HLS DATA_PACK                                   variable = mac_ip_encode_rsp_in_fifo
+#pragma HLS STREAM variable = mac_ip_encode_rsp_in_fifo depth = 4
+#pragma HLS aggregate variable = mac_ip_encode_rsp_in_fifo compact = bit
 
   GenArpScan(mac_ip_encode_req,
              mac_ip_encode_rsp_in_fifo,
