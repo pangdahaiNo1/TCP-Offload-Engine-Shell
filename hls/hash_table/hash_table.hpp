@@ -56,45 +56,45 @@ const uint32_t kKeySize   = 64;
 const uint32_t kValueSize = 16;
 const uint32_t kMaxTrials = 12;
 
+typedef enum { KV_INSERT, KV_DELETE } KVOperation;
+typedef enum { SRC_A, SRC_B } KVOpeationSource;
 // The hash table can easily support kNumTables-1 * kTableSize
 // for kNumTables = 9 -> this equals to a load factor of 0.88
 
 template <int K>
 struct HTLookupReq {
-  ap_uint<K> key;
-  ap_uint<1> source;
+  ap_uint<K>       key;
+  KVOpeationSource source;
   HTLookupReq<K>() {}
-  HTLookupReq<K>(ap_uint<K> key, ap_uint<1> source) : key(key), source(source) {}
+  HTLookupReq<K>(ap_uint<K> key, KVOpeationSource source) : key(key), source(source) {}
 };
 
 template <int K, int V>
 struct HTLookupResp {
-  ap_uint<K> key;
-  ap_uint<V> value;
-  bool       hit;
-  ap_uint<1> source;
+  ap_uint<K>       key;
+  ap_uint<V>       value;
+  bool             hit;
+  KVOpeationSource source;
 };
-
-typedef enum { KV_INSERT, KV_DELETE } KVOperation;
 
 template <int K, int V>
 struct HTUpdateReq {
-  KVOperation op;
-  ap_uint<K>  key;
-  ap_uint<V>  value;
-  ap_uint<1>  source;
+  KVOperation      op;
+  ap_uint<K>       key;
+  ap_uint<V>       value;
+  KVOpeationSource source;
   HTUpdateReq<K, V>() {}
-  HTUpdateReq<K, V>(KVOperation op, ap_uint<K> key, ap_uint<V> value, ap_uint<1> source)
+  HTUpdateReq<K, V>(KVOperation op, ap_uint<K> key, ap_uint<V> value, KVOpeationSource source)
       : op(op), key(key), value(value), source(source) {}
 };
 
 template <int K, int V>
 struct HTUpdateResp {
-  KVOperation op;
-  ap_uint<K>  key;
-  ap_uint<V>  value;
-  bool        success;
-  ap_uint<1>  source;
+  KVOperation      op;
+  ap_uint<K>       key;
+  ap_uint<V>       value;
+  bool             success;
+  KVOpeationSource source;
 };
 
 template <int K, int V>

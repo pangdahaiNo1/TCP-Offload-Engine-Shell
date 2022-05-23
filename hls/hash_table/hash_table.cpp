@@ -191,7 +191,7 @@ void HashTable(hls::stream<HTLookupReq<K> > &    s_axis_lup_req,
 
 // Global arrays
 #pragma HLS ARRAY_PARTITION variable = tabulation_table complete dim = 1
-#pragma HLS RESOURCE variable = cuckooTables core = RAM_2P_BRAM
+#pragma HLS bind_storage variable = cuckooTables type = RAM_2P impl = BRAM
 #pragma HLS ARRAY_PARTITION variable = cuckooTables complete dim = 1
 
   if (!s_axis_lup_req.empty()) {
@@ -217,16 +217,16 @@ void hash_table_top(hls::stream<HTLookupReq<kKeySize> > &             s_axis_lup
                     hls::stream<HTUpdateResp<kKeySize, kValueSize> > &m_axis_upd_rsp,
                     ap_uint<16> &                                     reg_insert_fail_count) {
 #pragma HLS INTERFACE ap_ctrl_none port = return
-#pragma HLS INTERFACE ap_stable    port = reg_insert_fail_count
+#pragma HLS INTERFACE ap_none      port = reg_insert_fail_count
 
 #pragma HLS INTERFACE axis register port = s_axis_lup_req
 #pragma HLS INTERFACE axis register port = s_axis_upd_req
 #pragma HLS INTERFACE axis register port = m_axis_lup_rsp
 #pragma HLS INTERFACE axis register port = m_axis_upd_rsp
-#pragma HLS DATA_PACK variable           = s_axis_lup_req
-#pragma HLS DATA_PACK variable           = s_axis_upd_req
-#pragma HLS DATA_PACK variable           = m_axis_lup_rsp
-#pragma HLS DATA_PACK variable           = m_axis_upd_rsp
+#pragma HLS aggregate variable = s_axis_lup_req compact = bit
+#pragma HLS aggregate variable = s_axis_upd_req compact = bit
+#pragma HLS aggregate variable = m_axis_lup_rsp compact = bit
+#pragma HLS aggregate variable = m_axis_upd_rsp compact = bit
 
   HashTable<kKeySize, kValueSize>(
       s_axis_lup_req, s_axis_upd_req, m_axis_lup_rsp, m_axis_upd_rsp, reg_insert_fail_count);

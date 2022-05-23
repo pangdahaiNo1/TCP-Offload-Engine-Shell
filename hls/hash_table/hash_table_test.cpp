@@ -61,7 +61,7 @@ int main() {
 
     // Check if key unique
     if (expected_kv.find(new_key) == expected_kv.end()) {
-      s_axis_upd_req.write(HTUpdateReq<64, 16>(KV_INSERT, new_key, new_value, 0));
+      s_axis_upd_req.write(HTUpdateReq<64, 16>(KV_INSERT, new_key, new_value, SRC_A));
       expected_kv[new_key] = new_value;
       i++;
     }
@@ -97,7 +97,7 @@ int main() {
   std::map<uint64_t, uint16_t>::const_iterator it;
   for (it = expected_kv.begin(); it != expected_kv.end(); ++it) {
     uint64_t key = it->first;
-    s_axis_lup_req.write(HTLookupReq<64>(key, 0));
+    s_axis_lup_req.write(HTLookupReq<64>(key, SRC_A));
   }
 
   // Execute lookups
@@ -138,7 +138,7 @@ int main() {
   for (it = expected_kv.begin(); it != expected_kv.end(); ++it) {
     uint64_t key = it->first;
     if (even) {
-      s_axis_upd_req.write(HTUpdateReq<64, 16>(KV_DELETE, key, 0, 0));
+      s_axis_upd_req.write(HTUpdateReq<64, 16>(KV_DELETE, key, SRC_A, SRC_A));
       expectedDeletes++;
     }
     even = !even;
@@ -173,7 +173,7 @@ int main() {
   // Run lookups again to make sure elements got deleted
   for (it = expected_kv.begin(); it != expected_kv.end(); ++it) {
     uint64_t key = it->first;
-    s_axis_lup_req.write(HTLookupReq<64>(key, 0));
+    s_axis_lup_req.write(HTLookupReq<64>(key, SRC_A));
   }
 
   // Execute lookups
