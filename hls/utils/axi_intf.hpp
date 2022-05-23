@@ -20,6 +20,9 @@ typedef ap_uint<NET_TDEST_WIDTH>     NetAXISDest;
 typedef ap_uint<NET_TDATA_WIDTH / 8> NetAXISKeep;
 
 const NetAXISDest INVALID_TDEST = 0xF;
+
+typedef ap_axiu<NET_TDATA_WIDTH, 0, 0, NET_TDEST_WIDTH> NetAXIS;
+
 struct NetAXISWord {
   NetAXISData data;
   // NetAXISId   id;
@@ -31,8 +34,22 @@ struct NetAXISWord {
   NetAXISWord() : data(0), dest(0), keep(0), last(1) {}
   NetAXISWord(NetAXISData data, NetAXISDest dest, NetAXISKeep keep, ap_uint<1> last)
       : data(data), dest(dest), keep(keep), last(last) {}
+  NetAXISWord(const NetAXIS &net_axis) {
+#pragma HLS INLINE
+    data = net_axis.data;
+    dest = net_axis.dest;
+    keep = net_axis.keep;
+    last = net_axis.last;
+  }
+  NetAXIS to_net_axis() {
+#pragma HLS INLINE
+    NetAXIS new_axis;
+    new_axis.data = data;
+    new_axis.dest = dest;
+    new_axis.keep = keep;
+    new_axis.last = last;
+    return new_axis;
+  }
 };
-
-typedef ap_axiu<NET_TDATA_WIDTH, 0, 0, NET_TDEST_WIDTH> NetAXIS;
 
 #endif  // _AXI_INTF_HPP_

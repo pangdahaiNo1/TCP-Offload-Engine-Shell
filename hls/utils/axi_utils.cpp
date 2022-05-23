@@ -1,11 +1,11 @@
 #include "axi_utils.hpp"
 
-void ComputeSubChecksum(stream<NetAXIS> &pkt_in, stream<SubChecksum> &sub_checksum) {
+void ComputeSubChecksum(stream<NetAXISWord> &pkt_in, stream<SubChecksum> &sub_checksum) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
   static SubChecksum tcp_checksums;
   if (!pkt_in.empty()) {
-    NetAXIS cur_word = pkt_in.read();
+    NetAXISWord cur_word = pkt_in.read();
     for (int i = 0; i < NET_TDATA_WIDTH / 16; i++) {
 #pragma HLS UNROLL
       ap_uint<16> temp;
@@ -91,7 +91,7 @@ ap_uint<64> DataLengthToAxisKeep(ap_uint<6> length) {
       0x000FFFFFFFFFFFFF, 0x001FFFFFFFFFFFFF, 0x003FFFFFFFFFFFFF, 0x007FFFFFFFFFFFFF,
       0x00FFFFFFFFFFFFFF, 0x01FFFFFFFFFFFFFF, 0x03FFFFFFFFFFFFFF, 0x07FFFFFFFFFFFFFF,
       0x0FFFFFFFFFFFFFFF, 0x1FFFFFFFFFFFFFFF, 0x3FFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFF};
-#pragma HLS RESOURCE variable = keep_table core = ROM_1P_LUTRAM latency = 1
+#pragma HLS bind_storage variable = keep_table type = ROM_1P impl = LUTRAM latency = 1
 
   return keep_table[length];
 }
@@ -106,10 +106,10 @@ ap_uint<64> DataLengthToAxisKeep(ap_uint<6> length) {
  *   Note: k = byte_offset * 8
  *
  */
-void        ConcatTwoWords(const NetAXIS &   cur_word,
-                           const NetAXIS &   prev_word,
-                           const ap_uint<6> &byte_offset,
-                           NetAXIS &         send_word) {
+void        ConcatTwoWords(const NetAXISWord &cur_word,
+                           const NetAXISWord &prev_word,
+                           const ap_uint<6> & byte_offset,
+                           NetAXISWord &      send_word) {
 #pragma HLS INLINE
   switch (byte_offset) {
     case 0:
@@ -381,10 +381,10 @@ void        ConcatTwoWords(const NetAXIS &   cur_word,
  *   Note: k = byte_offset * 8
  *
  */
-void MergeTwoWordsHead(const NetAXIS &cur_word,
-                       const NetAXIS &prev_word,
-                       ap_uint<6>     byte_offset,
-                       NetAXIS &      send_word) {
+void MergeTwoWordsHead(const NetAXISWord &cur_word,
+                       const NetAXISWord &prev_word,
+                       ap_uint<6>         byte_offset,
+                       NetAXISWord &      send_word) {
   switch (byte_offset) {
     case 0:
       send_word.data = cur_word.data;
@@ -655,11 +655,23 @@ void MergeTwoWordsHead(const NetAXIS &cur_word,
  *   Note: k = shift_byte  * 8
  *
  */
-void RightShiftWord(const NetAXIS &cur_word, const ap_uint<6> &shift_byte, NetAXIS &send_word) {
+void        RightShiftWord(const NetAXISWord &cur_word,
+                           const ap_uint<6> & shift_byte,
+                           NetAXISWord &      send_word) {
 #pragma HLS INLINE
 
   send_word.data = 0;
   send_word.keep = 0;
   send_word.data = cur_word.data >> (shift_byte << 3);
   send_word.keep = cur_word.keep >> (shift_byte);
+}
+
+NetAXIS NewNetAXIS(NetAXISData data, NetAXISDest dest, NetAXISKeep keep, ap_uint<1> last) {
+#pragma HLS INLINE
+  NetAXIS new_axis;
+  new_axis.data = data;
+  new_axis.dest = dest;
+  new_axis.keep = keep;
+  new_axis.last = last;
+  return new_axis;
 }

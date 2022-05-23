@@ -54,19 +54,21 @@ struct SubChecksum {
 #endif
 };
 
-void ComputeSubChecksum(stream<NetAXIS> &pkt_in, stream<SubChecksum> &sub_checksum);
+NetAXIS NewNetAXIS(NetAXISData data, NetAXISDest dest, NetAXISKeep keep, ap_uint<1> last);
+
+void ComputeSubChecksum(stream<NetAXISWord> &pkt_in, stream<SubChecksum> &sub_checksum);
 
 void CheckChecksum(stream<SubChecksum> &sub_checksum, stream<ap_uint<16> > &valid_pkt_out);
 
 ap_uint<64> DataLengthToAxisKeep(ap_uint<6> length);
 
-void ConcatTwoWords(const NetAXIS &   cur_word,
-                    const NetAXIS &   prev_word,
-                    const ap_uint<6> &byte_offset,
-                    NetAXIS &         send_word);
+void ConcatTwoWords(const NetAXISWord &cur_word,
+                    const NetAXISWord &prev_word,
+                    const ap_uint<6> & byte_offset,
+                    NetAXISWord &      send_word);
 
-void MergeTwoWordsHead(const NetAXIS &cur_word,
-                       const NetAXIS &prev_word,
-                       ap_uint<6>     byte_offset,
-                       NetAXIS &      send_word);
+void MergeTwoWordsHead(const NetAXISWord &cur_word,
+                       const NetAXISWord &prev_word,
+                       ap_uint<6>         byte_offset,
+                       NetAXISWord &      send_word);
 #endif
