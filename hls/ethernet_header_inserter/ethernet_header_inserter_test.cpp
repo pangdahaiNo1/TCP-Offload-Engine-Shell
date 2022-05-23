@@ -14,30 +14,31 @@ int main(int argc, char **argv) {
   ap_uint<32> gateway_ip_addr    = SwapByte<32>(0xC0A80001);
   ap_uint<32> subnet_mask        = SwapByte<32>(0xFFFFFF00);
 
-  stream<NetAXIS> icmp_rx_data("icmp_rx_data");
-  stream<NetAXIS> icmp_tx_data("icmp_tx_data");
-  stream<NetAXIS> eth_icmp_tx_data("eth_icmp_tx_data");
-  stream<NetAXIS> eth_icmp_tx_golden_data("eth_icmp_tx_golden_data");
+  stream<NetAXISWord> icmp_rx_data_read_in("icmp_rx_data_read_in");
+  stream<NetAXIS>     icmp_rx_data("icmp_rx_data");
+  stream<NetAXIS>     icmp_tx_data("icmp_tx_data");
+  stream<NetAXIS>     eth_icmp_tx_data("eth_icmp_tx_data");
+  stream<NetAXISWord> eth_icmp_tx_data_for_compare("eth_icmp_tx_data_for_compare");
+  stream<NetAXISWord> eth_icmp_tx_golden_data_read_in("eth_icmp_tx_golden_data_read_in");
+  stream<NetAXIS>     eth_icmp_tx_golden_data("eth_icmp_tx_golden_data");
 
-  char *icmp_rx_file;
-  char *icmp_tx_golden_file;
   if (argc < 3) {
     cerr << "[ERROR] missing arguments " __FILE__ << " <INPUT_PCAP_FILE> <GOLDEN_PCAP_FILE> "
          << endl;
     ;
     return -1;
   }
-  icmp_rx_file        = argv[1];
-  icmp_tx_golden_file = argv[2];
-  PcapToStream(icmp_rx_file, true, icmp_rx_data);
-  for (int m = 0; m < 50000; m++) {
-    icmp_server(icmp_rx_data, my_ip_addr, icmp_tx_data);
-  }
-  PcapToStream(icmp_tx_golden_file, false, eth_icmp_tx_golden_data);
+  char *icmp_rx_file        = argv[1];
+  char *icmp_tx_golden_file = argv[2];
+  PcapToStream(icmp_rx_file, true, icmp_rx_data_read_in);
+  NetAXIStreamWordToNetAXIStream(icmp_rx_data_read_in, icmp_rx_data);
+  PcapToStream(icmp_tx_golden_file, false, eth_icmp_tx_golden_data_read_in);
 
   stream<ArpTableRsp>  arp_table_rsp;
   stream<ap_uint<32> > arp_table_req;
-  for (int i = 0; i < 500000; i++) {
+  for (int m = 0; m < 5000; m++) {
+    icmp_server(icmp_rx_data, my_ip_addr, icmp_tx_data);
+
     ethernet_header_inserter(icmp_tx_data,
                              eth_icmp_tx_data,
                              arp_table_rsp,
@@ -51,7 +52,8 @@ int main(int argc, char **argv) {
       arp_table_rsp.write(ArpTableRsp(intel_nic_mac_addr, 1));
     }
   }
-  ComparePacpPacketsWithGolden(eth_icmp_tx_data, eth_icmp_tx_golden_data, true);
+  NetAXIStreamToNetAXIStreamWord(eth_icmp_tx_data, eth_icmp_tx_data_for_compare);
+  ComparePacpPacketsWithGolden(eth_icmp_tx_data_for_compare, eth_icmp_tx_golden_data_read_in, true);
   // SaveNetAXISToFile(eth_icmp_tx_data, "eth_icmp_tx_data.dat");
   // SaveNetAXISToFile(eth_icmp_tx_golden_data, "eth_icmp_tx_golden_data.dat");
   return 0;

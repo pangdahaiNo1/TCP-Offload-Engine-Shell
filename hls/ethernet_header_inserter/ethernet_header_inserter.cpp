@@ -4,8 +4,8 @@
 
 void                 BroadcastMacRequest(stream<NetAXIS> &     ip_seg_in,
                                          stream<ap_uint<32> > &arp_table_req,
-                                         stream<NetAXIS> &     ip_header_out,
-                                         stream<NetAXIS> &     no_ip_header_out,
+                                         stream<NetAXISWord> & ip_header_out,
+                                         stream<NetAXISWord> & no_ip_header_out,
                                          ap_uint<32> &         subnet_mask,
                                          ap_uint<32> &         gateway_ip_addr) {
 #pragma HLS INLINE   off
@@ -48,12 +48,10 @@ void                 BroadcastMacRequest(stream<NetAXIS> &     ip_seg_in,
 }
 
 void                 EthernetHandleOutput(stream<ArpTableRsp> &arp_table_rsp,
-                                          stream<NetAXIS> &    ip_header_checksum,
-                                          stream<NetAXIS> &    no_ip_header_out,
-
-                                          ap_uint<48> &my_mac_addr,
-
-                                          stream<NetAXIS> &eth_frame_out) {
+                                          stream<NetAXISWord> &ip_header_with_checksum,
+                                          stream<NetAXISWord> &no_ip_header_out,
+                                          ap_uint<48> &        my_mac_addr,
+                                          stream<NetAXIS> &    eth_frame_out) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -65,14 +63,13 @@ void                 EthernetHandleOutput(stream<ArpTableRsp> &arp_table_rsp,
     WRITE_REMAINING,
     WRITE_EXTRA_LAST_WORD
   };
-  NetAXISMacHeader axiremaining;
 
   static mwState          mw_state = WAIT_LOOKUP;
   static NetAXISMacHeader previous_word;
 
-  NetAXIS     sendWord;
-  NetAXIS     current_ip_checksum;
-  NetAXIS     current_no_ip;
+  NetAXISWord sendWord;
+  NetAXISWord current_ip_checksum;
+  NetAXISWord current_no_ip;
   ArpTableRsp reply;
 
   switch (mw_state) {
@@ -94,8 +91,8 @@ void                 EthernetHandleOutput(stream<ArpTableRsp> &arp_table_rsp,
       }
       break;
     case DROP_IP:
-      if (!ip_header_checksum.empty()) {
-        ip_header_checksum.read(current_ip_checksum);
+      if (!ip_header_with_checksum.empty()) {
+        ip_header_with_checksum.read(current_ip_checksum);
 
         if (current_ip_checksum.last == 1)
           mw_state = WAIT_LOOKUP;
@@ -114,8 +111,8 @@ void                 EthernetHandleOutput(stream<ArpTableRsp> &arp_table_rsp,
       break;
 
     case WRITE_FIRST_TRANSACTION:
-      if (!ip_header_checksum.empty()) {
-        ip_header_checksum.read(current_ip_checksum);
+      if (!ip_header_with_checksum.empty()) {
+        ip_header_with_checksum.read(current_ip_checksum);
 
         sendWord.data(111, 0) = previous_word.data;  // Insert Ethernet header
         sendWord.keep(13, 0)  = previous_word.keep;
@@ -140,7 +137,7 @@ void                 EthernetHandleOutput(stream<ArpTableRsp> &arp_table_rsp,
           mw_state = WRITE_REMAINING;
         }
 
-        eth_frame_out.write(sendWord);
+        eth_frame_out.write(sendWord.to_net_axis());
       }
       break;
 
@@ -169,7 +166,7 @@ void                 EthernetHandleOutput(stream<ArpTableRsp> &arp_table_rsp,
           }
         }
 
-        eth_frame_out.write(sendWord);
+        eth_frame_out.write(sendWord.to_net_axis());
       }
       break;
 
@@ -179,7 +176,7 @@ void                 EthernetHandleOutput(stream<ArpTableRsp> &arp_table_rsp,
       sendWord.data(511, 112) = 0;
       sendWord.keep(63, 14)   = 0;
       sendWord.last           = 1;
-      eth_frame_out.write(sendWord);
+      eth_frame_out.write(sendWord.to_net_axis());
       mw_state = WAIT_LOOKUP;
 
       break;
@@ -190,7 +187,8 @@ void                 EthernetHandleOutput(stream<ArpTableRsp> &arp_table_rsp,
   }
 }
 
-void ComputeAndInsertIpv4Checksum(stream<NetAXIS> &ip_seg_in, stream<NetAXIS> &eth_frame_out) {
+void                 ComputeAndInsertIpv4Checksum(stream<NetAXISWord> &ip_header_without_checksum,
+                                                  stream<NetAXISWord> &ip_header_with_checksum) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -206,11 +204,11 @@ void ComputeAndInsertIpv4Checksum(stream<NetAXIS> &ip_seg_in, stream<NetAXIS> &e
   static ap_uint<16> ip_chksum;
 
   static ap_uint<4> ipHeaderLen = 0;
-  NetAXIS           cur_word;
+  NetAXISWord       cur_word;
   ap_uint<16>       temp;
 
-  if (!ip_seg_in.empty()) {
-    ip_seg_in.read(cur_word);  // 512 bits word
+  if (!ip_header_without_checksum.empty()) {
+    ip_header_without_checksum.read(cur_word);  // 512 bits word
 
     ipHeaderLen = cur_word.data.range(3, 0);
 
@@ -257,7 +255,7 @@ void ComputeAndInsertIpv4Checksum(stream<NetAXIS> &ip_seg_in, stream<NetAXIS> &e
     // switch WORD_N
     cur_word.data(95, 88) = ip_chksum(7, 0);
     cur_word.data(87, 80) = ip_chksum(15, 8);
-    eth_frame_out.write(cur_word);
+    ip_header_with_checksum.write(cur_word);
   }
 }
 
@@ -283,32 +281,37 @@ void ethernet_header_inserter(
 #pragma HLS INTERFACE axis register both port = ip_seg_in
 #pragma HLS INTERFACE axis register both port = eth_frame_out
 
-#pragma HLS INTERFACE axis register both port     = arp_table_rsp
-#pragma HLS DATA_PACK                    variable = arp_table_rsp
-#pragma HLS INTERFACE axis register both port     = arp_table_req
+#pragma HLS INTERFACE axis register both port = arp_table_rsp
+#pragma HLS aggregate variable = arp_table_rsp compact = bit
+#pragma HLS INTERFACE axis register both       port    = arp_table_req
 
 #pragma HLS INTERFACE ap_stable register port = my_mac_addr name = my_mac_addr
 #pragma HLS INTERFACE ap_stable register port = subnet_mask name = subnet_mask
 #pragma HLS INTERFACE ap_stable register port = gateway_ip_addr name = gateway_ip_addr
 
   // FIFOs
-  static stream<NetAXIS> ip_header_out;
-#pragma HLS stream variable = ip_header_out depth    = 32
-#pragma HLS DATA_PACK                       variable = ip_header_out
+  static stream<NetAXISWord> ip_header_without_checksum_fifo;
+#pragma HLS stream variable = ip_header_without_checksum_fifo depth = 32
+#pragma HLS aggregate variable = ip_header_without_checksum_fifo compact = bit
 
-  static stream<NetAXIS> no_ip_header_out;
-#pragma HLS stream variable = no_ip_header_out depth    = 32
-#pragma HLS DATA_PACK                          variable = no_ip_header_out
+  // second ip pkt word
+  static stream<NetAXISWord> no_ip_header_out;
+#pragma HLS stream variable = no_ip_header_out depth = 32
+#pragma HLS aggregate variable = no_ip_header_out compact = bit
 
-  static stream<NetAXIS> ip_header_checksum;
-#pragma HLS stream variable = ip_header_checksum depth    = 32
-#pragma HLS DATA_PACK                            variable = ip_header_checksum
+  static stream<NetAXISWord> ip_header_with_checksum_fifo;
+#pragma HLS stream variable = ip_header_with_checksum_fifo depth = 32
+#pragma HLS aggregate variable = ip_header_with_checksum_fifo compact = bit
 
-  BroadcastMacRequest(
-      ip_seg_in, arp_table_req, ip_header_out, no_ip_header_out, subnet_mask, gateway_ip_addr);
+  BroadcastMacRequest(ip_seg_in,
+                      arp_table_req,
+                      ip_header_without_checksum_fifo,
+                      no_ip_header_out,
+                      subnet_mask,
+                      gateway_ip_addr);
 
-  ComputeAndInsertIpv4Checksum(ip_header_out, ip_header_checksum);
+  ComputeAndInsertIpv4Checksum(ip_header_without_checksum_fifo, ip_header_with_checksum_fifo);
 
   EthernetHandleOutput(
-      arp_table_rsp, ip_header_checksum, no_ip_header_out, my_mac_addr, eth_frame_out);
+      arp_table_rsp, ip_header_with_checksum_fifo, no_ip_header_out, my_mac_addr, eth_frame_out);
 }

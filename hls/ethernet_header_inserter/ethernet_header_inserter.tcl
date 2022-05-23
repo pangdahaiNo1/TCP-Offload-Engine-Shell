@@ -13,7 +13,7 @@ set pcap_output_dir ${src_top_dir}/pcap/output
 open_project ${prj_name}
 
 open_solution "solution1"
-set_part ${fpga_part} -tool vivado
+set_part ${fpga_part} 
 create_clock -period 3.1 -name default
 set_clock_uncertainty 0.2
 
@@ -25,7 +25,6 @@ add_files "${prj_src_dir}/${prj_name}.cpp
 
 add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
                ${src_top_dir}/icmp_server/icmp_server.cpp \
-               ${src_top_dir}/icmp_server/icmp_server.hpp \
                ${src_top_dir}/utils/pcap/pcap_to_stream.cpp \
          	   ${src_top_dir}/utils/pcap/pcap.cpp \   
                ${src_top_dir}/utils/axi_utils.cpp"   -csimflags "-I${src_top_dir} -DDEBUG -DEBUG_PCAP" 
