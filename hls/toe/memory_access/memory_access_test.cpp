@@ -4,7 +4,6 @@
 #include "toe/mock/mock_toe.hpp"
 #include "utils/axi_utils_test.hpp"
 #include "utils/pcap/pcap_to_stream.hpp"
-
 using namespace hls;
 
 void EmptyTxWriteDataFifos(std::ofstream &       out_stream,
@@ -57,7 +56,7 @@ void EmptyTxReadDataFifos(std::ofstream &  out_stream,
   }
 }
 
-void TestTxWriteToMem(stream<NetAXIS> &input_tcp_packets) {
+void TestTxWriteToMem(stream<NetAXISWord> &input_tcp_packets) {
   std::ofstream outputFile;
 
   outputFile.open("./out_write_data.dat");
@@ -65,12 +64,12 @@ void TestTxWriteToMem(stream<NetAXIS> &input_tcp_packets) {
     std::cout << "Error: could not open test output file." << std::endl;
   }
 
-  stream<NetAXIS>      tx_app_to_mem_data_in;
+  stream<NetAXISWord>  tx_app_to_mem_data_in;
   stream<DataMoverCmd> tx_app_to_mem_cmd_in;
   stream<NetAXIS>      mover_mem_data_out;
   stream<DataMoverCmd> mover_mem_cmd_out;
 
-  NetAXIS cur_word{};
+  NetAXISWord cur_word{};
   // ip packet length, because it remove the eth header
   TcpSessionBuffer cur_word_length = 0;
   DataMoverCmd     cur_cmd         = DataMoverCmd{};
@@ -172,11 +171,12 @@ void TestMockMem() {
     mem._mock_memory[cur_addr] = i;
   }
   stream<NetAXIS> read_mem_data("mem_data");
+  // read from mem
   mem.MM2SReadFromMem(DataMoverCmd(0x12345600, 128), read_mem_data);
+  // write to mem, new addr
   mem.PushS2MMCmd(DataMoverCmd(0x12345A00, 128));
   mem.S2MMWriteToMem(read_mem_data.read());
   mem.S2MMWriteToMem(read_mem_data.read());
-  SaveNetAXISToFile(read_mem_data, "out_mem.dat");
   // save current mem
   std::ofstream outputFile;
   outputFile.open("./test_mem_dump_mem.dat");
@@ -194,12 +194,12 @@ void TestMockMem() {
   // cout << mem.DumpMockMemory() << endl;
 }
 
-void TestTxMem(stream<NetAXIS> &input_golden_packets, stream<NetAXIS> &read_mem_packets) {
+void TestTxMem(stream<NetAXISWord> &input_golden_packets, stream<NetAXISWord> &read_mem_packets) {
   // mock mem
   MockMem mock_mem = MockMem();
 
   // tx app
-  stream<NetAXIS>      tx_app_to_mem_data_in("tx_app_to_mem_data_in");
+  stream<NetAXISWord>  tx_app_to_mem_data_in("tx_app_to_mem_data_in");
   stream<DataMoverCmd> tx_app_to_mem_cmd_in("tx_app_to_mem_cmd_in");
   stream<NetAXIS>      mover_mem_data_out("mover_mem_data_out");
   stream<DataMoverCmd> mover_mem_cmd_out("mover_mem_cmd_out");
@@ -207,7 +207,7 @@ void TestTxMem(stream<NetAXIS> &input_golden_packets, stream<NetAXIS> &read_mem_
   // fifo
   stream<MemBufferRWCmd> mem_cmd_fifo("mem_cmd_fifo");
 
-  NetAXIS          cur_word{};
+  NetAXISWord      cur_word{};
   TcpSessionBuffer cur_word_length = 0;
   ap_uint<32>      saddr           = 0;
   while (sim_cycle < 200) {
@@ -279,8 +279,8 @@ void TestTxMem(stream<NetAXIS> &input_golden_packets, stream<NetAXIS> &read_mem_
     sim_cycle++;
   }
 
-  cout << mock_mem.DumpMockMemory() << endl;
-  cout << saddr.to_string(16) << endl;
+  // cout << mock_mem.DumpMockMemory() << endl;
+  // cout << saddr.to_string(16) << endl;
 }
 
 int main(int argc, char **argv) {
@@ -290,10 +290,10 @@ int main(int argc, char **argv) {
   }
   char *input_tcp_pcap_file = argv[1];
   cout << "Read TCP Packets from " << input_tcp_pcap_file << endl;
-  stream<NetAXIS> input_tcp_packets("input_tcp_packets");
-  stream<NetAXIS> input_tcp_packets2("input_tcp_packets2");
-  stream<NetAXIS> input_tcp_packets3("input_tcp_packets3");
-  stream<NetAXIS> read_mem_tcp_packets("read_mem_tcp_packets");
+  stream<NetAXISWord> input_tcp_packets("input_tcp_packets");
+  stream<NetAXISWord> input_tcp_packets2("input_tcp_packets2");
+  stream<NetAXISWord> input_tcp_packets3("input_tcp_packets3");
+  stream<NetAXISWord> read_mem_tcp_packets("read_mem_tcp_packets");
   PcapToStream(input_tcp_pcap_file, true, input_tcp_packets);
   // tcp header + ip header + eth header = 74B
   PcapToStream(input_tcp_pcap_file, false, input_tcp_packets2);
@@ -302,9 +302,9 @@ int main(int argc, char **argv) {
   // open output file
   TestTxWriteToMem(input_tcp_packets);
   TestTxEngReadCmd();
+  TestMockMem();
   TestTxMem(input_tcp_packets2, read_mem_tcp_packets);
   ComparePacpPacketsWithGolden(input_tcp_packets3, read_mem_tcp_packets, true);
-  TestMockMem();
 
   return 0;
 }

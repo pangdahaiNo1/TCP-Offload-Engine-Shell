@@ -3,6 +3,7 @@
 #include "toe/toe_intf.hpp"
 #include "utils/pcap/pcap_to_stream.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <queue>
@@ -52,7 +53,8 @@ public:
 
   void VectorToAxiStream(const vector<ap_uint<8> > &read_vals, stream<NetAXIS> &mem_data) {
     int     bytes_to_trans = read_vals.size();
-    NetAXIS cur_beat       = NetAXIS(0, 0, 0, 0);
+    NetAXIS cur_beat       = NewNetAXIS(0, 0, 0, 0);
+
     for (int i = 0; i < bytes_to_trans; i++) {
       uint16_t cur_beat_byte                                          = i % 64;
       cur_beat.data((cur_beat_byte + 1) * 8 - 1, (cur_beat_byte * 8)) = read_vals[i];
@@ -62,7 +64,7 @@ public:
       }
       if (cur_beat_byte == 63 || i == (bytes_to_trans - 1)) {
         mem_data.write(cur_beat);
-        cur_beat = NetAXIS(0, 0, 0, 0);
+        cur_beat = NewNetAXIS(0, 0, 0, 0);
       }
     }
     return;

@@ -15,9 +15,9 @@ void TxEngReadDataFromMem(stream<NetAXIS> &                   mover_read_mem_dat
                           stream<bool> &   tx_eng_is_ddr_bypass,
                           stream<NetAXIS> &tx_eng_read_data_in,
 #endif
-                          stream<NetAXIS> &to_tx_eng_read_data);
+                          stream<NetAXISWord> &to_tx_eng_read_data);
 
-void TxAppWriteDataToMem(stream<NetAXIS> &     tx_app_to_mem_data_in,
+void TxAppWriteDataToMem(stream<NetAXISWord> & tx_app_to_mem_data_in,
                          stream<DataMoverCmd> &tx_app_to_mem_cmd_in,
                          stream<NetAXIS> &     mover_write_mem_data_out,
                          stream<DataMoverCmd> &mover_write_mem_cmd_out);

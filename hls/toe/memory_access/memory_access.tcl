@@ -27,7 +27,7 @@ add_files -tb " ${prj_src_dir}/${prj_name}_test.cpp \
                   ${src_top_dir}/utils/pcap/pcap.cpp \  
                   ${src_top_dir}/utils/axi_utils.cpp \
                   ${src_top_dir}/toe/mock/mock_memory.hpp \
-                  ${src_top_dir}/toe/tcp_conn.hpp"   -cflags "  -std=c++14 -I${src_top_dir} -DDEBUG"
+                  ${src_top_dir}/toe/tcp_conn.hpp"   -csimflags "-std=c++14 -I${src_top_dir} -DDEBUG"
 
 
 if {$hls_act == "csim"} {

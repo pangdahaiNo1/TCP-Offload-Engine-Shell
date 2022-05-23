@@ -5,6 +5,10 @@ void                 TxEngReadDataSendCmd(stream<MemBufferRWCmd> &            tx
                                           stream<MemBufferRWCmdDoubleAccess> &mem_buffer_double_access) {
 #pragma HLS pipeline II = 1
 #pragma HLS INLINE   off
+
+#pragma HLS INTERFACE axis port = mover_read_mem_cmd_out
+#pragma HLS aggregate variable = mover_read_mem_cmd_out compact = bit
+
   static bool                read_cmd_is_breakdown = false;
   static MemBufferRWCmd      buf_rw_cmd;
   static ap_uint<16>         first_cmd_bbt = 0;
@@ -46,10 +50,14 @@ void TxEngReadDataFromMem(stream<NetAXIS> &                   mover_read_mem_dat
                           stream<bool> &   tx_eng_is_ddr_bypass,
                           stream<NetAXIS> &tx_eng_read_data_in,
 #endif
-                          stream<NetAXIS> &to_tx_eng_read_data) {
+                          stream<NetAXISWord> &to_tx_eng_read_data) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
+#pragma HLS INTERFACE axis port = mover_read_mem_data_in
+#if (TCP_NODELAY)
+#pragma HLS INTERFACE axis port = tx_eng_read_data_in
+#endif
   enum TxEngReadDataFsmState {
     READ_ACCESS,
     NO_BREAKDOWN,
@@ -76,9 +84,10 @@ void TxEngReadDataFromMem(stream<NetAXIS> &                   mover_read_mem_dat
   static ap_uint<6> offset_block1;
 
   MemBufferRWCmdDoubleAccess mem_double_access;
-  static NetAXIS             prev_beat_word;
-  NetAXIS                    cur_beat_word;
-  NetAXIS                    send_beat_word;
+  static NetAXISWord         prev_beat_word;
+  NetAXIS                    read_mem_data;
+  NetAXISWord                cur_beat_word;
+  NetAXISWord                send_beat_word;
 
   bool is_ddr_bypass;
   bool to_tx_eng_word_need_to_align = true;
@@ -121,7 +130,8 @@ void TxEngReadDataFromMem(stream<NetAXIS> &                   mover_read_mem_dat
     case NO_BREAKDOWN:
     case BREAKDOWN_ALIGNED:
       if (!mover_read_mem_data_in.empty() && !to_tx_eng_read_data.full()) {
-        mover_read_mem_data_in.read(cur_beat_word);
+        mover_read_mem_data_in.read(read_mem_data);
+        cur_beat_word = read_mem_data;
         to_tx_eng_read_data.write(cur_beat_word);
 
         if (cur_beat_word.last) {
@@ -131,12 +141,11 @@ void TxEngReadDataFromMem(stream<NetAXIS> &                   mover_read_mem_dat
       break;
     case BREAKDOWN_BLOCK_0:
       if (!mover_read_mem_data_in.empty() && !to_tx_eng_read_data.full()) {
-        mover_read_mem_data_in.read(cur_beat_word);
-
-        send_beat_word.data = cur_beat_word.data;
-        send_beat_word.keep = cur_beat_word.keep;
+        mover_read_mem_data_in.read(read_mem_data);
+        send_beat_word.data = read_mem_data.data;
+        send_beat_word.keep = read_mem_data.keep;
         send_beat_word.last = 0;
-        if (cur_beat_word.last) {
+        if (read_mem_data.last) {
           if (offset_block0 == 0) {
             to_tx_eng_word_need_to_align = false;
             fsm_state                    = BREAKDOWN_ALIGNED;
@@ -149,12 +158,13 @@ void TxEngReadDataFromMem(stream<NetAXIS> &                   mover_read_mem_dat
           to_tx_eng_read_data.write(send_beat_word);
         }
 
-        prev_beat_word = cur_beat_word;
+        prev_beat_word = read_mem_data;
       }
       break;
     case FIRST_MERGE:
       if (!mover_read_mem_data_in.empty() && !to_tx_eng_read_data.full()) {
-        mover_read_mem_data_in.read(cur_beat_word);
+        mover_read_mem_data_in.read(read_mem_data);
+        cur_beat_word = read_mem_data;
         MergeTwoWordsHead(cur_beat_word, prev_beat_word, offset_block0, send_beat_word);
         send_beat_word.last = 0;
 
@@ -174,7 +184,8 @@ void TxEngReadDataFromMem(stream<NetAXIS> &                   mover_read_mem_dat
       break;
     case BREAKDOWN_BLOCK_1:
       if (!mover_read_mem_data_in.empty() && !to_tx_eng_read_data.full()) {
-        mover_read_mem_data_in.read(cur_beat_word);
+        mover_read_mem_data_in.read(read_mem_data);
+        cur_beat_word = cur_beat_word;
         ConcatTwoWords(cur_beat_word, prev_beat_word, offset_block1, send_beat_word);
 
         send_beat_word.last = 0;
@@ -193,7 +204,7 @@ void TxEngReadDataFromMem(stream<NetAXIS> &                   mover_read_mem_dat
       break;
     case EXTRA_DATA:
       if (!to_tx_eng_read_data.full()) {
-        ConcatTwoWords(NetAXIS(0, 0, 0, 1), prev_beat_word, offset_block1, send_beat_word);
+        ConcatTwoWords(NetAXISWord(0, 0, 0, 1), prev_beat_word, offset_block1, send_beat_word);
         send_beat_word.last = 1;
 
         to_tx_eng_read_data.write(send_beat_word);
@@ -218,12 +229,19 @@ void TxEngReadDataFromMem(stream<NetAXIS> &                   mover_read_mem_dat
  * of the data has to be realigned
  */
 // TODO: use MemBufferRWCMD struct zelin 220511
-void                 TxAppWriteDataToMem(stream<NetAXIS> &     tx_app_to_mem_data_in,
+void                 TxAppWriteDataToMem(stream<NetAXISWord> & tx_app_to_mem_data_in,
                                          stream<DataMoverCmd> &tx_app_to_mem_cmd_in,
                                          stream<NetAXIS> &     mover_write_mem_data_out,
                                          stream<DataMoverCmd> &mover_write_mem_cmd_out) {
 #pragma HLS pipeline II = 1
 #pragma HLS INLINE   off
+// in data + cmd
+#pragma HLS aggregate variable = tx_app_to_mem_data_in compact = bit
+#pragma HLS aggregate variable = tx_app_to_mem_cmd_in compact = bit
+// out data + cmd
+#pragma HLS INTERFACE axis port = mover_write_mem_data_out
+#pragma HLS INTERFACE axis port = mover_write_mem_cmd_out
+#pragma HLS aggregate variable = mover_write_mem_cmd_out compact = bit
 
   enum TxAppWriteFsmState {
     WAIT_CMD,
@@ -250,9 +268,9 @@ void                 TxAppWriteDataToMem(stream<NetAXIS> &     tx_app_to_mem_dat
 
   ap_uint<WINDOW_BITS + 1> buffer_overflow_addr;
 
-  NetAXIS        cur_beat_word;
-  NetAXIS        send_beat_word;
-  static NetAXIS prev_beat_word;
+  NetAXISWord        cur_beat_word;
+  NetAXISWord        send_beat_word;
+  static NetAXISWord prev_beat_word;
 
   switch (fsm_state) {
     case WAIT_CMD:
@@ -297,7 +315,7 @@ void                 TxAppWriteDataToMem(stream<NetAXIS> &     tx_app_to_mem_dat
         if (cur_beat_word.last) {
           fsm_state = WAIT_CMD;
         }
-        mover_write_mem_data_out.write(send_beat_word);
+        mover_write_mem_data_out.write(send_beat_word.to_net_axis());
       }
       break;
     case FWD_BREAKDOWN_0:
@@ -328,7 +346,7 @@ void                 TxAppWriteDataToMem(stream<NetAXIS> &     tx_app_to_mem_dat
         }
         first_cmd_trans_beats_cnt++;
         prev_beat_word = cur_beat_word;
-        mover_write_mem_data_out.write(send_beat_word);
+        mover_write_mem_data_out.write(send_beat_word.to_net_axis());
       }
       break;
     case FWD_BREAKDOWN_1:
@@ -347,14 +365,14 @@ void                 TxAppWriteDataToMem(stream<NetAXIS> &     tx_app_to_mem_dat
           }
         }
         prev_beat_word = cur_beat_word;
-        mover_write_mem_data_out.write(send_beat_word);
+        mover_write_mem_data_out.write(send_beat_word.to_net_axis());
       }
       break;
     case FWD_EXTRA:
       // The EXTRA part of the memory write has less than 64 bytes
-      ConcatTwoWords(NetAXIS(0, 0, 0, 1), prev_beat_word, byte_offset, send_beat_word);
+      ConcatTwoWords(NetAXISWord(0, 0, 0, 1), prev_beat_word, byte_offset, send_beat_word);
       send_beat_word.last = 1;
-      mover_write_mem_data_out.write(send_beat_word);
+      mover_write_mem_data_out.write(send_beat_word.to_net_axis());
       fsm_state = WAIT_CMD;
       break;
   }
