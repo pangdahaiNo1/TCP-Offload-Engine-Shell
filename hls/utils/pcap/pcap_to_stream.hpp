@@ -1,6 +1,6 @@
 #ifndef _PCAP2STREAM_H_
 #define _PCAP2STREAM_H_
-
+#define __gmp_const const
 #include "pcap.hpp"
 #include "utils/axi_intf.hpp"
 
