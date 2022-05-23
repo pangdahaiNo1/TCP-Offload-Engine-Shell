@@ -12,7 +12,7 @@ set pcap_output_dir ${src_top_dir}/pcap/output
 open_project ${prj_name}
 
 open_solution "solution1"
-set_part ${fpga_part} -tool vivado
+set_part ${fpga_part}
 create_clock -period 3.1 -name default
 set_clock_uncertainty 0.2
 
