@@ -9,8 +9,8 @@ void                 ack_delay(stream<EventWithTuple> &event_eng_to_ack_delay_ev
 #pragma HLS PIPELINE II = 1
 
   static ap_uint<12> ack_table[TCP_MAX_SESSIONS];
-#pragma HLS bind_storage variable=ack_table type=RAM_2P impl=BRAM
-#pragma HLS DEPENDENCE variable                = ack_table inter false
+#pragma HLS bind_storage variable = ack_table type = RAM_2P impl = BRAM
+#pragma HLS DEPENDENCE variable                                  = ack_table inter false
   static TcpSessionID ack_delay_cur_session_id = 0;
   EventWithTuple      event;
 

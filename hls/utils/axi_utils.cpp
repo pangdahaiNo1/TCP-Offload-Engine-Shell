@@ -666,7 +666,7 @@ void        RightShiftWord(const NetAXISWord &cur_word,
   send_word.keep = cur_word.keep >> (shift_byte);
 }
 
-NetAXIS NewNetAXIS(NetAXISData data, NetAXISDest dest, NetAXISKeep keep, ap_uint<1> last) {
+NetAXIS     NewNetAXIS(NetAXISData data, NetAXISDest dest, NetAXISKeep keep, ap_uint<1> last) {
 #pragma HLS INLINE
   NetAXIS new_axis;
   new_axis.data = data;
