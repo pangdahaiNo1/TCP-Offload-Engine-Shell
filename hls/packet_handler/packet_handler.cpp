@@ -6,15 +6,15 @@
  * @param      data_in   The data in
  * @param      data_out  The data out
  */
-void                 EthernetRemover(stream<NetAXIS> &data_in, stream<NetAXIS> &data_out) {
+void                 EthernetRemover(stream<NetAXISWord> &data_in, stream<NetAXIS> &data_out) {
 #pragma HLS PIPELINE II = 1
 
   enum EthernetRemoverStates { FIRST_WORD, FWD, REMOVING, EXTRA };
   static EthernetRemoverStates er_fsm_state = FIRST_WORD;
 
-  NetAXIS        curr_word;
-  NetAXIS        send_word;
-  static NetAXIS prev_word;
+  NetAXISWord        curr_word;
+  NetAXISWord        send_word;
+  static NetAXISWord prev_word;
 
   switch (er_fsm_state) {
     case FIRST_WORD:
@@ -35,10 +35,10 @@ void                 EthernetRemover(stream<NetAXIS> &data_in, stream<NetAXIS> &
         }
 
         if (curr_word.last) {  // If the packet is short stay in this state
-          data_out.write(send_word);
+          data_out.write(send_word.to_net_axis());
           er_fsm_state = FIRST_WORD;
         } else if (curr_word.dest == 0) {  // ARP packets
-          data_out.write(send_word);
+          data_out.write(send_word.to_net_axis());
         }
 
         prev_word = curr_word;
@@ -50,7 +50,7 @@ void                 EthernetRemover(stream<NetAXIS> &data_in, stream<NetAXIS> &
         if (curr_word.last) {
           er_fsm_state = FIRST_WORD;
         }
-        data_out.write(curr_word);
+        data_out.write(curr_word.to_net_axis());
       }
       break;
     case REMOVING:
@@ -78,7 +78,7 @@ void                 EthernetRemover(stream<NetAXIS> &data_in, stream<NetAXIS> &
         }
 
         prev_word = curr_word;
-        data_out.write(send_word);
+        data_out.write(send_word.to_net_axis());
       }
       break;
     case EXTRA:
@@ -88,7 +88,7 @@ void                 EthernetRemover(stream<NetAXIS> &data_in, stream<NetAXIS> &
       send_word.keep(49, 0)    = prev_word.keep(63, 14);
       send_word.dest           = prev_word.dest;
       send_word.last           = 1;
-      data_out.write(send_word);
+      data_out.write(send_word.to_net_axis());
       er_fsm_state = FIRST_WORD;
       break;
   }
@@ -108,7 +108,7 @@ void                 EthernetRemover(stream<NetAXIS> &data_in, stream<NetAXIS> &
  * @param      data_in   The data in
  * @param      data_out  The data out
  */
-void                 PacketIdentify(stream<NetAXIS> &data_in, stream<NetAXIS> &data_out) {
+void                 PacketIdentify(stream<NetAXIS> &data_in, stream<NetAXISWord> &data_out) {
 #pragma HLS PIPELINE II = 1
 
   enum PacketIdentifyStates { FIRST_WORD, FWD, DROP };
@@ -213,8 +213,8 @@ void        PacketHandler(stream<NetAXIS> &data_in, stream<NetAXIS> &data_out) {
 #pragma HLS INTERFACE axis register both port = data_in name = s_axis
 #pragma HLS INTERFACE axis register both port = data_out name = m_axis
 
-  static stream<NetAXIS> eth_level_pkt("eth_level_pkt");
-#pragma HLS DATA_PACK variable = eth_level_pkt
+  static stream<NetAXISWord> eth_level_pkt("eth_level_pkt");
+#pragma HLS aggregate variable = eth_level_pkt compact = bit
 #pragma HLS STREAM variable = eth_level_pkt depth = 16
 
   PacketIdentify(data_in, eth_level_pkt);
