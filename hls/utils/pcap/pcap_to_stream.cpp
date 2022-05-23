@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+using std::cout;
+using std::endl;
 stream<NetAXISWord> input_data("data_read_from_pcap");
 stream<NetAXISWord> packet_without_ethernet("packet_without_ethernet");
 NetAXISWord         transaction;

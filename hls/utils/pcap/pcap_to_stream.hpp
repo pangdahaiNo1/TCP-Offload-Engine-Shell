@@ -2,8 +2,9 @@
 #define _PCAP2STREAM_H_
 
 #include "pcap.hpp"
-#include "utils/axi_utils.hpp"
+#include "utils/axi_intf.hpp"
 
+#include <iostream>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
