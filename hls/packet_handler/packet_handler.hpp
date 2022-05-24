@@ -1,8 +1,8 @@
 
 #ifndef _PACKET_HANDLER_HPP_
 #define _PACKET_HANDLER_HPP_
-#define __gmp_const const
-#include "utils/axi_utils.hpp"
+
+#include "utils/axi_intf.hpp"
 
 using namespace hls;
 
