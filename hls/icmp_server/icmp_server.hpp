@@ -1,15 +1,6 @@
-#define __gmp_const const
-#include "ap_int.h"
-#include "toe/toe_intf.hpp"
-
-#include <cstdlib>
-#include <fstream>
-#include <hls_stream.h>
-#include <iostream>
-#include <math.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string>
+#ifndef _ICMP_SERVER_HPP_
+#define _ICMP_SERVER_HPP_
+#include "utils/axi_intf.hpp"
 
 using namespace hls;
 using namespace std;
@@ -22,3 +13,5 @@ const uint8_t ICMP_PROTOCOL = 0x01;
  *
  */
 void icmp_server(stream<NetAXIS> &dataIn, ap_uint<32> &myIpAddress, stream<NetAXIS> &dataOut);
+
+#endif

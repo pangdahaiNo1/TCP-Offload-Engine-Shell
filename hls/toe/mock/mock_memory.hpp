@@ -1,6 +1,6 @@
 #ifndef _MOCK_MEMORY_HPP_
 #define _MOCK_MEMORY_HPP_
-#include "toe/toe_intf.hpp"
+#include "toe/toe_conn.hpp"
 #include "utils/pcap/pcap_to_stream.hpp"
 
 #include <algorithm>

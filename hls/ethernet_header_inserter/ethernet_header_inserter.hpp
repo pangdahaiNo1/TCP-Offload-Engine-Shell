@@ -1,9 +1,7 @@
 
 #ifndef ETHERNET_HEADER_INSERTER_H
 #define ETHERNET_HEADER_INSERTER_H
-#define __gmp_const const
-#include "ap_int.h"
-#include "toe/toe_intf.hpp"
+#include "utils/axi_intf.hpp"
 
 using namespace hls;
 using namespace std;

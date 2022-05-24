@@ -1,7 +1,7 @@
 #ifndef _ARP_SERVER_HPP_
 #define _ARP_SERVER_HPP_
 
-#include "toe/toe_intf.hpp"
+#include "utils/axi_intf.hpp"
 
 using namespace hls;
 
