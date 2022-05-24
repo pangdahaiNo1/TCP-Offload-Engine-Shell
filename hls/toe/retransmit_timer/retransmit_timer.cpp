@@ -22,8 +22,8 @@ void                 retransmit_timer(stream<RxEngToRetransTimerReq> &rx_eng_to_
                                       stream<TxEngToRetransTimerReq> &tx_eng_to_timer_set_rtimer,
                                       stream<Event> &                 rtimer_to_event_eng_set_event,
                                       stream<TcpSessionID> &          rtimer_to_state_table_release_state,
-                                      stream<AppNotification> &       rtimer_to_rx_app_notification,
-                                      stream<OpenSessionStatus> &     rtimer_to_tx_app_notification) {
+                                      stream<AppNotificationNoTDEST> &rtimer_to_rx_app_notification,
+                                      stream<OpenConnRspNoTDEST> &    rtimer_to_tx_app_notification) {
 #pragma HLS PIPELINE II = 1
   //#pragma HLS INLINE
 
@@ -126,10 +126,11 @@ void                 retransmit_timer(stream<RxEngToRetransTimerReq> &rx_eng_to_
               rtimer_to_state_table_release_state.write(rtimer_cur_enrty_id);
               if (rtimer_cur_entry.type == SYN) {
                 // Open Session Failed
-                rtimer_to_tx_app_notification.write(OpenSessionStatus(rtimer_cur_enrty_id, false));
+                rtimer_to_tx_app_notification.write(OpenConnRspNoTDEST(rtimer_cur_enrty_id, false));
               } else {
                 // Session Closed caused by TIMEOUT
-                rtimer_to_rx_app_notification.write(AppNotification(rtimer_cur_enrty_id, true));
+                rtimer_to_rx_app_notification.write(
+                    AppNotificationNoTDEST(rtimer_cur_enrty_id, true));
               }
             }
           }

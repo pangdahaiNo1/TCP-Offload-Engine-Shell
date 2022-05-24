@@ -29,5 +29,5 @@ void retransmit_timer(stream<RxEngToRetransTimerReq> &rx_eng_to_timer_clear_rtim
                       stream<TxEngToRetransTimerReq> &tx_eng_to_timer_set_rtimer,
                       stream<Event> &                 rtimer_to_event_eng_set_event,
                       stream<TcpSessionID> &          rtimer_to_sttable_release_state,
-                      stream<AppNotification> &       rtimer_to_rx_app_notification,
-                      stream<OpenSessionStatus> &     rtimer_to_tx_app_notification);
+                      stream<AppNotificationNoTDEST> &rtimer_to_rx_app_notification,
+                      stream<OpenConnRspNoTDEST> &    rtimer_to_tx_app_notification);
