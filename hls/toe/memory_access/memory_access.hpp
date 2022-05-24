@@ -2,7 +2,6 @@
 #define _MEMORY_ACCESS_HPP_
 
 #include "toe/toe_conn.hpp"
-#include "toe/toe_intf.hpp"
 #include "utils/axi_utils.hpp"
 
 void TxEngReadDataSendCmd(stream<MemBufferRWCmd> &            tx_eng_to_mem_cmd_in,
