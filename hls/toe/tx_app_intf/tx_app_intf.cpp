@@ -1,4 +1,3 @@
-
 #include "tx_app_intf.hpp"
 
 using namespace hls;
@@ -45,12 +44,12 @@ void TxAppConnectionHandler(
     stream<NetAXISAppOpenConnRsp> & tx_app_to_net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_to_tx_app_close_conn_req,
     // rx eng -> net app
-    stream<NewClientNotification> &      rx_eng_to_tx_app_new_client_notification,
-    stream<NetAXISNewClientNotificaion> &net_app_new_client_notification,
+    stream<NewClientNotificationNoTDEST> &rx_eng_to_tx_app_new_client_notification,
+    stream<NetAXISNewClientNotification> &net_app_new_client_notification,
     // rx eng
-    stream<OpenSessionStatus> &rx_eng_to_tx_app_notification,
+    stream<OpenConnRspNoTDEST> &rx_eng_to_tx_app_notification,
     // retrans timer
-    stream<OpenSessionStatus> &rtimer_to_tx_app_notification,
+    stream<OpenConnRspNoTDEST> &rtimer_to_tx_app_notification,
     // session lookup, also for TDEST
     stream<TxAppToSlookupReq> &tx_app_to_slookup_req,
     stream<SessionLookupRsp> & slookup_to_tx_app_rsp,
@@ -67,6 +66,11 @@ void TxAppConnectionHandler(
     IpAddr &       my_ip_addr) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
+
+#pragma HLS INTERFACE axis register both port = net_app_to_tx_app_open_conn_req
+#pragma HLS INTERFACE axis register both port = tx_app_to_net_app_open_conn_rsp
+#pragma HLS INTERFACE axis register both port = net_app_to_tx_app_close_conn_req
+#pragma HLS INTERFACE axis register both port = net_app_new_client_notification
 
   enum TxAppConnFsmState {
     IDLE,
@@ -95,11 +99,11 @@ void TxAppConnectionHandler(
     tx_app_wait_for_free_port_lock = false;
   }
 
-  SessionLookupRsp              slookup_rsp;
-  SessionState                  sttable_rsp;
-  static NewClientNotification  passive_open_session_reg;
-  static OpenSessionStatus      open_session_reg;
-  static NetAXISAppCloseConnReq app_close_session_reg;
+  SessionLookupRsp                    slookup_rsp;
+  SessionState                        sttable_rsp;
+  static NewClientNotificationNoTDEST passive_open_session_reg;
+  static OpenConnRspNoTDEST           open_session_reg;
+  static NetAXISAppCloseConnReq       app_close_session_reg;
   // handle net app open/close connection request
   switch (fsm_state) {
     case IDLE:
@@ -112,8 +116,9 @@ void TxAppConnectionHandler(
           // if success, the rx engine will send notification
           tx_app_conn_handler_to_event_engine.write(Event(SYN, slookup_rsp.session_id));
         } else {
-          tx_app_to_net_app_open_conn_rsp.write(NetAXISAppOpenConnRsp(
-              OpenSessionStatus(slookup_rsp.session_id, false), slookup_rsp.role_id));
+          tx_app_to_net_app_open_conn_rsp.write(
+              AppOpenConnRsp(OpenConnRspNoTDEST(slookup_rsp.session_id, false), slookup_rsp.role_id)
+                  .to_net_axis());
         }
       } else if (!rx_eng_to_tx_app_notification.empty()) {
         rx_eng_to_tx_app_notification.read(open_session_reg);
@@ -138,7 +143,8 @@ void TxAppConnectionHandler(
       if (!slookup_to_tx_app_check_tdest_rsp.empty()) {
         // TODO: need a lock for session lookup zelin 22-05-08
         NetAXISDest temp_dest = slookup_to_tx_app_check_tdest_rsp.read();
-        tx_app_to_net_app_open_conn_rsp.write(NetAXISAppOpenConnRsp(open_session_reg, temp_dest));
+        tx_app_to_net_app_open_conn_rsp.write(
+            AppOpenConnRsp(open_session_reg, temp_dest).to_net_axis());
         fsm_state = IDLE;
       }
       break;
@@ -146,7 +152,7 @@ void TxAppConnectionHandler(
       if (!slookup_to_tx_app_check_tdest_rsp.empty()) {
         NetAXISDest temp_dest = slookup_to_tx_app_check_tdest_rsp.read();
         net_app_new_client_notification.write(
-            NetAXISNewClientNotificaion(passive_open_session_reg, temp_dest));
+            NewClientNotification(passive_open_session_reg, temp_dest).to_net_axis());
         fsm_state = IDLE;
       }
       break;
@@ -188,8 +194,14 @@ void TxAppDataHandler(
     stream<Event> &tx_app_to_event_eng_set_event,
     // to datamover
     stream<DataMoverCmd> &tx_app_to_mem_write_cmd,
-    stream<NetAXIS> &     tx_app_to_mem_write_data) {
-  // #pragma HLS pipeline II = 1
+    stream<NetAXISWord> & tx_app_to_mem_write_data) {
+#pragma HLS PIPELINE                     II = 1
+#pragma HLS INLINE                       off
+#pragma HLS INTERFACE axis register both port = net_app_to_tx_app_trans_data_req
+#pragma HLS INTERFACE axis register both port = tx_app_to_net_app_tans_data_rsp
+#pragma HLS INTERFACE axis register both port = net_app_trans_data
+#pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_cmd
+#pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_data
 
   enum TxAppDataFsmState { READ_REQUEST, READ_META, READ_DATA };
   static TxAppDataFsmState fsm_state = READ_REQUEST;
@@ -198,7 +210,7 @@ void TxAppDataHandler(
   static bool trans_data_lock = false;
 
   static NetAXISAppTransDataReq trans_data_req;
-  AppTransDataRsp               trans_data_rsp;
+  AppTransDataRspNoTDEST        trans_data_rsp;
   static TxAppTableToTxAppRsp   tx_app_table_rsp;
   static TcpSessionBuffer       max_write_length;
   TcpSessionBuffer              used_length;
@@ -277,7 +289,7 @@ void TxAppDataHandler(
           fsm_state = READ_DATA;
         }
         tx_app_to_net_app_tans_data_rsp.write(
-            NetAXISAppTransDataRsp(trans_data_rsp, trans_data_req.dest));
+            AppTransDataRsp(trans_data_rsp, trans_data_req.dest).to_axis());
       }
       break;
     case READ_DATA:
@@ -300,7 +312,10 @@ void TxAppRspHandler(stream<DataMoverStatus> &mover_to_tx_app_sts,
                      stream<Event> &tx_app_to_event_eng_set_event,
 #endif
                      stream<TxAppToTxSarReq> &tx_app_to_tx_sar_req) {
-#pragma HLS pipeline II = 1
+#pragma HLS PIPELINE II = 1
+#pragma HLS INLINE   off
+
+#pragma HLS INTERFACE axis register both port = mover_to_tx_app_sts
 
   enum StatusHandlerFsmState { READ_EV, READ_STATUS_1, READ_STATUS_2 };
   static StatusHandlerFsmState fsm_status = READ_EV;
@@ -371,9 +386,10 @@ void                 TxAppTableInterface(stream<TxSarToTxAppRsp> &     tx_sar_to
                                          stream<TxAppToTxAppTableReq> &tx_app_to_tx_app_table_req,
                                          stream<TxAppTableToTxAppRsp> &tx_app_table_to_tx_app_rsp) {
 #pragma HLS PIPELINE II = 1
+#pragma HLS INLINE   off
 
   static TxAppTableEntry tx_app_table[TCP_MAX_SESSIONS];
-#pragma HLS RESOURCE variable = tx_app_table core = RAM_T2P_BRAM
+#pragma HLS bind_storage variable = tx_app_table type = RAM_T2P impl = BRAM
 
   TxSarToTxAppRsp      tx_sar_rsp;
   TxAppToTxAppTableReq tx_app_req;
@@ -424,12 +440,12 @@ void tx_app_intf(
     stream<NetAXISAppOpenConnRsp> & tx_app_to_net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_to_tx_app_close_conn_req,
     // rx eng -> net app
-    stream<NewClientNotification> &      rx_eng_to_tx_app_new_client_notification,
-    stream<NetAXISNewClientNotificaion> &net_app_new_client_notification,
+    stream<NewClientNotificationNoTDEST> &rx_eng_to_tx_app_new_client_notification,
+    stream<NetAXISNewClientNotification> &net_app_new_client_notification,
     // rx eng
-    stream<OpenSessionStatus> &rx_eng_to_tx_app_notification,
+    stream<OpenConnRspNoTDEST> &rx_eng_to_tx_app_notification,
     // retrans timer
-    stream<OpenSessionStatus> &rtimer_to_tx_app_notification,
+    stream<OpenConnRspNoTDEST> &rtimer_to_tx_app_notification,
     // session lookup, also for TDEST
     stream<TxAppToSlookupReq> &tx_app_to_slookup_req,
     stream<SessionLookupRsp> & slookup_to_tx_app_rsp,
@@ -460,7 +476,16 @@ void tx_app_intf(
     stream<DataMoverStatus> &mem_to_tx_app_write_status,
     // in big endian
     IpAddr &my_ip_addr) {
-#pragma HLS INLINE
+#pragma HLS INTERFACE axis register both port = net_app_to_tx_app_open_conn_req
+#pragma HLS INTERFACE axis register both port = tx_app_to_net_app_open_conn_rsp
+#pragma HLS INTERFACE axis register both port = net_app_to_tx_app_close_conn_req
+#pragma HLS INTERFACE axis register both port = net_app_new_client_notification
+#pragma HLS INTERFACE axis register both port = net_app_to_tx_app_trans_data_req
+#pragma HLS INTERFACE axis register both port = tx_app_to_net_app_tans_data_rsp
+#pragma HLS INTERFACE axis register both port = net_app_trans_data
+#pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_cmd
+#pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_data
+#pragma HLS INTERFACE axis register both port = mem_to_tx_app_write_status
 
   // Fifos
   static stream<TxAppToTxAppTableReq> tx_app_to_tx_app_table_req_fifo(
@@ -469,8 +494,8 @@ void tx_app_intf(
       "tx_app_table_to_tx_app_rsp_fifo");
 #pragma HLS stream variable = tx_app_to_tx_app_table_req_fifo depth = 2
 #pragma HLS stream variable = tx_app_table_to_tx_app_rsp_fifo depth = 2
-#pragma HLS DATA_PACK variable = tx_app_to_tx_app_table_req_fifo
-#pragma HLS DATA_PACK variable = tx_app_table_to_tx_app_rsp_fifo
+#pragma HLS aggregate variable = tx_app_to_tx_app_table_req_fifo compact = bit
+#pragma HLS aggregate variable = tx_app_table_to_tx_app_rsp_fifo compact = bit
 
   static stream<Event> tx_app_conn_handler_to_event_engine_fifo(
       "tx_app_conn_handler_to_event_engine_fifo");
@@ -478,24 +503,24 @@ void tx_app_intf(
       "tx_app_data_handler_to_event_engine_fifo");
 #pragma HLS stream variable = tx_app_conn_handler_to_event_engine_fifo depth = 2
 #pragma HLS stream variable = tx_app_data_handler_to_event_engine_fifo depth = 2
-#pragma HLS DATA_PACK variable = tx_app_conn_handler_to_event_engine_fifo
-#pragma HLS DATA_PACK variable = tx_app_data_handler_to_event_engine_fifo
+#pragma HLS aggregate variable = tx_app_conn_handler_to_event_engine_fifo compact = bit
+#pragma HLS aggregate variable = tx_app_data_handler_to_event_engine_fifo compact = bit
 
   static stream<Event> tx_app_to_event_eng_set_event_fifo("tx_app_to_event_eng_set_event_fifo");
 #pragma HLS stream variable = tx_app_to_event_eng_set_event_fifo depth = 2
-#pragma HLS DATA_PACK variable = tx_app_to_event_eng_set_event_fifo
+#pragma HLS aggregate variable = tx_app_to_event_eng_set_event_fifo compact = bit
 
   // only enable in TCP_NODELAY
   static stream<Event> tx_app_to_status_handler_fifo("tx_app_to_status_handler_fifo");
-#pragma HLS stream variable = tx_app_to_status_handler_fifo depth    = 64
-#pragma HLS DATA_PACK                                       variable = tx_app_to_status_handler_fifo
+#pragma HLS stream variable = tx_app_to_status_handler_fifo depth = 64
+#pragma HLS aggregate variable = tx_app_to_status_handler_fifo compact = bit
 
   static stream<DataMoverCmd> tx_app_to_mem_write_cmd_fifo("tx_app_to_mem_write_cmd_fifo");
-#pragma HLS DATA_PACK variable = tx_app_to_mem_write_cmd_fifo
+#pragma HLS aggregate variable = tx_app_to_mem_write_cmd_fifo compact = bit
 #pragma HLS stream variable = tx_app_to_mem_write_cmd_fifo depth = 4
 
-  static stream<NetAXIS> tx_app_to_mem_write_data_fifo("tx_app_to_mem_write_data_fifo");
-#pragma HLS DATA_PACK variable = tx_app_to_mem_write_data_fifo
+  static stream<NetAXISWord> tx_app_to_mem_write_data_fifo("tx_app_to_mem_write_data_fifo");
+#pragma HLS aggregate variable = tx_app_to_mem_write_data_fifo compact = bit
 #pragma HLS stream variable = tx_app_to_mem_write_data_fifo depth = 4
   TxAppConnectionHandler(
       // net app

@@ -2,8 +2,7 @@
 #define _TX_APP_INTF_HPP_
 
 #include "toe/memory_access/memory_access.hpp"
-#include "toe/tcp_conn.hpp"
-#include "toe/toe_intf.hpp"
+#include "toe/toe_conn.hpp"
 
 struct TxAppTableEntry {
   ap_uint<WINDOW_BITS> ackd;
@@ -69,12 +68,12 @@ void TxAppConnectionHandler(
     stream<NetAXISAppOpenConnRsp> & tx_app_to_net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_to_tx_app_close_conn_req,
     // rx eng -> net app
-    stream<NewClientNotification> &      rx_eng_to_tx_app_new_client_notification,
-    stream<NetAXISNewClientNotificaion> &net_app_new_client_notification,
+    stream<NewClientNotificationNoTDEST> &rx_eng_to_tx_app_new_client_notification,
+    stream<NetAXISNewClientNotification> &net_app_new_client_notification,
     // rx eng
-    stream<OpenSessionStatus> &rx_eng_to_tx_app_notification,
+    stream<OpenConnRspNoTDEST> &rx_eng_to_tx_app_notification,
     // retrans timer
-    stream<OpenSessionStatus> &rtimer_to_tx_app_notification,
+    stream<OpenConnRspNoTDEST> &rtimer_to_tx_app_notification,
     // session lookup, also for TDEST
     stream<TxAppToSlookupReq> &tx_app_to_slookup_req,
     stream<SessionLookupRsp> & slookup_to_tx_app_rsp,
@@ -82,14 +81,13 @@ void TxAppConnectionHandler(
     stream<NetAXISDest> &      slookup_to_tx_app_check_tdest_rsp,
     // port table req/rsp
     stream<NetAXISDest> &  tx_app_to_ptable_req,
-    stream<TcpPortNumber> &ptable_to_tx_app_port_rsp,
+    stream<TcpPortNumber> &ptable_to_tx_app_rsp,
     // state table read/write req/rsp
     stream<StateTableReq> &tx_app_to_sttable_req,
     stream<SessionState> & sttable_to_tx_app_rsp,
     // event engine
-    stream<Event> &tx_app_to_event_eng_set_event,
+    stream<Event> &tx_app_conn_handler_to_event_engine,
     IpAddr &       my_ip_addr);
-
 void TxAppDataHandler(
     // net app
     stream<NetAXISAppTransDataReq> &net_app_to_tx_app_trans_data_req,
@@ -105,7 +103,18 @@ void TxAppDataHandler(
     stream<Event> &tx_app_to_event_eng_set_event,
     // to datamover
     stream<DataMoverCmd> &tx_app_to_mem_write_cmd,
-    stream<NetAXIS> &     tx_app_to_mem_write_data);
+    stream<NetAXISWord> & tx_app_to_mem_write_data);
+
+void TxAppRspHandler(stream<DataMoverStatus> &mover_to_tx_app_sts,
+                     stream<Event> &          tx_app_to_event_eng_set_event_fifo,
+#if (!TCP_NODELAY)
+                     stream<Event> &tx_app_to_event_eng_set_event,
+#endif
+                     stream<TxAppToTxSarReq> &tx_app_to_tx_sar_req);
+
+void TxAppTableInterface(stream<TxSarToTxAppRsp> &     tx_sar_to_tx_app_rsp,
+                         stream<TxAppToTxAppTableReq> &tx_app_to_tx_app_table_req,
+                         stream<TxAppTableToTxAppRsp> &tx_app_table_to_tx_app_rsp);
 
 void tx_app_intf(
     // net app connection request
@@ -113,12 +122,12 @@ void tx_app_intf(
     stream<NetAXISAppOpenConnRsp> & tx_app_to_net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_to_tx_app_close_conn_req,
     // rx eng -> net app
-    stream<NewClientNotification> &      rx_eng_to_tx_app_new_client_notification,
-    stream<NetAXISNewClientNotificaion> &net_app_new_client_notification,
+    stream<NewClientNotificationNoTDEST> &rx_eng_to_tx_app_new_client_notification,
+    stream<NetAXISNewClientNotification> &net_app_new_client_notification,
     // rx eng
-    stream<OpenSessionStatus> &rx_eng_to_tx_app_notification,
+    stream<OpenConnRspNoTDEST> &rx_eng_to_tx_app_notification,
     // retrans timer
-    stream<OpenSessionStatus> &rtimer_to_tx_app_notification,
+    stream<OpenConnRspNoTDEST> &rtimer_to_tx_app_notification,
     // session lookup, also for TDEST
     stream<TxAppToSlookupReq> &tx_app_to_slookup_req,
     stream<SessionLookupRsp> & slookup_to_tx_app_rsp,

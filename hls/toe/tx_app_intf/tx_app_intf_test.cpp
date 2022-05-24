@@ -40,7 +40,7 @@ void EmptyTxAppConnFifos(std::ofstream &                out_stream,
   while (!tx_app_to_net_app_open_conn_rsp.empty()) {
     tx_app_to_net_app_open_conn_rsp.read(to_net_app_conn_rsp);
     out_stream << "Cycle " << std::dec << sim_cycle << ": Tx App to Net APP Conn Rsp \t";
-    out_stream << to_net_app_conn_rsp.to_string() << "\n";
+    out_stream << AppOpenConnRsp(to_net_app_conn_rsp).to_string() << "\n";
   }
 }
 
@@ -57,7 +57,7 @@ void EmptyTxAppDataFifos(std::ofstream &                 out_stream,
   while (!tx_app_to_net_app_tans_data_rsp.empty()) {
     tx_app_to_net_app_tans_data_rsp.read(to_net_app_rsp);
     out_stream << "Cycle " << std::dec << sim_cycle << ": Tx App to NetAPP Trans Data Rsp: ";
-    out_stream << to_net_app_rsp.to_string() << "\n";
+    out_stream << AppTransDataRsp(to_net_app_rsp).to_string() << "\n";
   }
   while (!tx_app_to_tx_app_table_req.empty()) {
     tx_app_to_tx_app_table_req.read(to_app_table);
@@ -78,10 +78,10 @@ void EmptyTxAppDataFifos(std::ofstream &                 out_stream,
 
 void EmptyDataMoverFifos(std::ofstream &       out_stream,
                          stream<DataMoverCmd> &tx_app_to_mem_write_cmd,
-                         stream<NetAXIS> &     tx_app_to_mem_write_data,
+                         stream<NetAXISWord> &     tx_app_to_mem_write_data,
                          int                   sim_cycle) {
   DataMoverCmd cmd_out;
-  NetAXIS      data_out;
+  NetAXISWord      data_out;
 
   while (!tx_app_to_mem_write_cmd.empty()) {
     tx_app_to_mem_write_cmd.read(cmd_out);
@@ -101,12 +101,12 @@ void TestTxAppConn() {
   stream<NetAXISAppOpenConnRsp>  tx_app_to_net_app_open_conn_rsp;
   stream<NetAXISAppCloseConnReq> net_app_to_tx_app_close_conn_req;
   // passive open
-  stream<NewClientNotification>       rx_eng_to_tx_app_new_client_notification;
-  stream<NetAXISNewClientNotificaion> net_app_new_client_notification;
+  stream<NewClientNotificationNoTDEST>       rx_eng_to_tx_app_new_client_notification;
+  stream<NetAXISNewClientNotification> net_app_new_client_notification;
   // rx eng
-  stream<OpenSessionStatus> rx_eng_to_tx_app_notification;
+  stream<OpenConnRspNoTDEST> rx_eng_to_tx_app_notification;
   // retrans timer
-  stream<OpenSessionStatus> rtimer_to_tx_app_notification;
+  stream<OpenConnRspNoTDEST> rtimer_to_tx_app_notification;
   // session lookup, also for TDEST
   stream<TxAppToSlookupReq> tx_app_to_slookup_req;
   stream<SessionLookupRsp>  slookup_to_tx_app_rsp;
@@ -157,7 +157,7 @@ void TestTxAppConn() {
         slookup_to_tx_app_rsp.write(SessionLookupRsp(0x1, true, 0x1));
         break;
       case 5:
-        rx_eng_to_tx_app_notification.write(OpenSessionStatus(0x1, true));
+        rx_eng_to_tx_app_notification.write(OpenConnRspNoTDEST(0x1, true));
         slookup_to_tx_app_check_tdest_rsp.write(0x2);
         break;
       case 6:
@@ -208,7 +208,7 @@ void TestTxAppData(stream<NetAXIS> &input_tcp_packets) {
   stream<Event> tx_app_to_event_eng_set_event;
   // to datamover
   stream<DataMoverCmd> tx_app_to_mem_write_cmd;
-  stream<NetAXIS>      tx_app_to_mem_write_data;
+  stream<NetAXISWord>      tx_app_to_mem_write_data;
 
   // open output file
   std::ofstream outputFile;
