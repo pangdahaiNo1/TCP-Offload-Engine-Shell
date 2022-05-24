@@ -9,15 +9,17 @@ using namespace hls;
 
 void EmptyPortHandlerFifos(std::ofstream &               out_stream,
                            stream<NetAXISListenPortRsp> &rx_app_to_net_app_listen_port_rsp,
-                           stream<NetAXISListenPortReq> &rx_app_to_ptable_listen_port_req,
+                           stream<ListenPortReq> &       rx_app_to_ptable_listen_port_req,
                            int                           sim_cycle) {
   NetAXISListenPortRsp to_net_app_rsp;
-  NetAXISListenPortReq to_ptable_req;
+  ListenPortRsp        to_net_app_rsp_inner;
+  ListenPortReq        to_ptable_req;
 
   while (!rx_app_to_net_app_listen_port_rsp.empty()) {
     rx_app_to_net_app_listen_port_rsp.read(to_net_app_rsp);
+    to_net_app_rsp_inner = to_net_app_rsp;
     out_stream << "Cycle " << std::dec << sim_cycle << ": Rx App to Net App rsp\t";
-    out_stream << to_net_app_rsp.to_string() << "\n";
+    out_stream << to_net_app_rsp_inner.to_string() << "\n";
   }
   while (!rx_app_to_ptable_listen_port_req.empty()) {
     rx_app_to_ptable_listen_port_req.read(to_ptable_req);
@@ -29,8 +31,8 @@ void EmptyPortHandlerFifos(std::ofstream &               out_stream,
 int TestPortHandler() {
   stream<NetAXISListenPortReq> net_app_to_rx_app_listen_port_req;
   stream<NetAXISListenPortRsp> rx_app_to_net_app_listen_port_rsp;
-  stream<NetAXISListenPortReq> rx_app_to_ptable_listen_port_req;
-  stream<NetAXISListenPortRsp> ptable_to_rx_app_listen_port_rsp;
+  stream<ListenPortReq>        rx_app_to_ptable_listen_port_req;
+  stream<ListenPortRsp>        ptable_to_rx_app_listen_port_rsp;
 
   EventWithTuple ev;
 
@@ -42,7 +44,7 @@ int TestPortHandler() {
     std::cout << "Error: could not open test output file." << std::endl;
   }
   NetAXISListenPortReq net_app_req;
-  NetAXISListenPortRsp ptable_rsp;
+  ListenPortRsp        ptable_rsp;
   int                  sim_cycle = 0;
   while (sim_cycle < 20) {
     switch (sim_cycle) {
@@ -57,12 +59,12 @@ int TestPortHandler() {
         net_app_to_rx_app_listen_port_req.write(net_app_req);
         break;
       case 3:
-        ptable_rsp.data = ListenPortRsp(true, false, false, 0x80);
+        ptable_rsp.data = ListenPortRspNoTDEST(true, false, false, 0x80);
         ptable_rsp.dest = 0x1;
         ptable_to_rx_app_listen_port_rsp.write(ptable_rsp);
         break;
       case 4:
-        ptable_rsp.data = ListenPortRsp(true, false, false, 0x81);
+        ptable_rsp.data = ListenPortRspNoTDEST(true, false, false, 0x81);
         ptable_rsp.dest = 0x2;
         ptable_to_rx_app_listen_port_rsp.write(ptable_rsp);
         break;
@@ -87,6 +89,7 @@ void EmptyDataHandlerFifos(std::ofstream &            out_stream,
                            stream<NetAXIS> &          rx_app_to_net_app_data,
                            int                        sim_cycle) {
   NetAXISAppReadRsp to_net_app_read_rsp;
+  AppReadRsp        to_net_app_read_rsp_inner;
   RxSarAppReqRsp    to_rx_sar_req;
   NetAXIS           to_net_app_data;
 
@@ -97,8 +100,9 @@ void EmptyDataHandlerFifos(std::ofstream &            out_stream,
   }
   while (!net_app_read_data_rsp.empty()) {
     net_app_read_data_rsp.read(to_net_app_read_rsp);
+    to_net_app_read_rsp_inner = to_net_app_read_rsp;
     out_stream << "Cycle " << std::dec << sim_cycle << ": Rx App to Net App read data rsp\t";
-    out_stream << to_net_app_read_rsp.to_string() << "\n";
+    out_stream << to_net_app_read_rsp_inner.to_string() << "\n";
   }
   while (!rx_app_to_net_app_data.empty()) {
     rx_app_to_net_app_data.read(to_net_app_data);
@@ -114,8 +118,8 @@ int TestDataHandler(stream<NetAXIS> &input_tcp_packets) {
   stream<RxSarAppReqRsp>    rx_app_to_rx_sar_req;
   stream<RxSarAppReqRsp>    rx_sar_to_rx_app_rsp;
   // rx engine data to net app
-  stream<NetAXIS> rx_eng_to_rx_app_data("rx_eng_to_rx_app_data");
-  stream<NetAXIS> rx_app_to_net_app_data("rx_app_to_net_app_data");
+  stream<NetAXISWord> rx_eng_to_rx_app_data("rx_eng_to_rx_app_data");
+  stream<NetAXIS>     rx_app_to_net_app_data("rx_app_to_net_app_data");
 
   // open output file
   std::ofstream outputFile;
@@ -133,18 +137,18 @@ int TestDataHandler(stream<NetAXIS> &input_tcp_packets) {
   input_tcp_packets.read();
   input_tcp_packets.read();
   int sim_cycle = 0;
-  while (sim_cycle < 20) {
+  while (sim_cycle < 50) {
     switch (sim_cycle) {
       case 1:
-        net_app_req.data = AppReadReq(0x1, 0x100);
+        net_app_req.data = AppReadReqNoTEST(0x1, 0x100);
         net_app_req.dest = 0x1;
         net_app_read_data_req.write(net_app_req);
         break;
       case 2:
-        net_app_req.data = AppReadReq(0x2, 0x100);
+        net_app_req.data = AppReadReqNoTEST(0x2, 0x100);
         net_app_req.dest = 0x2;
         net_app_read_data_req.write(net_app_req);
-        net_app_req.data = AppReadReq(0x4, 0x100);
+        net_app_req.data = AppReadReqNoTEST(0x4, 0x100);
         net_app_req.dest = 0x2;
         net_app_read_data_req.write(net_app_req);
         break;
@@ -161,7 +165,7 @@ int TestDataHandler(stream<NetAXIS> &input_tcp_packets) {
         } while (cur_word.last != 1);
         break;
       case 5:
-        rx_sar_rsp.app_read   = 0x1234567;
+        rx_sar_rsp.app_read   = 0x1230000;
         rx_sar_rsp.session_id = 0x2;
         rx_sar_to_rx_app_rsp.write(rx_sar_rsp);
       case 6:

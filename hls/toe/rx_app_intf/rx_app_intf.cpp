@@ -14,9 +14,13 @@ using namespace hls;
 // lock step for the multi role listening request
 void RxAppPortHandler(stream<NetAXISListenPortReq> &net_app_to_rx_app_listen_port_req,
                       stream<NetAXISListenPortRsp> &rx_app_to_net_app_listen_port_rsp,
-                      stream<NetAXISListenPortReq> &rx_app_to_ptable_listen_port_req,
-                      stream<NetAXISListenPortRsp> &ptable_to_rx_app_listen_port_rsp) {
-#pragma HLS PIPELINE off
+                      stream<ListenPortReq> &       rx_app_to_ptable_listen_port_req,
+                      stream<ListenPortRsp> &       ptable_to_rx_app_listen_port_rsp) {
+#pragma HLS PIPELINE II = 1
+#pragma HLS INLINE   off
+
+#pragma HLS INTERFACE axis register both port = net_app_to_rx_app_listen_port_req
+#pragma HLS INTERFACE axis register both port = rx_app_to_net_app_listen_port_rsp
 
   enum RxAppPortFsmState { WAIT_NET, WAIT_PTABLE };
   static RxAppPortFsmState fsm_state = WAIT_NET;
@@ -32,7 +36,8 @@ void RxAppPortHandler(stream<NetAXISListenPortReq> &net_app_to_rx_app_listen_por
       break;
     case WAIT_PTABLE:
       if (!ptable_to_rx_app_listen_port_rsp.empty() && listen_port_lock) {
-        rx_app_to_net_app_listen_port_rsp.write(ptable_to_rx_app_listen_port_rsp.read());
+        rx_app_to_net_app_listen_port_rsp.write(
+            ptable_to_rx_app_listen_port_rsp.read().to_net_axis());
         listen_port_lock = false;
         fsm_state        = WAIT_NET;
       }
@@ -56,10 +61,14 @@ void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_read_da
                                       stream<RxSarAppReqRsp> &   rx_app_to_rx_sar_req,
                                       stream<RxSarAppReqRsp> &   rx_sar_to_rx_app_rsp,
                                       // rx engine data to net app
-                                      stream<NetAXIS> &rx_eng_to_rx_app_data,
-                                      stream<NetAXIS> &rx_app_to_net_app_data) {
-#pragma HLS PIPELINE off
+                                      stream<NetAXISWord> &rx_eng_to_rx_app_data,
+                                      stream<NetAXIS> &    rx_app_to_net_app_data) {
+#pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
+
+#pragma HLS INTERFACE axis register both port = net_app_read_data_req
+#pragma HLS INTERFACE axis register both port = net_app_read_data_rsp
+#pragma HLS INTERFACE axis register both port = rx_app_to_net_app_data
 
   static ap_uint<16> rx_app_read_length;
   static NetAXISDest rx_app_role_id;
@@ -67,13 +76,13 @@ void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_read_da
   static RxAppDataDataFsmState fsm_state = WAIT_NET_APP_DATA_REQ;
   // add a lock for record role_id
   static bool net_app_data_lock = false;
-  NetAXIS     cur_word;
+  NetAXISWord cur_word;
 
   switch (fsm_state) {
     case WAIT_NET_APP_DATA_REQ:
       if (!net_app_read_data_req.empty()) {
         NetAXISAppReadReq net_app_read_request = net_app_read_data_req.read();
-        AppReadReq        app_read_req         = net_app_read_request.data;
+        AppReadReqNoTEST  app_read_req         = net_app_read_request.data;
         // Make sure length is not 0, otherwise Data Mover will hang up
         if (app_read_req.read_length != 0) {
           // record the TDEST
@@ -88,8 +97,11 @@ void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_read_da
       break;
     case WAIT_SAR_RSP:
       if (!rx_sar_to_rx_app_rsp.empty()) {
-        RxSarAppReqRsp rx_app_rsp = rx_sar_to_rx_app_rsp.read();
-        net_app_read_data_rsp.write(NetAXISAppReadRsp(rx_app_rsp.session_id, rx_app_role_id));
+        RxSarAppReqRsp    rx_app_rsp = rx_sar_to_rx_app_rsp.read();
+        NetAXISAppReadRsp net_app_rsp;
+        net_app_rsp.data = rx_app_rsp.session_id;
+        net_app_rsp.dest = rx_app_role_id;
+        net_app_read_data_rsp.write(net_app_rsp);
         // Update app read pointer
         rx_app_to_rx_sar_req.write(
             RxSarAppReqRsp(rx_app_rsp.session_id, rx_app_rsp.app_read + rx_app_read_length));
@@ -100,7 +112,7 @@ void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_read_da
       if (!rx_eng_to_rx_app_data.empty()) {
         rx_eng_to_rx_app_data.read(cur_word);
         // cur_word.dest = rx_app_role_id;  // assume the TDEST is assigned in Rx engine
-        rx_app_to_net_app_data.write(cur_word);
+        rx_app_to_net_app_data.write(cur_word.to_net_axis());
         if (cur_word.last) {
           fsm_state         = WAIT_NET_APP_DATA_REQ;
           net_app_data_lock = false;
@@ -113,18 +125,22 @@ void NetAppNotificationTdestHandler(stream<AppNotification> &       app_notifica
                                     stream<NetAXISAppNotification> &net_app_notification,
                                     stream<TcpSessionID> &          slookup_tdest_lookup_req,
                                     stream<NetAXISDest> &           slookup_tdest_lookup_rsp) {
-#pragma HLS PIPELINE II = 1
-
+#pragma HLS PIPELINE                     II = 1
+#pragma HLS INLINE                       off
+#pragma HLS INTERFACE axis register both port = net_app_notification
   static bool            tdest_req_lock = false;
   static AppNotification notify_reg;
 
   if (!app_notification_no_tdest.empty() && !tdest_req_lock) {
     notify_reg = app_notification_no_tdest.read();
-    slookup_tdest_lookup_req.write(notify_reg.session_id);
+    slookup_tdest_lookup_req.write(notify_reg.data.session_id);
     tdest_req_lock = true;
   } else if (!slookup_tdest_lookup_rsp.empty() && tdest_req_lock) {
-    NetAXISDest temp_role_id = slookup_tdest_lookup_rsp.read();
-    net_app_notification.write(NetAXISAppNotification(notify_reg, temp_role_id));
+    NetAXISDest            temp_role_id = slookup_tdest_lookup_rsp.read();
+    NetAXISAppNotification net_app_notify;
+    net_app_notify.data = notify_reg.data;
+    net_app_notify.dest = temp_role_id;
+    net_app_notification.write(net_app_notify);
     tdest_req_lock = false;
   }
 }
@@ -134,8 +150,8 @@ void rx_app_intf(
     stream<NetAXISListenPortReq> &net_app_to_rx_app_listen_port_req,
     stream<NetAXISListenPortRsp> &rx_app_to_net_app_listen_port_rsp,
     // rxapp - port table
-    stream<NetAXISListenPortReq> &rx_app_to_ptable_listen_port_req,
-    stream<NetAXISListenPortRsp> &ptable_to_rx_app_listen_port_rsp,
+    stream<ListenPortReq> &rx_app_to_ptable_listen_port_req,
+    stream<ListenPortRsp> &ptable_to_rx_app_listen_port_rsp,
     // not role - data handler
     stream<NetAXISAppReadReq> &net_app_read_data_req,
     stream<NetAXISAppReadRsp> &net_app_read_data_rsp,
@@ -143,8 +159,8 @@ void rx_app_intf(
     stream<RxSarAppReqRsp> &rx_app_to_rx_sar_req,
     stream<RxSarAppReqRsp> &rx_sar_to_rx_app_rsp,
     // data from rx engine to net app
-    stream<NetAXIS> &rx_eng_to_rx_app_data,
-    stream<NetAXIS> &rx_app_to_net_app_data,
+    stream<NetAXISWord> &rx_eng_to_rx_app_data,
+    stream<NetAXIS> &    rx_app_to_net_app_data,
 
     // net role app - notification
     // Rx engine to Rx app
@@ -155,15 +171,21 @@ void rx_app_intf(
     stream<TcpSessionID> &rx_app_to_slookup_tdest_lookup_req,
     stream<NetAXISDest> & slookup_to_rx_app_tdest_lookup_rsp,
     // appnotifacation to net app with TDEST
-    stream<NetAXISAppNotification> &net_app_notification_no_tdest
+    stream<NetAXISAppNotification> &net_app_notification
     // datamover read req/rsp,
     // TODO: currently not support this yet zelin 220509
     // #if !(TCP_RX_DDR_BYPASS)
     //     stream<DataMoverCmd> &rx_buffer_read_cmd,
     // #endif
 ) {
-#pragma HLS          INLINE
-#pragma HLS PIPELINE II = 1
+  // #pragma HLS DATAFLOW
+
+#pragma HLS INTERFACE axis register both port = net_app_to_rx_app_listen_port_req
+#pragma HLS INTERFACE axis register both port = rx_app_to_net_app_listen_port_rsp
+#pragma HLS INTERFACE axis register both port = net_app_read_data_req
+#pragma HLS INTERFACE axis register both port = net_app_read_data_rsp
+#pragma HLS INTERFACE axis register both port = rx_app_to_net_app_data
+#pragma HLS INTERFACE axis register both port = net_app_notification
 
   RxAppPortHandler(net_app_to_rx_app_listen_port_req,
                    rx_app_to_net_app_listen_port_rsp,
@@ -179,13 +201,13 @@ void rx_app_intf(
 
   // to be merged in Slookup controller for looking TDEST
   static stream<AppNotification> rx_app_notification_no_tdest("rx_app_notification_no_tdest");
-#pragma HLS STREAM variable = rx_app_notification_no_tdest depth    = 16
-#pragma HLS DATA_PACK                                      variable = rx_app_notification_no_tdest
+#pragma HLS STREAM variable = rx_app_notification_no_tdest depth = 16
+#pragma HLS aggregate variable = rx_app_notification_no_tdest compact = bit
   AxiStreamMerger(
       rx_eng_to_rx_app_notification, rtimer_to_rx_app_notification, rx_app_notification_no_tdest);
 
   NetAppNotificationTdestHandler(rx_app_notification_no_tdest,
-                                 net_app_notification_no_tdest,
+                                 net_app_notification,
                                  rx_app_to_slookup_tdest_lookup_req,
                                  slookup_to_rx_app_tdest_lookup_rsp);
 }
