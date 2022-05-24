@@ -5,11 +5,11 @@
 using namespace hls;
 using namespace std;
 
-void AxiStreamSplitter(stream<NetAXIS> &    output_ethernet_packets,
-                       stream<NetAXISWord> &arp_packets,
-                       stream<NetAXISWord> &icmp_packets,
-                       stream<NetAXISWord> &udp_packets,
-                       stream<NetAXISWord> &tcp_packets) {
+void AxiStreamSplitter(stream<NetAXIS> &output_ethernet_packets,
+                       stream<NetAXIS> &arp_packets,
+                       stream<NetAXIS> &icmp_packets,
+                       stream<NetAXIS> &udp_packets,
+                       stream<NetAXIS> &tcp_packets) {
   int packets_cnt      = 0;
   int arp_packets_cnt  = 0;
   int icmp_packets_cnt = 0;
@@ -56,13 +56,12 @@ void AxiStreamSplitter(stream<NetAXIS> &    output_ethernet_packets,
 }
 
 int main(int argc, char **argv) {
-  stream<NetAXISWord> input_ethernet_packets_read_in("input_ethernet_packets_read_in");
-  stream<NetAXISWord> input_golden_arp_packets_read_in("input_golden_arp_packets_read_in");
-  stream<NetAXISWord> input_golden_icmp_packets_read_in("input_golden_icmp_packets_read_in");
-  stream<NetAXISWord> input_golden_tcp_packets_read_in("input_golden_tcp_packets_read_in");
-  stream<NetAXISWord> input_golden_udp_packets_read_in("input_golden_udp_packets_read_in");
-
   stream<NetAXIS> input_ethernet_packets("input_ethernet_packets");
+  stream<NetAXIS> input_golden_arp_packets("input_golden_arp_packets");
+  stream<NetAXIS> input_golden_icmp_packets("input_golden_icmp_packets");
+  stream<NetAXIS> input_golden_tcp_packets("input_golden_tcp_packets");
+  stream<NetAXIS> input_golden_udp_packets("input_golden_udp_packets");
+
 
   char *input_file;
   char *golden_input_file_arp;
@@ -96,22 +95,21 @@ int main(int argc, char **argv) {
   asprintf(&output_file_udp_packets, "%s%s", output_file_prefix, "_udp.pcap");
 
   cout << "Read Ethernet Packets" << endl;
-  PcapToStream(input_file, false, input_ethernet_packets_read_in);
-  NetAXIStreamWordToNetAXIStream(input_ethernet_packets_read_in, input_ethernet_packets);
+  PcapToStream(input_file, false, input_ethernet_packets);
   cout << "Read ARP Packets" << endl;
-  PcapToStream(golden_input_file_arp, false, input_golden_arp_packets_read_in);
+  PcapToStream(golden_input_file_arp, false, input_golden_arp_packets);
   cout << "Read ICMP Packets" << endl;
-  PcapToStream(golden_input_file_icmp, true, input_golden_icmp_packets_read_in);
+  PcapToStream(golden_input_file_icmp, true, input_golden_icmp_packets);
   cout << "Read TCP Packets" << endl;
-  PcapToStream(golden_input_file_tcp, true, input_golden_tcp_packets_read_in);
+  PcapToStream(golden_input_file_tcp, true, input_golden_tcp_packets);
   cout << "Read UDP Packets" << endl;
-  PcapToStream(golden_input_file_udp, true, input_golden_udp_packets_read_in);
+  PcapToStream(golden_input_file_udp, true, input_golden_udp_packets);
 
-  stream<NetAXIS>     dut_output_ethernet_packets("dut_output_ethernet_packets");
-  stream<NetAXISWord> dut_output_arp_packets("dut_output_arp_packets");
-  stream<NetAXISWord> dut_output_icmp_packets("dut_output_icmp_packets");
-  stream<NetAXISWord> dut_output_udp_packets("dut_output_udp_packets");
-  stream<NetAXISWord> dut_output_tcp_packets("dut_output_tcp_packets");
+  stream<NetAXIS> dut_output_ethernet_packets("dut_output_ethernet_packets");
+  stream<NetAXIS> dut_output_arp_packets("dut_output_arp_packets");
+  stream<NetAXIS> dut_output_icmp_packets("dut_output_icmp_packets");
+  stream<NetAXIS> dut_output_udp_packets("dut_output_udp_packets");
+  stream<NetAXIS> dut_output_tcp_packets("dut_output_tcp_packets");
 
   for (int i = 0; i < 10000; i++) {
     PacketHandler(input_ethernet_packets, dut_output_ethernet_packets);
@@ -124,13 +122,13 @@ int main(int argc, char **argv) {
                     dut_output_tcp_packets);
   int error_packets = 0;
   error_packets +=
-      ComparePacpPacketsWithGolden(dut_output_arp_packets, input_golden_arp_packets_read_in, false);
-  error_packets += ComparePacpPacketsWithGolden(
-      dut_output_icmp_packets, input_golden_icmp_packets_read_in, false);
+      ComparePacpPacketsWithGolden(dut_output_arp_packets, input_golden_arp_packets, false);
   error_packets +=
-      ComparePacpPacketsWithGolden(dut_output_udp_packets, input_golden_udp_packets_read_in, false);
+      ComparePacpPacketsWithGolden(dut_output_icmp_packets, input_golden_icmp_packets, false);
   error_packets +=
-      ComparePacpPacketsWithGolden(dut_output_tcp_packets, input_golden_tcp_packets_read_in, false);
+      ComparePacpPacketsWithGolden(dut_output_udp_packets, input_golden_udp_packets, false);
+  error_packets +=
+      ComparePacpPacketsWithGolden(dut_output_tcp_packets, input_golden_tcp_packets, false);
 
   cout << "Error packets " << dec << error_packets << endl;
   return error_packets;

@@ -34,14 +34,16 @@ VIVADO_HLS_ARGS ?= $(HLS_SRC_DIR) $@ $(FPGA_PART) $(HLS_ACT) $(IP_REPO_DIR)
 
 
 
-project = toe \
-		iperf2_client \
-		echo_server \
-		arp_server \
-		ethernet_inserter \
+# project = toe \
+# 		iperf2_client \
+# 		echo_server \
+
+
+	project =	arp_server \
+		hash_table \
+		ethernet_header_inserter \
 		icmp_server \
 		packet_handler \
-		udp \
 		ack_delay \
 		close_timer \
 		event_engine \

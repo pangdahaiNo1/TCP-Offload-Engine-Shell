@@ -9,14 +9,14 @@
 using namespace std;
 using hls::stream;
 
-int LoadNetAXISFromFile(stream<NetAXISWord> &net_axis_stream, const string &file_name) {
+int LoadNetAXISFromFile(stream<NetAXIS> &net_axis_stream, const string &file_name) {
   std::ifstream axis_infile(file_name);
   if (!axis_infile.is_open()) {
     std::cout << "Error: could not open tcp input file." << std::endl;
     return -1;
   }
-  NetAXISWord one_data;
-  string one_data_data, one_data_id, one_data_user, one_data_dest, one_data_keep, one_data_last;
+  NetAXIS one_data;
+  string  one_data_data, one_data_id, one_data_user, one_data_dest, one_data_keep, one_data_last;
   while (axis_infile >> one_data_data >> one_data_dest >> one_data_keep >> one_data_last) {
     one_data.data = NetAXISData(one_data_data.c_str(), 16);
     // one_data.id   = NetAXISId(one_data_id.c_str(), 16);
@@ -31,10 +31,10 @@ int LoadNetAXISFromFile(stream<NetAXISWord> &net_axis_stream, const string &file
   return 0;
 }
 
-void SaveNetAXISToFile(stream<NetAXISWord> &net_axis_stream, const string &file_name) {
+void SaveNetAXISToFile(stream<NetAXIS> &net_axis_stream, const string &file_name) {
   std::ofstream axis_outfile(file_name);
   while (!net_axis_stream.empty()) {
-    NetAXISWord one_data;
+    NetAXIS one_data;
     net_axis_stream.read(one_data);
     axis_outfile << one_data.data.to_string(16);
     axis_outfile << " ";
@@ -53,16 +53,16 @@ void SaveNetAXISToFile(stream<NetAXISWord> &net_axis_stream, const string &file_
   axis_outfile.close();
 }
 
-int ComparePacpPacketsWithGolden(stream<NetAXISWord> &dut_packets,
-                                 stream<NetAXISWord> &golden_packets,
-                                 bool                 debug_all_bytes) {
+int ComparePacpPacketsWithGolden(stream<NetAXIS> &dut_packets,
+                                 stream<NetAXIS> &golden_packets,
+                                 bool             debug_all_bytes) {
   int  wordCount          = 0;
   int  packets            = 0;
   int  error_packets      = 0;
   bool error_packets_flag = false;
   while (!dut_packets.empty()) {
-    NetAXISWord curr_word;
-    NetAXISWord golden_word;
+    NetAXIS curr_word;
+    NetAXIS golden_word;
     dut_packets.read(curr_word);
     golden_packets.read(golden_word);
     int error = 0;

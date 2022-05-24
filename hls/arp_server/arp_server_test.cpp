@@ -25,11 +25,10 @@ int main(int argc, char **argv) {
   golden_output = argv[2];
 
   // Stream
-  stream<NetAXISWord>  arp_data_read_in("arp_data_read_in");
   stream<NetAXIS>      arp_data_in("arp_data_in");
   stream<NetAXIS>      arp_data_out("arp_data_out");
-  stream<NetAXISWord>  arp_data_out_golden("arp_data_out_golden");
-  stream<NetAXISWord>  arp_data_out_to_save("arp_data_out_to_save");
+  stream<NetAXIS>      arp_data_out_golden("arp_data_out_golden");
+  stream<NetAXIS>      arp_data_out_to_save("arp_data_out_to_save");
   stream<ap_uint<32> > macIpEncode_req("macIpEncode_req");
   stream<ArpTableRsp>  macIpEncode_rsp("macIpEncode_rsp");
   // config
@@ -39,10 +38,9 @@ int main(int argc, char **argv) {
   ap_uint<32> gateway_ip_addr = SwapByte<32>(0xC0A80001);
   ap_uint<32> subnet_mask     = SwapByte<32>(0xFFFFFF00);
   // read ARP request
-  PcapToStream(input_file, false, arp_data_read_in);
+  PcapToStream(input_file, false, arp_data_in);
   // read golden ARP response
   PcapToStream(golden_output, false, arp_data_out_golden);
-  NetAXIStreamWordToNetAXIStream(arp_data_read_in, arp_data_in);
   // Clear ARP table
   initTable();
 

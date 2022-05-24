@@ -5,9 +5,9 @@
 
 using std::cout;
 using std::endl;
-stream<NetAXISWord> input_data("data_read_from_pcap");
-stream<NetAXISWord> packet_without_ethernet("packet_without_ethernet");
-NetAXISWord         transaction;
+stream<NetAXIS> input_data("data_read_from_pcap");
+stream<NetAXIS> packet_without_ethernet("packet_without_ethernet");
+NetAXIS         transaction;
 
 void PcapPacketHandler(unsigned char *     user_data,
                        struct pcap_pkthdr *packet_header,
@@ -72,10 +72,10 @@ void PcapPacketHandler(unsigned char *     user_data,
   }
 }
 
-void RemoveEthernet(stream<NetAXISWord> &data_in, stream<NetAXISWord> &data_out) {
-  NetAXISWord curr_word;
-  NetAXISWord prev_word;
-  NetAXISWord send_word;
+void RemoveEthernet(stream<NetAXIS> &data_in, stream<NetAXIS> &data_out) {
+  NetAXIS curr_word;
+  NetAXIS prev_word;
+  NetAXIS send_word;
 
   static int pkt_count  = 0;
   int        word_count = 0;
@@ -170,9 +170,9 @@ int OpenFile(char *file_to_load, bool remove_file_ethernet_header) {
 void PcapToStream(char *file_to_load,                 // pcapfilename
                   bool  remove_file_ethernet_header,  // 0: No ethernet in the packet, 1:
                                                       // ethernet include
-                  stream<NetAXISWord> &output_data    // output data
+                  stream<NetAXIS> &output_data        // output data
 ) {
-  NetAXISWord curr_word;
+  NetAXIS curr_word;
 
   if (OpenFile(file_to_load, remove_file_ethernet_header) == 0) {
     while (!input_data.empty()) {
@@ -189,15 +189,15 @@ void PcapToStream(char *file_to_load,                 // pcapfilename
 void PcapToStreamStep(char *file_to_load,                 // pcapfilename
                       bool  remove_file_ethernet_header,  // 0: No ethernet in the packet, 1:
                                                           // ethernet include
-                      bool &               end_of_data,
-                      stream<NetAXISWord> &output_data  // output data
+                      bool &           end_of_data,
+                      stream<NetAXIS> &output_data  // output data
 ) {
   static bool error_opening_file = false;
   static bool file_open          = false;
 
-  stream<NetAXISWord> currWord_Stream("data_to_remove_ethernet");
+  stream<NetAXIS> currWord_Stream("data_to_remove_ethernet");
 
-  NetAXISWord curr_word;
+  NetAXIS curr_word;
 
   if (!file_open) {
     file_open = true;
@@ -237,13 +237,13 @@ int StreamToPcap(const char *file2save,                      // pcapfilename
                                                              // ethernet include
                  bool using_microseconds_precision,          // 1: microseconds precision 0:
                                                              // nanoseconds precision
-                 stream<NetAXISWord> &input_data,            // output data
-                 bool                 close_file) {
+                 stream<NetAXIS> &input_data,                // output data
+                 bool             close_file) {
   bool file_open              = false;
   int  pcap_open_write_return = 0;
 
-  NetAXISWord curr_word;
-  uint8_t     ethernet_header[14] = {
+  NetAXIS curr_word;
+  uint8_t ethernet_header[14] = {
       0x90, 0xE2, 0xBA, 0x84, 0x7D, 0x6C, 0x0, 0x0A, 0x35, 0x02, 0x9D, 0xE5, 0x08, 0x00};
   uint8_t packet[65536] = {0};  // Include the Ethernet header
   int     pointer       = 0;

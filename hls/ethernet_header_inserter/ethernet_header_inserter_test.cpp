@@ -14,13 +14,10 @@ int main(int argc, char **argv) {
   ap_uint<32> gateway_ip_addr    = SwapByte<32>(0xC0A80001);
   ap_uint<32> subnet_mask        = SwapByte<32>(0xFFFFFF00);
 
-  stream<NetAXISWord> icmp_rx_data_read_in("icmp_rx_data_read_in");
-  stream<NetAXIS>     icmp_rx_data("icmp_rx_data");
-  stream<NetAXIS>     icmp_tx_data("icmp_tx_data");
-  stream<NetAXIS>     eth_icmp_tx_data("eth_icmp_tx_data");
-  stream<NetAXISWord> eth_icmp_tx_data_for_compare("eth_icmp_tx_data_for_compare");
-  stream<NetAXISWord> eth_icmp_tx_golden_data_read_in("eth_icmp_tx_golden_data_read_in");
-  stream<NetAXIS>     eth_icmp_tx_golden_data("eth_icmp_tx_golden_data");
+  stream<NetAXIS> icmp_rx_data("icmp_rx_data");
+  stream<NetAXIS> icmp_tx_data("icmp_tx_data");
+  stream<NetAXIS> eth_icmp_tx_data("eth_icmp_tx_data");
+  stream<NetAXIS> eth_icmp_tx_golden_data("eth_icmp_tx_golden_data");
 
   if (argc < 3) {
     cerr << "[ERROR] missing arguments " __FILE__ << " <INPUT_PCAP_FILE> <GOLDEN_PCAP_FILE> "
@@ -30,9 +27,8 @@ int main(int argc, char **argv) {
   }
   char *icmp_rx_file        = argv[1];
   char *icmp_tx_golden_file = argv[2];
-  PcapToStream(icmp_rx_file, true, icmp_rx_data_read_in);
-  NetAXIStreamWordToNetAXIStream(icmp_rx_data_read_in, icmp_rx_data);
-  PcapToStream(icmp_tx_golden_file, false, eth_icmp_tx_golden_data_read_in);
+  PcapToStream(icmp_rx_file, true, icmp_rx_data);
+  PcapToStream(icmp_tx_golden_file, false, eth_icmp_tx_golden_data);
 
   stream<ArpTableRsp>  arp_table_rsp;
   stream<ap_uint<32> > arp_table_req;
@@ -52,8 +48,7 @@ int main(int argc, char **argv) {
       arp_table_rsp.write(ArpTableRsp(intel_nic_mac_addr, 1));
     }
   }
-  NetAXIStreamToNetAXIStreamWord(eth_icmp_tx_data, eth_icmp_tx_data_for_compare);
-  ComparePacpPacketsWithGolden(eth_icmp_tx_data_for_compare, eth_icmp_tx_golden_data_read_in, true);
+  ComparePacpPacketsWithGolden(eth_icmp_tx_data, eth_icmp_tx_golden_data, true);
   // SaveNetAXISToFile(eth_icmp_tx_data, "eth_icmp_tx_data.dat");
   // SaveNetAXISToFile(eth_icmp_tx_golden_data, "eth_icmp_tx_golden_data.dat");
   return 0;

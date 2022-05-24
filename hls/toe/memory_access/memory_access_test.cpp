@@ -56,7 +56,7 @@ void EmptyTxReadDataFifos(std::ofstream &  out_stream,
   }
 }
 
-void TestTxWriteToMem(stream<NetAXISWord> &input_tcp_packets) {
+void TestTxWriteToMem(stream<NetAXIS> &input_tcp_packets) {
   std::ofstream outputFile;
 
   outputFile.open("./out_write_data.dat");
@@ -69,7 +69,7 @@ void TestTxWriteToMem(stream<NetAXISWord> &input_tcp_packets) {
   stream<NetAXIS>      mover_mem_data_out;
   stream<DataMoverCmd> mover_mem_cmd_out;
 
-  NetAXISWord cur_word{};
+  NetAXIS cur_word{};
   // ip packet length, because it remove the eth header
   TcpSessionBuffer cur_word_length = 0;
   DataMoverCmd     cur_cmd         = DataMoverCmd{};
@@ -194,7 +194,7 @@ void TestMockMem() {
   // cout << mem.DumpMockMemory() << endl;
 }
 
-void TestTxMem(stream<NetAXISWord> &input_golden_packets, stream<NetAXISWord> &read_mem_packets) {
+void TestTxMem(stream<NetAXIS> &input_golden_packets, stream<NetAXISWord> &read_mem_packets) {
   // mock mem
   MockMem mock_mem = MockMem();
 
@@ -207,7 +207,7 @@ void TestTxMem(stream<NetAXISWord> &input_golden_packets, stream<NetAXISWord> &r
   // fifo
   stream<MemBufferRWCmd> mem_cmd_fifo("mem_cmd_fifo");
 
-  NetAXISWord      cur_word{};
+  NetAXIS      cur_word{};
   TcpSessionBuffer cur_word_length = 0;
   ap_uint<32>      saddr           = 0;
   while (sim_cycle < 200) {
@@ -290,10 +290,11 @@ int main(int argc, char **argv) {
   }
   char *input_tcp_pcap_file = argv[1];
   cout << "Read TCP Packets from " << input_tcp_pcap_file << endl;
-  stream<NetAXISWord> input_tcp_packets("input_tcp_packets");
-  stream<NetAXISWord> input_tcp_packets2("input_tcp_packets2");
-  stream<NetAXISWord> input_tcp_packets3("input_tcp_packets3");
+  stream<NetAXIS> input_tcp_packets("input_tcp_packets");
+  stream<NetAXIS> input_tcp_packets2("input_tcp_packets2");
+  stream<NetAXIS> input_tcp_packets3("input_tcp_packets3");
   stream<NetAXISWord> read_mem_tcp_packets("read_mem_tcp_packets");
+  stream<NetAXIS> read_mem_tcp_packets_for_compare("read_mem_tcp_packets");
   PcapToStream(input_tcp_pcap_file, true, input_tcp_packets);
   // tcp header + ip header + eth header = 74B
   PcapToStream(input_tcp_pcap_file, false, input_tcp_packets2);
@@ -304,7 +305,8 @@ int main(int argc, char **argv) {
   TestTxEngReadCmd();
   TestMockMem();
   TestTxMem(input_tcp_packets2, read_mem_tcp_packets);
-  ComparePacpPacketsWithGolden(input_tcp_packets3, read_mem_tcp_packets, true);
+  NetAXIStreamWordToNetAXIStream(read_mem_tcp_packets, read_mem_tcp_packets_for_compare);
+  ComparePacpPacketsWithGolden(input_tcp_packets3, read_mem_tcp_packets_for_compare, true);
 
   return 0;
 }

@@ -1,9 +1,7 @@
-
-#include "ap_int.h"
-#include "toe/toe_intf.hpp"
-
 #ifndef _ARP_SERVER_HPP_
 #define _ARP_SERVER_HPP_
+
+#include "toe/toe_intf.hpp"
 
 using namespace hls;
 
