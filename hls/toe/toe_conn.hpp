@@ -177,11 +177,11 @@ struct PtableToRxEngRsp {
 #endif
 };
 
-struct OpenSessionStatusNoTDEST {
+struct OpenConnRspNoTDEST {
   TcpSessionID session_id;
   bool         success;
-  OpenSessionStatusNoTDEST() {}
-  OpenSessionStatusNoTDEST(TcpSessionID id, bool success) : session_id(id), success(success) {}
+  OpenConnRspNoTDEST() {}
+  OpenConnRspNoTDEST(TcpSessionID id, bool success) : session_id(id), success(success) {}
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
@@ -193,12 +193,13 @@ struct OpenSessionStatusNoTDEST {
 };
 
 // When a session established, notify Tx app, active open
-typedef hls::axis<OpenSessionStatusNoTDEST, 0, 0, NET_TDEST_WIDTH> NetAXISAppOpenConnRsp;
+typedef hls::axis<OpenConnRspNoTDEST, 0, 0, NET_TDEST_WIDTH> NetAXISAppOpenConnRsp;
 
 struct AppOpenConnRsp {
-  OpenSessionStatusNoTDEST data;
-  NetAXISDest              dest;
+  OpenConnRspNoTDEST data;
+  NetAXISDest        dest;
   AppOpenConnRsp() {}
+  AppOpenConnRsp(OpenConnRspNoTDEST rsp, NetAXISDest dest) : data(rsp), dest(dest) {}
   AppOpenConnRsp(const NetAXISAppOpenConnRsp &net_axis) {
 #pragma HLS INLINE
     data = net_axis.data;
@@ -254,20 +255,22 @@ struct NewClientNotificationNoTDEST {
 };
 
 // When a session established, notify app new client info
-typedef hls::axis<NewClientNotificationNoTDEST, 0, 0, NET_TDEST_WIDTH> NetAXISNewClientNotificaion;
+typedef hls::axis<NewClientNotificationNoTDEST, 0, 0, NET_TDEST_WIDTH> NetAXISNewClientNotification;
 
-struct NewClientNotificaion {
+struct NewClientNotification {
   NewClientNotificationNoTDEST data;
   NetAXISDest                  dest;
-  NewClientNotificaion() {}
-  NewClientNotificaion(const NetAXISNewClientNotificaion &net_axis) {
+  NewClientNotification() {}
+  NewClientNotification(NewClientNotificationNoTDEST data, NetAXISDest dest)
+      : data(data), dest(dest) {}
+  NewClientNotification(const NetAXISNewClientNotification &net_axis) {
 #pragma HLS INLINE
     data = net_axis.data;
     dest = net_axis.dest;
   }
-  NetAXISNewClientNotificaion to_net_axis() {
+  NetAXISNewClientNotification to_net_axis() {
 #pragma HLS INLINE
-    NetAXISNewClientNotificaion new_axis;
+    NetAXISNewClientNotification new_axis;
     new_axis.data = data;
     new_axis.dest = dest;
     return new_axis;
