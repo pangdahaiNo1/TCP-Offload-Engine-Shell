@@ -19,6 +19,11 @@ void                 event_engine(stream<Event> &         tx_app_to_event_eng_se
                                   stream<ap_uint<1> > &   tx_eng_read_count_fifo) {
 #pragma HLS PIPELINE II = 1
 
+#pragma HLS aggregate variable = tx_app_to_event_eng_set_event compact = bit
+#pragma HLS aggregate variable = rx_eng_to_event_eng_set_event compact = bit
+#pragma HLS aggregate variable = timer_to_event_eng_set_event compact = bit
+#pragma HLS aggregate variable = event_eng_to_ack_delay_event compact = bit
+
   static ap_uint<8> eveng_write_event_count     = 0;
   static ap_uint<8> eveng_ack_delay_read_count  = 0;  // depends on FIFO depth
   static ap_uint<8> eveng_ack_delay_write_count = 0;  // depends on FIFO depth

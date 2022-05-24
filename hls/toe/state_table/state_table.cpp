@@ -29,8 +29,8 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_req,
 #pragma HLS PIPELINE II = 1
 
   static SessionState state_table[TCP_MAX_SESSIONS];
-#pragma HLS RESOURCE variable = state_table core = RAM_2P_BRAM
-#pragma HLS DEPENDENCE variable                  = state_table inter false
+#pragma HLS bind_storage variable = state_table type = RAM_2P impl = BRAM
+#pragma HLS DEPENDENCE variable                                    = state_table inter false
 
   static TcpSessionID tx_app_rw_req_session_id;
   static TcpSessionID rx_eng_rw_req_session_id;

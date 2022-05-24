@@ -12,15 +12,13 @@ using namespace hls;
 void                  probe_timer(stream<TcpSessionID> &rx_eng_to_timer_clear_ptimer,
                                   stream<TcpSessionID> &tx_eng_to_timer_set_ptimer,
                                   stream<Event> &       ptimer_to_event_eng_set_event) {
-#pragma HLS DATA_PACK variable = rx_eng_to_timer_clear_ptimer
-#pragma HLS DATA_PACK variable = tx_eng_to_timer_set_ptimer
-#pragma HLS DATA_PACK variable = ptimer_to_event_eng_set_event
+#pragma HLS aggregate variable = ptimer_to_event_eng_set_event compact = bit
 
 #pragma HLS PIPELINE II = 1
 
   static ProbeTimerEntry probe_timer_table[TCP_MAX_SESSIONS];
-#pragma HLS RESOURCE variable = probe_timer_table core     = RAM_T2P_BRAM
-#pragma HLS DATA_PACK                             variable = probe_timer_table
+#pragma HLS bind_storage variable = probe_timer_table type = RAM_T2P impl = BRAM
+#pragma HLS aggregate variable = probe_timer_table compact = bit
 #pragma HLS DEPENDENCE variable                            = probe_timer_table inter false
 
   static TcpSessionID ptimer_cur_check_session_id = 0;

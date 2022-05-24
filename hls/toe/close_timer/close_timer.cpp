@@ -13,12 +13,9 @@ void                 close_timer(stream<TcpSessionID> &rx_eng_to_timer_set_ctime
                                  stream<TcpSessionID> &ctimer_to_sttable_release_state) {
 #pragma HLS PIPELINE II = 1
 
-#pragma HLS DATA_PACK variable = rx_eng_to_timer_set_ctimer
-#pragma HLS DATA_PACK variable = ctimer_to_sttable_release_state
-
   static CloseTimerEntry close_timer_table[TCP_MAX_SESSIONS];
-#pragma HLS RESOURCE variable = close_timer_table core     = RAM_T2P_BRAM
-#pragma HLS DATA_PACK                             variable = close_timer_table
+#pragma HLS bind_storage variable = close_timer_table type = RAM_T2P impl = BRAM
+#pragma HLS aggregate variable = close_timer_table compact = bit
 #pragma HLS DEPENDENCE variable                            = close_timer_table inter false
 
   static TcpSessionID ctimer_cur_session_id  = 0;

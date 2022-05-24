@@ -23,8 +23,8 @@ void                 rx_sar_table(stream<RxSarAppReqRsp> & rx_app_to_rx_sar_req,
 #pragma HLS PIPELINE II = 1
 
   static RxSarTableEntry rx_sar_table[TCP_MAX_SESSIONS];
-#pragma HLS RESOURCE variable = rx_sar_table core = RAM_1P_BRAM
-#pragma HLS DEPENDENCE variable                   = rx_sar_table inter false
+#pragma HLS bind_storage variable = rx_sar_table type = RAM_1P impl = BRAM
+#pragma HLS DEPENDENCE variable                                     = rx_sar_table inter false
 
   // Read only access from the Tx Engine
   if (!tx_eng_to_rx_sar_lup_req.empty()) {

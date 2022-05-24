@@ -207,7 +207,7 @@ void TestTxMem(stream<NetAXIS> &input_golden_packets, stream<NetAXISWord> &read_
   // fifo
   stream<MemBufferRWCmd> mem_cmd_fifo("mem_cmd_fifo");
 
-  NetAXIS      cur_word{};
+  NetAXIS          cur_word{};
   TcpSessionBuffer cur_word_length = 0;
   ap_uint<32>      saddr           = 0;
   while (sim_cycle < 200) {
@@ -290,11 +290,11 @@ int main(int argc, char **argv) {
   }
   char *input_tcp_pcap_file = argv[1];
   cout << "Read TCP Packets from " << input_tcp_pcap_file << endl;
-  stream<NetAXIS> input_tcp_packets("input_tcp_packets");
-  stream<NetAXIS> input_tcp_packets2("input_tcp_packets2");
-  stream<NetAXIS> input_tcp_packets3("input_tcp_packets3");
+  stream<NetAXIS>     input_tcp_packets("input_tcp_packets");
+  stream<NetAXIS>     input_tcp_packets2("input_tcp_packets2");
+  stream<NetAXIS>     input_tcp_packets3("input_tcp_packets3");
   stream<NetAXISWord> read_mem_tcp_packets("read_mem_tcp_packets");
-  stream<NetAXIS> read_mem_tcp_packets_for_compare("read_mem_tcp_packets");
+  stream<NetAXIS>     read_mem_tcp_packets_for_compare("read_mem_tcp_packets");
   PcapToStream(input_tcp_pcap_file, true, input_tcp_packets);
   // tcp header + ip header + eth header = 74B
   PcapToStream(input_tcp_pcap_file, false, input_tcp_packets2);

@@ -24,15 +24,15 @@ void timer_wrapper(
 #pragma HLS STREAM variable = ctimer_to_sttable_release_state depth = 4
 
   static stream<Event> rtimer_to_event_eng_set_event("rtimer_to_event_eng_set_event");
-#pragma HLS STREAM variable = rtimer_to_event_eng_set_event depth    = 4
-#pragma HLS DATA_PACK                                       variable = rtimer_to_event_eng_set_event
+#pragma HLS STREAM variable = rtimer_to_event_eng_set_event depth = 4
+#pragma HLS aggregate variable = rtimer_to_event_eng_set_event compact = bit
 
   static stream<TcpSessionID> rtimer_to_sttable_release_state("rtimer_to_sttable_release_state");
 #pragma HLS STREAM variable = rtimer_to_sttable_release_state depth = 4
 
   static stream<Event> ptimer_to_event_eng_set_event("ptimer_to_event_eng_set_event");
-#pragma HLS STREAM variable = ptimer_to_event_eng_set_event depth    = 4
-#pragma HLS DATA_PACK                                       variable = ptimer_to_event_eng_set_event
+#pragma HLS STREAM variable = ptimer_to_event_eng_set_event depth = 4
+#pragma HLS aggregate variable = ptimer_to_event_eng_set_event compact = bit
 
   close_timer(rx_eng_to_timer_set_ctimer, ctimer_to_sttable_release_state);
 

@@ -27,16 +27,16 @@ void                 retransmit_timer(stream<RxEngToRetransTimerReq> &rx_eng_to_
 #pragma HLS PIPELINE II = 1
   //#pragma HLS INLINE
 
-#pragma HLS DATA_PACK variable = rx_eng_to_timer_clear_rtimer
-#pragma HLS DATA_PACK variable = tx_eng_to_timer_set_rtimer
-#pragma HLS DATA_PACK variable = rtimer_to_event_eng_set_event
-#pragma HLS DATA_PACK variable = rtimer_to_state_table_release_state
-#pragma HLS DATA_PACK variable = rtimer_to_rx_app_notification
-  //#pragma HLS DATA_PACK variable = rtimer_to_tx_app_notification
+#pragma HLS aggregate variable = rx_eng_to_timer_clear_rtimer compact = bit
+#pragma HLS aggregate variable = tx_eng_to_timer_set_rtimer compact = bit
+#pragma HLS aggregate variable = rtimer_to_event_eng_set_event compact = bit
+#pragma HLS aggregate variable = rtimer_to_state_table_release_state compact = bit
+#pragma HLS aggregate variable = rtimer_to_rx_app_notification compact = bit
+#pragma HLS aggregate variable = rtimer_to_tx_app_notification compact = bit
 
   static RetransmitTimerEntry retrans_timer_table[TCP_MAX_SESSIONS];
-#pragma HLS RESOURCE variable = retrans_timer_table core     = RAM_T2P_BRAM
-#pragma HLS DATA_PACK                               variable = retrans_timer_table
+#pragma HLS bind_storage variable = retrans_timer_table type = RAM_T2P impl = BRAM
+#pragma HLS aggregate variable = retrans_timer_table compact = bit
 #pragma HLS DEPENDENCE variable                              = retrans_timer_table inter false
 
   static TcpSessionID           rtimer_cur_session_id  = 0;
