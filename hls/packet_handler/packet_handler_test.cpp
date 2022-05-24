@@ -62,7 +62,6 @@ int main(int argc, char **argv) {
   stream<NetAXIS> input_golden_tcp_packets("input_golden_tcp_packets");
   stream<NetAXIS> input_golden_udp_packets("input_golden_udp_packets");
 
-
   char *input_file;
   char *golden_input_file_arp;
   char *golden_input_file_icmp;
