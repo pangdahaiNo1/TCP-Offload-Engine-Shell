@@ -1,9 +1,8 @@
-#ifndef _TCP_CONN_
-#define _TCP_CONN_
+#pragma once
 
 #include "toe/toe_config.hpp"
+//#include "toe/toe_intf.hpp"
 #include "utils/axi_utils.hpp"
-
 typedef ap_uint<16> TcpSessionID;
 // only use in little endian
 typedef ap_uint<16>                TcpPortNumber;
@@ -76,18 +75,48 @@ struct PortTableEntry {
   bool        is_open;
   NetAXISDest role_id;
 };
+// TOE interface
+typedef hls::axis<TcpSessionID, 0, 0, NET_TDEST_WIDTH> NetAXISListenPortReq;
 
-struct ListenPortRsp {
+// for inner connection
+struct ListenPortReq {
+  TcpPortNumber data;
+  NetAXISDest   dest;
+  ListenPortReq() {}
+  ListenPortReq(const NetAXISListenPortReq &net_axis) {
+#pragma HLS INLINE
+    data = net_axis.data;
+    dest = net_axis.dest;
+  }
+  NetAXISListenPortReq to_net_axis() {
+#pragma HLS INLINE
+    NetAXISListenPortReq new_axis;
+    new_axis.data = data;
+    new_axis.dest = dest;
+    return new_axis;
+  }
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "Listen Port Req: " << data.to_string(16) << "\t";
+    sstream << "Dest: " << dest.to_string(16) << "\t";
+    return sstream.str();
+  }
+#endif
+};
+
+// for inner connection
+struct ListenPortRspNoTDEST {
   ap_uint<16> port_number;
   bool        open_successfully;
   bool        wrong_port_number;
   // already open may open by current role, or other role
   bool already_open;
-  ListenPortRsp() {}
-  ListenPortRsp(bool          open_successfully,
-                bool          wrong_port_number,
-                bool          already_open,
-                TcpPortNumber port_number)
+  ListenPortRspNoTDEST() {}
+  ListenPortRspNoTDEST(bool          open_successfully,
+                       bool          wrong_port_number,
+                       bool          already_open,
+                       TcpPortNumber port_number)
       : open_successfully(open_successfully)
       , wrong_port_number(wrong_port_number)
       , already_open(already_open)
@@ -99,6 +128,35 @@ struct ListenPortRsp {
             << ((this->open_successfully) ? "Yes." : "No.") << "\tWrong port number "
             << ((this->wrong_port_number) ? "Yes." : "No.") << "\tThe port is already open "
             << ((this->already_open) ? "Yes." : "No.");
+    return sstream.str();
+  }
+#endif
+};
+
+// TOE interface
+typedef hls::axis<ListenPortRspNoTDEST, 0, 0, NET_TDEST_WIDTH> NetAXISListenPortRsp;
+// inner connection
+struct ListenPortRsp {
+  ListenPortRspNoTDEST data;
+  NetAXISDest          dest;
+  ListenPortRsp() {}
+  ListenPortRsp(const NetAXISListenPortRsp &net_axis) {
+#pragma HLS INLINE
+    data = net_axis.data;
+    dest = net_axis.dest;
+  }
+  NetAXISListenPortRsp to_net_axis() {
+#pragma HLS INLINE
+    NetAXISListenPortRsp new_axis;
+    new_axis.data = data;
+    new_axis.dest = dest;
+    return new_axis;
+  }
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "Listen Port Rsp: " << data.to_string() << "\t";
+    sstream << "Dest: " << dest.to_string(16) << "\t";
     return sstream.str();
   }
 #endif
@@ -119,11 +177,11 @@ struct PtableToRxEngRsp {
 #endif
 };
 
-struct OpenSessionStatus {
+struct OpenSessionStatusNoTDEST {
   TcpSessionID session_id;
   bool         success;
-  OpenSessionStatus() {}
-  OpenSessionStatus(TcpSessionID id, bool success) : session_id(id), success(success) {}
+  OpenSessionStatusNoTDEST() {}
+  OpenSessionStatusNoTDEST(TcpSessionID id, bool success) : session_id(id), success(success) {}
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
@@ -134,7 +192,36 @@ struct OpenSessionStatus {
 #endif
 };
 
-struct NewClientNotification {
+// When a session established, notify Tx app, active open
+typedef hls::axis<OpenSessionStatusNoTDEST, 0, 0, NET_TDEST_WIDTH> NetAXISAppOpenConnRsp;
+
+struct AppOpenConnRsp {
+  OpenSessionStatusNoTDEST data;
+  NetAXISDest              dest;
+  AppOpenConnRsp() {}
+  AppOpenConnRsp(const NetAXISAppOpenConnRsp &net_axis) {
+#pragma HLS INLINE
+    data = net_axis.data;
+    dest = net_axis.dest;
+  }
+  NetAXISAppOpenConnRsp to_net_axis() {
+#pragma HLS INLINE
+    NetAXISAppOpenConnRsp new_axis;
+    new_axis.data = data;
+    new_axis.dest = dest;
+    return new_axis;
+  }
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "OpenSessionSts: " << data.to_string() << "\t";
+    sstream << "Dest: " << dest.to_string(16) << "\t";
+    return sstream.str();
+  }
+#endif
+};
+
+struct NewClientNotificationNoTDEST {
   TcpSessionID session_id;  // Tells to the tx application the ID
   /*
    * not used for the time being, tells to the app the negotiated buffer size.
@@ -149,8 +236,8 @@ struct NewClientNotification {
   bool tcp_nodelay;
   bool tcp_buffer_is_empty;  // Tells when the Tx buffer is empty. It is also used as a
                              // way to indicate that a new connection was opened.
-  NewClientNotification() {}
-  NewClientNotification(
+  NewClientNotificationNoTDEST() {}
+  NewClientNotificationNoTDEST(
       TcpSessionID id, ap_uint<8> buffersize, ap_uint<11> mss, bool tcp_nodelay, bool buf_empty)
       : session_id(id)
       , max_segment_size(mss)
@@ -166,8 +253,86 @@ struct NewClientNotification {
 #endif
 };
 
+// When a session established, notify app new client info
+typedef hls::axis<NewClientNotificationNoTDEST, 0, 0, NET_TDEST_WIDTH> NetAXISNewClientNotificaion;
+
+struct NewClientNotificaion {
+  NewClientNotificationNoTDEST data;
+  NetAXISDest                  dest;
+  NewClientNotificaion() {}
+  NewClientNotificaion(const NetAXISNewClientNotificaion &net_axis) {
+#pragma HLS INLINE
+    data = net_axis.data;
+    dest = net_axis.dest;
+  }
+  NetAXISNewClientNotificaion to_net_axis() {
+#pragma HLS INLINE
+    NetAXISNewClientNotificaion new_axis;
+    new_axis.data = data;
+    new_axis.dest = dest;
+    return new_axis;
+  }
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "PassiveOpenSessionSts: " << data.to_string() << "\t";
+    sstream << "Dest: " << dest.to_string(16) << "\t";
+    return sstream.str();
+  }
+#endif
+};
+
+// Tx app use session id to close session
+typedef hls::axis<TcpSessionID, 0, 0, NET_TDEST_WIDTH> NetAXISAppCloseConnReq;
+
+struct AppCloseConnReq {
+  TcpSessionID data;
+  NetAXISDest  dest;
+  AppCloseConnReq() {}
+  AppCloseConnReq(const NetAXISAppCloseConnReq &net_axis) {
+#pragma HLS INLINE
+    data = net_axis.data;
+    dest = net_axis.dest;
+  }
+  NetAXISAppCloseConnReq to_net_axis() {
+#pragma HLS INLINE
+    NetAXISAppCloseConnReq new_axis;
+    new_axis.data = data;
+    new_axis.dest = dest;
+    return new_axis;
+  }
+};
+
+// net app want to sending data, notify the tx app intf the data length and session id
+// data = length, id = session id, dest = role id
+typedef hls::axis<TcpSessionBuffer, 0, 16, NET_TDEST_WIDTH> NetAXISAppTransDataReq;
+
+struct AppTransDataReq {
+  TcpSessionBuffer data;  // length
+  TcpSessionID     id;    // session id
+  NetAXISDest      dest;  // role id
+  AppTransDataReq() {}
+  AppTransDataReq(TcpSessionBuffer length, TcpSessionID id, NetAXISDest dest)
+      : data(length), id(id), dest(dest) {}
+
+  AppTransDataReq(const NetAXISAppTransDataReq &net_axis) {
+#pragma HLS INLINE
+    data = net_axis.data;
+    id   = net_axis.id;
+    dest = net_axis.dest;
+  }
+  NetAXISAppTransDataReq to_net_axis() {
+#pragma HLS INLINE
+    NetAXISAppTransDataReq new_axis;
+    new_axis.data = data;
+    new_axis.id   = id;
+    new_axis.dest = dest;
+    return new_axis;
+  }
+};
+
 enum TxAppTransDataError { NO_ERROR, ERROR_NOCONNECTION, ERROR_NOSPACE, ERROR_WINDOW };
-struct AppTransDataRsp {
+struct AppTransDataRspNoTDEST {
   TxAppTransDataError error;
   TcpSessionBuffer    remaining_space;
   ap_uint<16>         length;
@@ -177,6 +342,35 @@ struct AppTransDataRsp {
     sstream << "TransError: " << error << "\t";
     sstream << "RemainSpace: " << remaining_space.to_string(16) << "\t";
     sstream << "TransLength: " << length.to_string(16) << "\t";
+    return sstream.str();
+  }
+#endif
+};
+
+// tx app interface check the net app trans data request, and response to net app
+typedef hls::axis<AppTransDataRspNoTDEST, 0, 0, NET_TDEST_WIDTH> NetAXISAppTransDataRsp;
+
+struct AppTransDataRsp {
+  AppTransDataRspNoTDEST data;
+  NetAXISDest            dest;
+  AppTransDataRsp(AppTransDataRspNoTDEST rsp, NetAXISDest role_id) : data(rsp), dest(role_id) {}
+
+  AppTransDataRsp(const NetAXISAppTransDataRsp &net_axis) {
+#pragma HLS INLINE
+    data = net_axis.data;
+    dest = net_axis.dest;
+  }
+  NetAXISAppTransDataRsp to_axis() {
+    NetAXISAppTransDataRsp new_axis;
+    new_axis.data = data;
+    new_axis.dest = dest;
+    return new_axis;
+  }
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "TransRsp " << data.to_string() << "\t";
+    sstream << "Dest: " << dest.to_string(16) << "\t";
     return sstream.str();
   }
 #endif
@@ -638,20 +832,21 @@ struct TxSarToTxAppRsp {
 #endif
 };
 
-struct AppNotification {
+struct AppNotificationNoTDEST {
   TcpSessionID  session_id;
   ap_uint<16>   length;
   IpAddr        ip_addr;
   TcpPortNumber dst_tcp_port;
   bool          closed;
-  AppNotification() {}
-  AppNotification(TcpSessionID id, bool closed)
+  AppNotificationNoTDEST() {}
+  AppNotificationNoTDEST(TcpSessionID id, bool closed)
       : session_id(id), length(0), ip_addr(0), dst_tcp_port(0), closed(closed) {}
-  AppNotification(TcpSessionID id, ap_uint<16> len, IpAddr addr, ap_uint<16> port)
+  AppNotificationNoTDEST(TcpSessionID id, ap_uint<16> len, IpAddr addr, ap_uint<16> port)
       : session_id(id), length(len), ip_addr(addr), dst_tcp_port(port), closed(false) {}
-  AppNotification(TcpSessionID id, IpAddr addr, ap_uint<16> port, bool closed)
+  AppNotificationNoTDEST(TcpSessionID id, IpAddr addr, ap_uint<16> port, bool closed)
       : session_id(id), length(0), ip_addr(addr), dst_tcp_port(port), closed(closed) {}
-  AppNotification(TcpSessionID id, ap_uint<16> len, IpAddr addr, ap_uint<16> port, bool closed)
+  AppNotificationNoTDEST(
+      TcpSessionID id, ap_uint<16> len, IpAddr addr, ap_uint<16> port, bool closed)
       : session_id(id), length(len), ip_addr(addr), dst_tcp_port(port), closed(closed) {}
 #ifndef __SYNTHESIS__
   std::string to_string() {
@@ -664,6 +859,47 @@ struct AppNotification {
     return sstream.str();
   }
 #endif
+};
+
+typedef hls::axis<AppNotificationNoTDEST, 0, 0, NET_TDEST_WIDTH> NetAXISAppNotification;
+
+struct AppNotification {
+  AppNotificationNoTDEST data;
+  NetAXISDest            dest;
+  AppNotification() {}
+  AppNotification(const NetAXISAppNotification &net_axis) {
+#pragma HLS INLINE
+    data = net_axis.data;
+    dest = net_axis.dest;
+  }
+  NetAXISAppNotification to_net_axis() {
+#pragma HLS INLINE
+    NetAXISAppNotification new_axis;
+    new_axis.data = data;
+    new_axis.dest = dest;
+    return new_axis;
+  }
+};
+
+// Tx app use ip:port to create session with other side
+typedef hls::axis<IpPortTuple, 0, 0, NET_TDEST_WIDTH> NetAXISAppOpenConnReq;
+
+struct AppOpenConnReq {
+  IpPortTuple data;
+  NetAXISDest dest;
+  AppOpenConnReq() {}
+  AppOpenConnReq(const NetAXISAppOpenConnReq &net_axis) {
+#pragma HLS INLINE
+    data = net_axis.data;
+    dest = net_axis.dest;
+  }
+  NetAXISAppOpenConnReq to_net_axis() {
+#pragma HLS INLINE
+    NetAXISAppOpenConnReq new_axis;
+    new_axis.data = data;
+    new_axis.dest = dest;
+    return new_axis;
+  }
 };
 
 /***
@@ -828,19 +1064,65 @@ struct SessionLookupRsp {
 #endif
 };
 
-// APP inner connection
-struct AppReadReq {
+struct AppReadReqNoTEST {
   TcpSessionID session_id;
   // ap_uint<16> address;
   ap_uint<16> read_length;
-  AppReadReq() {}
-  AppReadReq(TcpSessionID id, ap_uint<16> len) : session_id(id), read_length(len) {}
+  AppReadReqNoTEST() {}
+  AppReadReqNoTEST(TcpSessionID id, ap_uint<16> len) : session_id(id), read_length(len) {}
 };
 
+// TOE interface
+typedef hls::axis<AppReadReqNoTEST, 0, 0, NET_TDEST_WIDTH> NetAXISAppReadReq;
+
+// APP inner connection
+struct AppReadReq {
+  AppReadReqNoTEST data;
+  NetAXISDest      dest;
+  AppReadReq() {}
+  AppReadReq(const NetAXISAppReadReq &net_axis) {
+#pragma HLS INLINE
+    data = net_axis.data;
+    dest = net_axis.dest;
+  }
+  NetAXISAppReadReq to_net_axis() {
+#pragma HLS INLINE
+    NetAXISAppReadReq new_axis;
+    new_axis.data = data;
+    new_axis.dest = dest;
+    return new_axis;
+  }
+};
+
+// TOE interface
+typedef hls::axis<TcpSessionID, 0, 0, NET_TDEST_WIDTH> NetAXISAppReadRsp;
+
+// inner connection
 struct AppReadRsp {
-  TcpSessionID session_id;
+  TcpSessionID data;
+  NetAXISDest  dest;
   AppReadRsp() {}
-  AppReadRsp(TcpSessionID id) : session_id(id) {}
+  AppReadRsp(TcpSessionID id) : data(id) {}
+  AppReadRsp(const NetAXISAppReadRsp &net_axis) {
+#pragma HLS INLINE
+    data = net_axis.data;
+    dest = net_axis.dest;
+  }
+  NetAXISAppReadRsp to_net_axis() {
+#pragma HLS INLINE
+    NetAXISAppReadRsp new_axis;
+    new_axis.data = data;
+    new_axis.dest = dest;
+    return new_axis;
+  }
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "App read data rsp: SessionID: " << data.to_string(16) << "\t";
+    sstream << "Dest: " << dest.to_string(16) << "\t";
+    return sstream.str();
+  }
+#endif
 };
 
 // read/ write DDR buffer internal command
@@ -872,4 +1154,134 @@ struct MemBufferRWCmdDoubleAccess {
 #endif
 };
 
+/** @ingroup session_lookup_controller
+ *  This struct defines the internal storage format of the IP tuple instead of destiantion and
+ * source, my and their is used. When a tuple is sent or received from the tx/rx path it is mapped
+ * to the fourTuple struct. The < operator is necessary for the c++ dummy memory implementation
+ * which uses an std::map
+ */
+struct ThreeTuple {
+  IpAddr        their_ip_addr;
+  TcpPortNumber here_tcp_port;
+  TcpPortNumber there_tcp_port;
+  ThreeTuple() {}
+  ThreeTuple(IpAddr their_ip_addr, TcpPortNumber here_tcp_port, TcpPortNumber there_tcp_port)
+      : their_ip_addr(their_ip_addr)
+      , here_tcp_port(here_tcp_port)
+      , there_tcp_port(there_tcp_port) {}
+
+  bool operator<(const ThreeTuple &other) const {
+    if (their_ip_addr < other.their_ip_addr) {
+      return true;
+    } else if (their_ip_addr == other.their_ip_addr) {
+      if (here_tcp_port < other.here_tcp_port) {
+        return true;
+      } else if (here_tcp_port == other.here_tcp_port) {
+        if (there_tcp_port < other.there_tcp_port) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+};
+
+/***
+ * @brief DataMoverCmd
+ * Refenrence:
+ * https://www.xilinx.com/support/documentation/ip_documentation/axi_datamover/v5_1/pg022_axi_datamover.pdf
+ * Table 2‐7: Command Word Description
+ */
+struct DataMoverCmd {
+  ap_uint<23> bbt;    /// Bytes to Transfer, 23-bits field, from 1 to 8388607 Bytes
+  ap_uint<1>  type;   /// 1 enables INCR, 0 enables FIXED addr AXI4 trans
+  ap_uint<6>  dsa;    /// DRE Stream Alignment, not used
+  ap_uint<1>  eof;    /// End of Frame, when it is set, MM2S assert TLAST on the last Data
+  ap_uint<1>  drr;    /// DRE ReAlignment Request
+  ap_uint<40> saddr;  /// Start Address
+  ap_uint<4>  tag;
+  ap_uint<4>  rsvd;
+  DataMoverCmd() {}
+  DataMoverCmd(ap_uint<32> addr, ap_uint<23> len)
+      : bbt(len), type(1), dsa(0), eof(1), drr(1), tag(0), rsvd(0) {
+    saddr = addr(31, 0) + TCP_DDR_BASE_ADDR;
+  }
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "BTT: " << bbt.to_string(16) << "\t";
+    sstream << "Addr: " << saddr.to_string(16) << "\t";
+    return sstream.str();
+  }
 #endif
+};
+
+struct DataMoverStatus {
+  ap_uint<4> tag;
+  ap_uint<1> interr;
+  ap_uint<1> decerr;
+  ap_uint<1> slverr;
+  ap_uint<1> okay;
+};
+
+/** @ingroup session_lookup_controller
+ *
+ */
+enum SlookupSource { RX, TX_APP };
+
+/** @ingroup session_lookup_controller
+ *
+ */
+enum SlookupOp { INSERT, DELETE };
+
+/** @ingroup session_lookup_controller
+ *
+ */
+struct RtlSLookupToCamLupReq {
+  ThreeTuple    key;
+  SlookupSource source;
+  RtlSLookupToCamLupReq() {}
+  RtlSLookupToCamLupReq(ThreeTuple tuple, SlookupSource src) : key(tuple), source(src) {}
+};
+
+/** @ingroup session_lookup_controller
+ *
+ */
+struct RtlSlookupToCamUpdReq {
+  SlookupOp     op;
+  ThreeTuple    key;
+  TcpSessionID  value;
+  SlookupSource source;
+  RtlSlookupToCamUpdReq() {}
+  RtlSlookupToCamUpdReq(ThreeTuple key, TcpSessionID value, SlookupOp op, SlookupSource src)
+      : key(key), value(value), op(op), source(src) {}
+};
+
+/** @ingroup session_lookup_controller
+ *
+ */
+struct RtlCamToSlookupLupRsp {
+  ThreeTuple    key;
+  TcpSessionID  session_id;
+  bool          hit;
+  SlookupSource source;
+  RtlCamToSlookupLupRsp() {}
+  RtlCamToSlookupLupRsp(bool hit, SlookupSource src) : hit(hit), session_id(0), source(src) {}
+  RtlCamToSlookupLupRsp(bool hit, TcpSessionID id, SlookupSource src)
+      : hit(hit), session_id(id), source(src) {}
+};
+
+/** @ingroup session_lookup_controller
+ *
+ */
+struct RtlCamToSlookupUpdRsp {
+  SlookupOp     op;
+  ThreeTuple    key;
+  TcpSessionID  session_id;
+  bool          success;
+  SlookupSource source;
+  RtlCamToSlookupUpdRsp() {}
+  RtlCamToSlookupUpdRsp(SlookupOp op, SlookupSource src) : op(op), source(src) {}
+  RtlCamToSlookupUpdRsp(TcpSessionID id, SlookupOp op, SlookupSource src)
+      : session_id(id), op(op), source(src) {}
+};

@@ -23,7 +23,7 @@ add_files "${prj_src_dir}/${prj_name}.cpp \
              ${src_top_dir}/utils/axi_utils.hpp " -cflags "-I${src_top_dir} -DDEBUG"
 
 add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
-               ${src_top_dir}/toe/tcp_conn.hpp" -cflags "-I${src_top_dir} -DDEBUG" 
+               ${src_top_dir}/toe/toe_conn.hpp" -cflags "-I${src_top_dir} -DDEBUG" 
 
 if {$hls_act == "csim"} {
    csim_design -clean  

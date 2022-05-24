@@ -1,5 +1,5 @@
 
-#include "toe/tcp_conn.hpp"
+#include "toe/toe_conn.hpp"
 
 using namespace hls;
 void ack_delay(stream<EventWithTuple> &event_eng_to_ack_delay_event,

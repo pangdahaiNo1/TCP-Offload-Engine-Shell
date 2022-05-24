@@ -1,8 +1,8 @@
 #ifndef _TOE_UTILS_HPP
 #define _TOE_UTILS_HPP
 
-#include "tcp_conn.hpp"
 #include "toe_config.hpp"
+#include "toe_conn.hpp"
 #include "utils/axi_utils.hpp"
 
 void                 RemoveIpHeader(const NetAXIS cur_word,

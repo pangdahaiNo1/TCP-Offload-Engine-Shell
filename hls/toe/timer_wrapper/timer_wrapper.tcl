@@ -25,7 +25,7 @@ add_files "${prj_src_dir}/${prj_name}.cpp \
            ${src_top_dir}/toe/probe_timer/probe_timer.cpp \
            ${src_top_dir}/toe/retransmit_timer/retransmit_timer.cpp " -cflags "-I${src_top_dir} -DDEBUG"
 
-add_files -tb " ${src_top_dir}/toe/tcp_conn.hpp"  -cflags "-I${src_top_dir} -DDEBUG"
+add_files -tb " ${src_top_dir}/toe/toe_conn.hpp"  -cflags "-I${src_top_dir} -DDEBUG"
 
 
 if {$hls_act == "csim"} {

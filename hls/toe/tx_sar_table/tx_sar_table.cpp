@@ -18,7 +18,7 @@ void                 tx_sar_table(stream<RxEngToTxSarReq> &rx_eng_to_tx_sar_req,
 
   static TxSarTableEntry tx_sar_table[TCP_MAX_SESSIONS];
 #pragma HLS bind_storage variable = tx_sar_table type = RAM_T2P impl = BRAM
-#pragma HLS DEPENDENCE variable = tx_sar_table inter false
+#pragma HLS DEPENDENCE variable                                      = tx_sar_table inter false
 
   TxEngToTxSarReq        tx_eng_req;
   TxEngToTxSarRetransReq tx_eng_to_tx_sar_rt_req;

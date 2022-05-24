@@ -1,7 +1,7 @@
 #ifndef _MEMORY_ACCESS_HPP_
 #define _MEMORY_ACCESS_HPP_
 
-#include "toe/tcp_conn.hpp"
+#include "toe/toe_conn.hpp"
 #include "toe/toe_intf.hpp"
 #include "utils/axi_utils.hpp"
 
