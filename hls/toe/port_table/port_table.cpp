@@ -15,20 +15,20 @@ using namespace hls;
  *  @param[out]		ptable_to_rx_app_listen_port_rsp
  *  @param[out]		ptable_check_listening_rsp_fifo
  */
-void ListeningPortTable(stream<NetAXISListenPortReq> &rx_app_to_ptable_listen_port_req,
-                        stream<ap_uint<15> > &        ptable_check_listening_req_fifo,
-                        stream<NetAXISListenPortRsp> &ptable_to_rx_app_listen_port_rsp,
-                        stream<PtableToRxEngRsp> &    ptable_check_listening_rsp_fifo) {
+void                 ListeningPortTable(stream<ListenPortReq> &   rx_app_to_ptable_listen_port_req,
+                                        stream<ap_uint<15> > &    ptable_check_listening_req_fifo,
+                                        stream<ListenPortRsp> &   ptable_to_rx_app_listen_port_rsp,
+                                        stream<PtableToRxEngRsp> &ptable_check_listening_rsp_fifo) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
   static PortTableEntry listening_port_table[LISTENING_PORT_CNT];
-#pragma HLS RESOURCE variable = listening_port_table core = RAM_T2P_BRAM
-#pragma HLS DEPENDENCE variable                           = listening_port_table inter false
+#pragma HLS bind_storage variable = listening_port_table type = RAM_T2P impl = BRAM
+#pragma HLS DEPENDENCE variable = listening_port_table inter false
 
-  NetAXISListenPortReq curr_req;
-  ap_uint<15>          check_port_15;
-  NetAXISListenPortRsp listen_rsp;
+  ListenPortReq curr_req;
+  ap_uint<15>   check_port_15;
+  ListenPortRsp listen_rsp;
 
   if (!rx_app_to_ptable_listen_port_req.empty()) {
     // check range, TODO make sure currPort is not equal in 2 consecutive cycles
@@ -78,8 +78,8 @@ void                 FreePortTable(stream<TcpPortNumber> &   slup_to_ptable_real
 #pragma HLS INLINE   off
 
   static PortTableEntry free_port_table[FREE_PORT_CNT];
-#pragma HLS RESOURCE variable = free_port_table core = RAM_T2P_BRAM
-#pragma HLS DEPENDENCE variable                      = free_port_table inter false
+#pragma HLS bind_storage variable = free_port_table type = RAM_T2P impl = BRAM
+#pragma HLS DEPENDENCE variable = free_port_table inter false
 
   static ap_uint<15> pt_cursor = 0;
 #pragma HLS RESET variable = pt_cursor
@@ -204,13 +204,13 @@ void                 CheckOutMultiplexer(stream<bool> &            ptable_check_
  *  @param[out]		ptable_to_rx_app_listen_port_rsp
  *  @param[out]		portTable2txApp_rsp
  */
-void        port_table(stream<TcpPortNumber> &       rx_eng_to_ptable_check_req,
-                       stream<NetAXISListenPortReq> &rx_app_to_ptable_listen_port_req,
-                       stream<TcpPortNumber> &       slup_to_ptable_realease_port,
-                       stream<NetAXISDest> &         tx_app_to_ptable_port_req,
-                       stream<PtableToRxEngRsp> &    ptable_to_rx_eng_check_rsp,
-                       stream<NetAXISListenPortRsp> &ptable_to_rx_app_listen_port_rsp,
-                       stream<TcpPortNumber> &       ptable_to_tx_app_port_rsp) {
+void        port_table(stream<TcpPortNumber> &   rx_eng_to_ptable_check_req,
+                       stream<ListenPortReq> &   rx_app_to_ptable_listen_port_req,
+                       stream<TcpPortNumber> &   slup_to_ptable_realease_port,
+                       stream<NetAXISDest> &     tx_app_to_ptable_port_req,
+                       stream<PtableToRxEngRsp> &ptable_to_rx_eng_check_rsp,
+                       stream<ListenPortRsp> &   ptable_to_rx_app_listen_port_rsp,
+                       stream<TcpPortNumber> &   ptable_to_tx_app_port_rsp) {
 #pragma HLS DATAFLOW
   /*
    * Fifos necessary for multiplexing Check requests

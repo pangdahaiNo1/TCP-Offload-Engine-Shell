@@ -3,14 +3,14 @@
 
 using namespace hls;
 
-void EmptyFifos(std::ofstream &               out_stream,
-                stream<PtableToRxEngRsp> &    ptable_to_rx_eng_check_rsp,
-                stream<NetAXISListenPortRsp> &ptable_to_rx_app_listen_port_rsp,
-                stream<TcpPortNumber> &       ptable_to_tx_app_port_rsp,
-                int                           sim_cycle) {
-  PtableToRxEngRsp     to_rx_eng_rsp;
-  NetAXISListenPortRsp to_rx_app_rsp;
-  TcpPortNumber        to_tx_app_free_port;
+void EmptyFifos(std::ofstream &           out_stream,
+                stream<PtableToRxEngRsp> &ptable_to_rx_eng_check_rsp,
+                stream<ListenPortRsp> &   ptable_to_rx_app_listen_port_rsp,
+                stream<TcpPortNumber> &   ptable_to_tx_app_port_rsp,
+                int                       sim_cycle) {
+  PtableToRxEngRsp to_rx_eng_rsp;
+  ListenPortRsp    to_rx_app_rsp;
+  TcpPortNumber    to_tx_app_free_port;
 
   while (!ptable_to_rx_eng_check_rsp.empty()) {
     ptable_to_rx_eng_check_rsp.read(to_rx_eng_rsp);
@@ -30,13 +30,13 @@ void EmptyFifos(std::ofstream &               out_stream,
 }
 
 int main() {
-  stream<TcpPortNumber>        rx_eng_to_ptable_check_req;
-  stream<NetAXISListenPortReq> rx_app_to_ptable_listen_port_req;
-  stream<TcpPortNumber>        slup_to_ptable_realease_port;
-  stream<NetAXISDest>          tx_app_to_ptable_port_req;
-  stream<PtableToRxEngRsp>     ptable_to_rx_eng_check_rsp;
-  stream<NetAXISListenPortRsp> ptable_to_rx_app_listen_port_rsp;
-  stream<TcpPortNumber>        ptable_to_tx_app_port_rsp;
+  stream<TcpPortNumber>    rx_eng_to_ptable_check_req;
+  stream<ListenPortReq>    rx_app_to_ptable_listen_port_req;
+  stream<TcpPortNumber>    slup_to_ptable_realease_port;
+  stream<NetAXISDest>      tx_app_to_ptable_port_req;
+  stream<PtableToRxEngRsp> ptable_to_rx_eng_check_rsp;
+  stream<ListenPortRsp>    ptable_to_rx_app_listen_port_rsp;
+  stream<TcpPortNumber>    ptable_to_tx_app_port_rsp;
 
   // open output file
   std::ofstream outputFile;
@@ -47,7 +47,7 @@ int main() {
   }
 
   // check net app listen req/rsp and check
-  NetAXISListenPortReq app_req;
+  ListenPortReq app_req;
   app_req.data = 0x0080;
   app_req.dest = 0x1;
   TcpPortNumber rx_eng_req;

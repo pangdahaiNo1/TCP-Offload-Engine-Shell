@@ -20,9 +20,10 @@ set_clock_uncertainty 0.2
 set_top port_table
 
 add_files "${prj_src_dir}/port_table.cpp \
+         ${src_top_dir}/toe/toe_conn.hpp \
          ${src_top_dir}/utils/axi_utils.hpp " -cflags "-I${src_top_dir} -DDEBUG"
 
-add_files -tb "${prj_src_dir}/port_table_test.cpp ${src_top_dir}/toe/tcp_conn.hpp"  -cflags "-I${src_top_dir} -DDEBUG"
+add_files -tb "${prj_src_dir}/port_table_test.cpp ${src_top_dir}/toe/toe_conn.hpp"  -cflags "-I${src_top_dir} -DDEBUG"
 
 if {$hls_act == "csim"} {
    csim_design -clean  
