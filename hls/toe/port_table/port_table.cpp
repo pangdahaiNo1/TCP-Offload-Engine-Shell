@@ -62,18 +62,18 @@ void                 ListeningPortTable(stream<ListenPortReq> &   rx_app_to_ptab
  * <<< 32K ports
  * rxEng: read
  * txApp: pt_cursor: read -> write
- * sLookup: write If a free port is found it is written into @ptable_to_tx_app_port_rsp and cached
+ * sLookup: write If a free port is found it is written into @ptable_to_tx_app_rsp and cached
  * until @ref tx_app_stream_if reads it out
- *  @param[in]		slup_to_ptable_realease_port_req
+ *  @param[in]		slookup_to_ptable_release_port_req_req
  *  @param[in]		ptable_check_used_req_fifo
  *  @param[out]		ptable_check_used_rsp_fifo
- *  @param[out]		ptable_to_tx_app_port_rsp
+ *  @param[out]		ptable_to_tx_app_rsp
  */
-void                 FreePortTable(stream<TcpPortNumber> &   slup_to_ptable_realease_port_req,
+void                 FreePortTable(stream<TcpPortNumber> &   slookup_to_ptable_release_port_req_req,
                                    stream<ap_uint<15> > &    ptable_check_used_req_fifo,
-                                   stream<NetAXISDest> &     tx_app_to_ptable_port_req,
+                                   stream<NetAXISDest> &     tx_app_to_ptable_req,
                                    stream<PtableToRxEngRsp> &ptable_check_used_rsp_fifo,
-                                   stream<TcpPortNumber> &   ptable_to_tx_app_port_rsp) {
+                                   stream<TcpPortNumber> &   ptable_to_tx_app_rsp) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -88,8 +88,8 @@ void                 FreePortTable(stream<TcpPortNumber> &   slup_to_ptable_real
   TcpPortNumber cur_free_port;
   ap_uint<15>   port_check_used;
 
-  if (!slup_to_ptable_realease_port_req.empty()) {
-    slup_to_ptable_realease_port_req.read(slup_port_req);
+  if (!slookup_to_ptable_release_port_req_req.empty()) {
+    slookup_to_ptable_release_port_req_req.read(slup_port_req);
     if (slup_port_req.bit(15)) {
       free_port_table[slup_port_req(14, 0)].is_open = false;  // shift
     }
@@ -97,13 +97,13 @@ void                 FreePortTable(stream<TcpPortNumber> &   slup_to_ptable_real
     ptable_check_used_req_fifo.read(port_check_used);
     ptable_check_used_rsp_fifo.write(PtableToRxEngRsp(free_port_table[port_check_used].is_open,
                                                       free_port_table[port_check_used].role_id));
-  } else if (!tx_app_to_ptable_port_req.empty()) {
-    if (!free_port_table[pt_cursor].is_open && !ptable_to_tx_app_port_rsp.full()) {
+  } else if (!tx_app_to_ptable_req.empty()) {
+    if (!free_port_table[pt_cursor].is_open && !ptable_to_tx_app_rsp.full()) {
       cur_free_port(14, 0)               = pt_cursor;
       cur_free_port[15]                  = 1;
       free_port_table[pt_cursor].is_open = true;
-      free_port_table[pt_cursor].role_id = tx_app_to_ptable_port_req.read();
-      ptable_to_tx_app_port_rsp.write(cur_free_port);
+      free_port_table[pt_cursor].role_id = tx_app_to_ptable_req.read();
+      ptable_to_tx_app_rsp.write(cur_free_port);
     }
     // cout<<"here" <<endl;
   }
@@ -198,19 +198,19 @@ void                 CheckOutMultiplexer(stream<bool> &            ptable_check_
  * a free port from the @ref tx_app_if.
  *  @param[in]		rx_eng_to_ptable_check_req
  *  @param[in]		rx_app_to_ptable_listen_port_req
- *  @param[in]		slup_to_ptable_realease_port
- *  @param[in]		tx_app_to_ptable_port_req
+ *  @param[in]		slookup_to_ptable_release_port_req
+ *  @param[in]		tx_app_to_ptable_req
  *  @param[out]		ptable_to_rx_eng_check_rsp
  *  @param[out]		ptable_to_rx_app_listen_port_rsp
  *  @param[out]		portTable2txApp_rsp
  */
 void        port_table(stream<TcpPortNumber> &   rx_eng_to_ptable_check_req,
                        stream<ListenPortReq> &   rx_app_to_ptable_listen_port_req,
-                       stream<TcpPortNumber> &   slup_to_ptable_realease_port,
-                       stream<NetAXISDest> &     tx_app_to_ptable_port_req,
+                       stream<TcpPortNumber> &   slookup_to_ptable_release_port_req,
+                       stream<NetAXISDest> &     tx_app_to_ptable_req,
                        stream<PtableToRxEngRsp> &ptable_to_rx_eng_check_rsp,
                        stream<ListenPortRsp> &   ptable_to_rx_app_listen_port_rsp,
-                       stream<TcpPortNumber> &   ptable_to_tx_app_port_rsp) {
+                       stream<TcpPortNumber> &   ptable_to_tx_app_rsp) {
 #pragma HLS DATAFLOW
   /*
    * Fifos necessary for multiplexing Check requests
@@ -240,11 +240,11 @@ void        port_table(stream<TcpPortNumber> &   rx_eng_to_ptable_check_req,
   /*
    * Free PortTable
    */
-  FreePortTable(slup_to_ptable_realease_port,
+  FreePortTable(slookup_to_ptable_release_port_req,
                 ptable_check_used_req_fifo,
-                tx_app_to_ptable_port_req,
+                tx_app_to_ptable_req,
                 ptable_check_used_rsp_fifo,
-                ptable_to_tx_app_port_rsp);
+                ptable_to_tx_app_rsp);
 
   /*
    * Multiplex this query

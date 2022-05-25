@@ -6,7 +6,7 @@ using namespace hls;
 void EmptyFifos(std::ofstream &           out_stream,
                 stream<PtableToRxEngRsp> &ptable_to_rx_eng_check_rsp,
                 stream<ListenPortRsp> &   ptable_to_rx_app_listen_port_rsp,
-                stream<TcpPortNumber> &   ptable_to_tx_app_port_rsp,
+                stream<TcpPortNumber> &   ptable_to_tx_app_rsp,
                 int                       sim_cycle) {
   PtableToRxEngRsp to_rx_eng_rsp;
   ListenPortRsp    to_rx_app_rsp;
@@ -22,8 +22,8 @@ void EmptyFifos(std::ofstream &           out_stream,
     out_stream << "Cycle " << std::dec << sim_cycle << ": Porttable to Rx App response\n";
     out_stream << to_rx_app_rsp.data.to_string() << "\nRole ID: " << to_rx_app_rsp.dest << endl;
   }
-  while (!ptable_to_tx_app_port_rsp.empty()) {
-    ptable_to_tx_app_port_rsp.read(to_tx_app_free_port);
+  while (!ptable_to_tx_app_rsp.empty()) {
+    ptable_to_tx_app_rsp.read(to_tx_app_free_port);
     out_stream << "Cycle " << std::dec << sim_cycle << ": Porttable to Tx App free port\n";
     out_stream << to_tx_app_free_port << endl;
   }
@@ -32,11 +32,11 @@ void EmptyFifos(std::ofstream &           out_stream,
 int main() {
   stream<TcpPortNumber>    rx_eng_to_ptable_check_req;
   stream<ListenPortReq>    rx_app_to_ptable_listen_port_req;
-  stream<TcpPortNumber>    slup_to_ptable_realease_port;
-  stream<NetAXISDest>      tx_app_to_ptable_port_req;
+  stream<TcpPortNumber>    slookup_to_ptable_release_port_req;
+  stream<NetAXISDest>      tx_app_to_ptable_req;
   stream<PtableToRxEngRsp> ptable_to_rx_eng_check_rsp;
   stream<ListenPortRsp>    ptable_to_rx_app_listen_port_rsp;
-  stream<TcpPortNumber>    ptable_to_tx_app_port_rsp;
+  stream<TcpPortNumber>    ptable_to_tx_app_rsp;
 
   // open output file
   std::ofstream outputFile;
@@ -86,15 +86,15 @@ int main() {
     }
     port_table(rx_eng_to_ptable_check_req,
                rx_app_to_ptable_listen_port_req,
-               slup_to_ptable_realease_port,
-               tx_app_to_ptable_port_req,
+               slookup_to_ptable_release_port_req,
+               tx_app_to_ptable_req,
                ptable_to_rx_eng_check_rsp,
                ptable_to_rx_app_listen_port_rsp,
-               ptable_to_tx_app_port_rsp);
+               ptable_to_tx_app_rsp);
     EmptyFifos(outputFile,
                ptable_to_rx_eng_check_rsp,
                ptable_to_rx_app_listen_port_rsp,
-               ptable_to_tx_app_port_rsp,
+               ptable_to_tx_app_rsp,
                sim_cycle);
     sim_cycle++;
   }
@@ -107,16 +107,16 @@ int main() {
   while (sim_cycle < 20) {
     switch (sim_cycle) {
       case 1:
-        tx_app_to_ptable_port_req.write(tx_app_tdest);
+        tx_app_to_ptable_req.write(tx_app_tdest);
         break;
       case 2:
         rx_eng_to_ptable_check_req.write(32789);
         tx_app_tdest = 2;
-        tx_app_to_ptable_port_req.write(tx_app_tdest);
+        tx_app_to_ptable_req.write(tx_app_tdest);
         break;
       case 3:
         tx_app_tdest = 3;
-        tx_app_to_ptable_port_req.write(tx_app_tdest);
+        tx_app_to_ptable_req.write(tx_app_tdest);
         break;
       case 4:
         break;
@@ -125,15 +125,15 @@ int main() {
     }
     port_table(rx_eng_to_ptable_check_req,
                rx_app_to_ptable_listen_port_req,
-               slup_to_ptable_realease_port,
-               tx_app_to_ptable_port_req,
+               slookup_to_ptable_release_port_req,
+               tx_app_to_ptable_req,
                ptable_to_rx_eng_check_rsp,
                ptable_to_rx_app_listen_port_rsp,
-               ptable_to_tx_app_port_rsp);
+               ptable_to_tx_app_rsp);
     EmptyFifos(outputFile,
                ptable_to_rx_eng_check_rsp,
                ptable_to_rx_app_listen_port_rsp,
-               ptable_to_tx_app_port_rsp,
+               ptable_to_tx_app_rsp,
                sim_cycle);
     sim_cycle++;
   }
