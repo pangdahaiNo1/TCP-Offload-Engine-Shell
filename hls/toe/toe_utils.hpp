@@ -5,13 +5,12 @@
 #include "toe_conn.hpp"
 #include "utils/axi_utils.hpp"
 
-void                 RemoveIpHeader(const NetAXIS cur_word,
-                                    const NetAXIS prev_word,
+void        RemoveIpHeader(const NetAXISWord cur_word,
+                           const NetAXISWord prev_word,
 
-                                    ap_uint<4> ip_header_length,
-                                    NetAXIS &  send_word) {
-#pragma HLS          INLINE
-#pragma HLS PIPELINE II = 1
+                           ap_uint<4>   ip_header_length,
+                           NetAXISWord &send_word) {
+#pragma HLS INLINE
   send_word.dest = prev_word.dest;
   // send_word.id   = prev_word.id;
   // send_word.user = prev_word.user;

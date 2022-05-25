@@ -263,7 +263,8 @@ struct TcpHeaderMeta {
     sstream << "Acknowlegnement Number: " << this->ack_number << endl;
     sstream << "Window Size: " << this->win_size << endl;
     sstream << "Window Scale: " << this->win_scale << endl;
-    sstream << "Data Offset: " << this->data_offset;
+    sstream << "Data Offset: " << this->data_offset << endl;
+    sstream << "Payload Len: " << this->payload_length;
     return sstream.str();
   }
 #endif
@@ -285,7 +286,7 @@ struct TcpPseudoHeaderMeta {
     sstream << "TCP/IP: \t" << std::hex;
     sstream << "Source IP: " << SwapByte<32>(src_ip) << "\t"
             << " Dest IP: " << SwapByte<32>(dest_ip) << endl;
-    sstream << header.to_string() << endl;
+    sstream << header.to_string();
 
     return sstream.str();
   }
