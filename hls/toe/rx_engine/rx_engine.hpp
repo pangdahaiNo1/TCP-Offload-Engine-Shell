@@ -4,7 +4,7 @@
 #include "ipv4/ipv4.hpp"
 #include "toe/tcp_header.hpp"
 #include "toe/toe_config.hpp"
-#include "toe/toe_intf.hpp"
+#include "toe/toe_conn.hpp"
 using hls::stream;
 
 struct RxEngFsmMetaData {
@@ -35,20 +35,71 @@ struct RxEngFsmMetaData {
 #endif
 };
 
-void RxEngTcpPseudoHeaderInsert(stream<NetAXIS> &ip_packet,
-                                stream<NetAXIS> &tcp_pseudo_packet_for_checksum,
-                                stream<NetAXIS> &tcp_pseudo_packet_for_rx_eng);
+void RxEngTcpPseudoHeaderInsert(stream<NetAXIS> &    ip_packet,
+                                stream<NetAXISWord> &tcp_pseudo_packet_for_checksum,
+                                stream<NetAXISWord> &tcp_pseudo_packet_for_rx_eng);
 
-void RxEngParseTcpHeader(stream<NetAXIS> &            tcp_pseudo_packet,
+void RxEngParseTcpHeader(stream<NetAXISWord> &        tcp_pseudo_packet,
                          stream<TcpPseudoHeaderMeta> &tcp_meta_data,
-                         stream<NetAXIS> &            tcp_payload);
+                         stream<NetAXISWord> &        tcp_payload);
 
 void RxEngParseTcpHeaderOptions(stream<TcpPseudoHeaderMeta> &tcp_meta_data_in,
                                 stream<TcpPseudoHeaderMeta> &tcp_meta_data_out);
 
+void RxEngVerifyChecksumAndPort(stream<ap_uint<16> > &       tcp_checksum_in,
+                                stream<TcpPseudoHeaderMeta> &tcp_meta_data_in,
+                                stream<bool> &               tcp_payload_should_be_dropped,
+                                stream<TcpPseudoHeaderMeta> &tcp_meta_data_out,
+                                stream<TcpPortNumber> &      rx_eng_to_ptable_check_req);
+void RxEngTcpMetaHandler(stream<TcpPseudoHeaderMeta> &tcp_meta_data_in,
+                         stream<PtableToRxEngRsp> &   ptable_to_rx_eng_check_rsp,
+                         stream<RxEngToSlookupReq> &  rx_eng_to_slookup_req,
+                         stream<SessionLookupRsp> &   slookup_to_rx_eng_rsp,
+                         stream<RxEngFsmMetaData> &   rx_eng_fsm_meta_data_out,
+                         stream<bool> &               tcp_payload_should_be_dropped,
+                         stream<NetAXISDest> &        tcp_payload_tdest,
+                         stream<EventWithTuple> &     rx_eng_meta_to_event_eng_set_event);
+void RxEngTcpPayloadDropper(stream<NetAXISWord> &tcp_payload_in,
+                            stream<bool> &       payload_should_dropped_by_checksum,
+                            stream<bool> &       payload_should_dropped_by_port_or_session,
+                            stream<NetAXISDest> &tcp_payload_tdest,
+                            stream<bool> &       payload_should_dropped_by_rx_fsm,
+                            stream<NetAXISWord> &tcp_payload_out);
+void RxEngTcpFsm(
+    // read in rx eng meta data
+    stream<RxEngFsmMetaData> &rx_eng_fsm_meta_data_in,
+    // Rx SAR R/W
+    stream<RxEngToRxSarReq> &rx_eng_to_rx_sar_req,
+    stream<RxSarTableEntry> &rx_sar_to_rx_eng_rsp,
+    // TX SAR R/W
+    stream<RxEngToTxSarReq> &rx_eng_to_tx_sar_req,
+    stream<TxSarToRxEngRsp> &tx_sar_to_rx_eng_rsp,
+    // state table
+    stream<StateTableReq> &rx_eng_to_sttable_req,
+    stream<SessionState> & sttable_to_rx_eng_rsp,
+    // update timer state
+    stream<TcpSessionID> &          rx_eng_to_timer_set_ctimer,
+    stream<RxEngToRetransTimerReq> &rx_eng_to_timer_clear_rtimer,
+    stream<TcpSessionID> &          rx_eng_to_timer_clear_ptimer,
+    // set event engine
+    stream<Event> &rx_eng_fsm_to_event_eng_set_event,
+    // to app connection notify, when net app active open a connection
+    stream<OpenConnRspNoTDEST> &rx_eng_to_tx_app_notification,
+    // to app connection notify, when net app passive open a conection
+    stream<NewClientNotificationNoTDEST> &rx_eng_to_tx_app_new_client_notification,
+    // to app data notify
+    stream<AppNotificationNoTDEST> &rx_eng_to_rx_app_notification,
+#if !TCP_RX_DDR_BYPASS
+    stream<DataMoverCmd> &rx_buffer_write_cmd,
+#endif
+    // to app payload should be dropped?
+    stream<bool> &payload_should_dropped
+
+);
+
 void rx_engine(
     // ip packet
-    stream<NetAXIS> &ip_packet,
+    stream<NetAXIS> &rx_ip_pkt_in,
     // port table check open and TDEST
     stream<TcpPortNumber> &   rx_eng_to_ptable_check_req,
     stream<PtableToRxEngRsp> &ptable_to_rx_eng_check_rsp,
@@ -70,16 +121,16 @@ void rx_engine(
     stream<RxEngToRetransTimerReq> &rx_eng_to_timer_clear_rtimer,
     stream<TcpSessionID> &          rx_eng_to_timer_clear_ptimer,
     // to app connection notify, when net app active open a connection
-    stream<OpenSessionStatus> &rx_eng_to_tx_app_notification,
+    stream<OpenConnRspNoTDEST> &rx_eng_to_tx_app_notification,
     // to app connection notify, when net app passive open a conection
-    stream<NewClientNotification> &rx_eng_to_tx_app_new_client_notification,
+    stream<NewClientNotificationNoTDEST> &rx_eng_to_tx_app_new_client_notification,
     // to app data notify
-    stream<AppNotification> &rx_eng_to_rx_app_notification,
+    stream<AppNotificationNoTDEST> &rx_eng_to_rx_app_notification,
 
     // to event engine
     stream<EventWithTuple> &rx_eng_to_event_eng_set_event,
     // tcp payload to rx app
-    stream<NetAXIS> &rx_eng_to_rx_app_data
+    stream<NetAXISWord> &rx_eng_to_rx_app_data
 
 );
 

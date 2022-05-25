@@ -8,17 +8,17 @@
  * the output @p tcp_pseudo_packet_* are same: tcp pseudo header + tcp header + tcp payload
  * one for validating checksum, the other one for rx eng fsm parse the meta data
  */
-void                 RxEngTcpPseudoHeaderInsert(stream<NetAXIS> &rx_ip_pkt_in,
-                                                stream<NetAXIS> &tcp_pseudo_packet_for_checksum,
-                                                stream<NetAXIS> &tcp_pseudo_packet_for_rx_eng) {
+void                 RxEngTcpPseudoHeaderInsert(stream<NetAXIS> &    rx_ip_pkt_in,
+                                                stream<NetAXISWord> &tcp_pseudo_packet_for_checksum,
+                                                stream<NetAXISWord> &tcp_pseudo_packet_for_rx_eng) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
-  NetAXIS cur_word;
-  NetAXIS send_word;
+  NetAXIS     cur_word;
+  NetAXISWord send_word;
   // tcp header and payload length
   ap_uint<16>        tcp_segment_length;
-  static NetAXIS     prev_word;
+  static NetAXISWord prev_word;
   static ap_uint<4>  ip_header_length;
   static ap_uint<16> ip_packet_length;
   static ap_uint<6>  keep_extra;
@@ -40,7 +40,7 @@ void                 RxEngTcpPseudoHeaderInsert(stream<NetAXIS> &rx_ip_pkt_in,
 
         keep_extra = 8 + (ip_header_length - 5) * 4;
         if (cur_word.last) {
-          RemoveIpHeader(NetAXIS(), cur_word, ip_header_length, send_word);
+          RemoveIpHeader(NetAXISWord(), cur_word, ip_header_length, send_word);
 
           tcp_segment_length     = ip_packet_length - (ip_header_length * 4);
           send_word.data(63, 0)  = (dest_ip_addr, src_ip_addr);
@@ -104,18 +104,18 @@ void                 RxEngTcpPseudoHeaderInsert(stream<NetAXIS> &rx_ip_pkt_in,
  *  @param[out]		tcp_meta_data
  *  @param[out]		tcp_payload
  */
-void                 RxEngParseTcpHeader(stream<NetAXIS> &            tcp_pseudo_packet,
+void                 RxEngParseTcpHeader(stream<NetAXISWord> &        tcp_pseudo_packet,
                                          stream<TcpPseudoHeaderMeta> &tcp_meta_data,
-                                         stream<NetAXIS> &            tcp_payload) {
+                                         stream<NetAXISWord> &        tcp_payload) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
   enum ParseTcpHeaderState { FIRST_WORD, REMAINING_WORDS, EXTRA_WORD };
   static ParseTcpHeaderState parse_fsm_state = FIRST_WORD;
 
-  static NetAXIS prev_word;
-  NetAXIS        cur_word;
-  NetAXIS        send_word;
+  static NetAXISWord prev_word;
+  NetAXISWord        cur_word;
+  NetAXISWord        send_word;
 
   static ap_uint<6> tcp_payload_offset_bytes;  // data_offset * 4 + 12
   ap_uint<4>        tcp_payload_offset_words;  // data_offset in TCP header
@@ -228,8 +228,8 @@ void                 RxEngParseTcpHeaderOptions(stream<TcpPseudoHeaderMeta> &tcp
 
   enum RxParseOptionsState {
     READ_META,
-    PARSE_OPTIONS,
-    WRITE_META
+    PARSE_OPTIONS
+    //  WRITE_META
   };  // WRITE_META not used, it will reduce one cycle
   static RxParseOptionsState fsm_state = READ_META;
   static TcpPseudoHeaderMeta tcp_meta_reg;
@@ -433,12 +433,12 @@ void                 RxEngTcpMetaHandler(stream<TcpPseudoHeaderMeta> &tcp_meta_d
 /**
  * the output payload is valid, should be delivery to Memory or App
  */
-void                 RxEngTcpPayloadDropper(stream<NetAXIS> &    tcp_payload_in,
+void                 RxEngTcpPayloadDropper(stream<NetAXISWord> &tcp_payload_in,
                                             stream<bool> &       payload_should_dropped_by_checksum,
                                             stream<bool> &       payload_should_dropped_by_port_or_session,
                                             stream<NetAXISDest> &tcp_payload_tdest,
                                             stream<bool> &       payload_should_dropped_by_rx_fsm,
-                                            stream<NetAXIS> &    tcp_payload_out) {
+                                            stream<NetAXISWord> &tcp_payload_out) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -446,7 +446,7 @@ void                 RxEngTcpPayloadDropper(stream<NetAXIS> &    tcp_payload_in,
   static RxDropperFsmState fsm_state = RD_VERIFY_CHECKSUM;
   static NetAXISDest       tcp_payload_role_id;
   bool                     drop;
-  NetAXIS                  cur_word;
+  NetAXISWord              cur_word;
 
   switch (fsm_state) {
     case RD_VERIFY_CHECKSUM:
@@ -517,11 +517,11 @@ void RxEngTcpFsm(
     // set event engine
     stream<Event> &rx_eng_fsm_to_event_eng_set_event,
     // to app connection notify, when net app active open a connection
-    stream<OpenSessionStatus> &rx_eng_to_tx_app_notification,
+    stream<OpenConnRspNoTDEST> &rx_eng_to_tx_app_notification,
     // to app connection notify, when net app passive open a conection
-    stream<NewClientNotification> &rx_eng_to_tx_app_new_client_notification,
+    stream<NewClientNotificationNoTDEST> &rx_eng_to_tx_app_new_client_notification,
     // to app data notify
-    stream<AppNotification> &rx_eng_to_rx_app_notification,
+    stream<AppNotificationNoTDEST> &rx_eng_to_rx_app_notification,
 #if !TCP_RX_DDR_BYPASS
     stream<DataMoverCmd> &rx_buffer_write_cmd,
 #endif
@@ -529,7 +529,6 @@ void RxEngTcpFsm(
     stream<bool> &payload_should_dropped
 
 ) {
-#pragma HLS LATENCY  max = 2
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -651,10 +650,10 @@ void RxEngTcpFsm(
 #endif
                     // Only notify when new data available
                     rx_eng_to_rx_app_notification.write(
-                        AppNotification(tcp_rx_meta_reg.session_id,
-                                        tcp_rx_meta_reg.header.payload_length,
-                                        tcp_rx_meta_reg.src_ip,
-                                        tcp_rx_meta_reg.dst_port));
+                        AppNotificationNoTDEST(tcp_rx_meta_reg.session_id,
+                                               tcp_rx_meta_reg.header.payload_length,
+                                               tcp_rx_meta_reg.src_ip,
+                                               tcp_rx_meta_reg.dst_port));
                     payload_should_dropped.write(false);
                   }
                 } else {
@@ -677,7 +676,7 @@ void RxEngTcpFsm(
                       // Notify the tx App about new client
                       // TODO 1460 is the default value, but it could change if options
                       // are presented in the TCP header
-                      rx_eng_to_tx_app_new_client_notification.write(NewClientNotification(
+                      rx_eng_to_tx_app_new_client_notification.write(NewClientNotificationNoTDEST(
                           tcp_rx_meta_reg.session_id, 0, 1460, TCP_NODELAY, true));
                       break;
                     case CLOSING:
@@ -798,7 +797,7 @@ void RxEngTcpFsm(
                                                            rx_win_scale));
                 // to tx app
                 rx_eng_to_tx_app_notification.write(
-                    OpenSessionStatus(tcp_rx_meta_reg.session_id, true));
+                    OpenConnRspNoTDEST(tcp_rx_meta_reg.session_id, true));
               } else {
                 // Sent RST, RFC 793: fig.9 (old) duplicate SYN(+ACK)
                 rx_eng_fsm_to_event_eng_set_event.write(RstEvent(
@@ -851,18 +850,19 @@ void RxEngTcpFsm(
 #endif
                 // Tell Application new data is available and connection got closed
                 rx_eng_to_rx_app_notification.write(
-                    AppNotification(tcp_rx_meta_reg.session_id,
-                                    tcp_rx_meta_reg.header.payload_length,
-                                    tcp_rx_meta_reg.src_ip,
-                                    tcp_rx_meta_reg.dst_port,
-                                    true));
+                    AppNotificationNoTDEST(tcp_rx_meta_reg.session_id,
+                                           tcp_rx_meta_reg.header.payload_length,
+                                           tcp_rx_meta_reg.src_ip,
+                                           tcp_rx_meta_reg.dst_port,
+                                           true));
                 payload_should_dropped.write(false);
               } else if (session_state_reg == ESTABLISHED) {
                 // Tell Application connection got closed
-                rx_eng_to_rx_app_notification.write(AppNotification(tcp_rx_meta_reg.session_id,
-                                                                    tcp_rx_meta_reg.src_ip,
-                                                                    tcp_rx_meta_reg.dst_port,
-                                                                    true));
+                rx_eng_to_rx_app_notification.write(
+                    AppNotificationNoTDEST(tcp_rx_meta_reg.session_id,
+                                           tcp_rx_meta_reg.src_ip,
+                                           tcp_rx_meta_reg.dst_port,
+                                           true));
               }
               // update state
               if (session_state_reg == ESTABLISHED) {
@@ -903,7 +903,7 @@ void RxEngTcpFsm(
                     tx_sar_reg.next_byte) {  // Check if matching SYN
                   // tell application, could not open connection
                   rx_eng_to_tx_app_notification.write(
-                      OpenSessionStatus(tcp_rx_meta_reg.session_id, false));
+                      OpenConnRspNoTDEST(tcp_rx_meta_reg.session_id, false));
                   rx_eng_to_sttable_req.write(StateTableReq(tcp_rx_meta_reg.session_id, CLOSED, 1));
                   rx_eng_to_timer_clear_rtimer.write(
                       RxEngToRetransTimerReq(tcp_rx_meta_reg.session_id, true));
@@ -917,11 +917,11 @@ void RxEngTcpFsm(
                 if (tcp_rx_meta_reg.header.seq_number == rx_sar_reg.recvd) {
                   // tell application, RST occurred, abort
                   rx_eng_to_rx_app_notification.write(
-                      AppNotification(tcp_rx_meta_reg.session_id,
-                                      tcp_rx_meta_reg.src_ip,
-                                      tcp_rx_meta_reg.dst_port,
-                                      true));  // RESET
-                                               // TODO maybe some TIME_WAIT state
+                      AppNotificationNoTDEST(tcp_rx_meta_reg.session_id,
+                                             tcp_rx_meta_reg.src_ip,
+                                             tcp_rx_meta_reg.dst_port,
+                                             true));  // RESET
+                                                      // TODO maybe some TIME_WAIT state
                   rx_eng_to_sttable_req.write(StateTableReq(tcp_rx_meta_reg.session_id, CLOSED, 1));
                   rx_eng_to_timer_clear_rtimer.write(
                       RxEngToRetransTimerReq(tcp_rx_meta_reg.session_id, true));
@@ -983,83 +983,86 @@ void rx_engine(
     stream<RxEngToRetransTimerReq> &rx_eng_to_timer_clear_rtimer,
     stream<TcpSessionID> &          rx_eng_to_timer_clear_ptimer,
     // to app connection notify, when net app active open a connection
-    stream<OpenSessionStatus> &rx_eng_to_tx_app_notification,
+    stream<OpenConnRspNoTDEST> &rx_eng_to_tx_app_notification,
     // to app connection notify, when net app passive open a conection
-    stream<NewClientNotification> &rx_eng_to_tx_app_new_client_notification,
+    stream<NewClientNotificationNoTDEST> &rx_eng_to_tx_app_new_client_notification,
     // to app data notify
-    stream<AppNotification> &rx_eng_to_rx_app_notification,
+    stream<AppNotificationNoTDEST> &rx_eng_to_rx_app_notification,
 
     // to event engine
     stream<EventWithTuple> &rx_eng_to_event_eng_set_event,
     // tcp payload to rx app
-    stream<NetAXIS> &rx_eng_to_rx_app_data
+    stream<NetAXISWord> &rx_eng_to_rx_app_data
 
 ) {
-  static stream<NetAXIS> tcp_pseudo_packet_for_checksum_fifo("tcp_pseudo_packet_for_checksum_fifo");
-#pragma HLS STREAM variable = tcp_pseudo_packet_for_checksum_fifo depth = 16
-#pragma HLS DATA_PACK variable = tcp_pseudo_packet_for_checksum_fifo
+#pragma HLS INTERFACE axis register both port = rx_ip_pkt_in
 
-  static stream<NetAXIS> tcp_pseudo_packet_for_rx_eng_fifo("tcp_pseudo_packet_for_rx_eng_fifo");
+  static stream<NetAXISWord> tcp_pseudo_packet_for_checksum_fifo(
+      "tcp_pseudo_packet_for_checksum_fifo");
+#pragma HLS STREAM variable = tcp_pseudo_packet_for_checksum_fifo depth = 16
+#pragma HLS aggregate variable = tcp_pseudo_packet_for_checksum_fifo compact = bit
+
+  static stream<NetAXISWord> tcp_pseudo_packet_for_rx_eng_fifo("tcp_pseudo_packet_for_rx_eng_fifo");
 #pragma HLS STREAM variable = tcp_pseudo_packet_for_rx_eng_fifo depth = 16
-#pragma HLS DATA_PACK variable = tcp_pseudo_packet_for_rx_eng_fifo
+#pragma HLS aggregate variable = tcp_pseudo_packet_for_rx_eng_fifo compact = bit
 
   static stream<SubChecksum> tcp_pseudo_packet_subchecksum_fifo(
       "tcp_pseudo_packet_subchecksum_fifo");
 #pragma HLS STREAM variable = tcp_pseudo_packet_subchecksum_fifo depth = 16
-#pragma HLS DATA_PACK variable = tcp_pseudo_packet_subchecksum_fifo
+#pragma HLS aggregate variable = tcp_pseudo_packet_subchecksum_fifo compact = bit
 
   static stream<ap_uint<16> > tcp_pseudo_packet_checksum_fifo("tcp_pseudo_packet_checksum_fifo");
 #pragma HLS STREAM variable = tcp_pseudo_packet_checksum_fifo depth = 16
-#pragma HLS DATA_PACK variable = tcp_pseudo_packet_checksum_fifo
+#pragma HLS aggregate variable = tcp_pseudo_packet_checksum_fifo compact = bit
 
   // tcp option are raw in tcp header
   static stream<TcpPseudoHeaderMeta> tcp_pseudo_header_meta_fifo("tcp_pseudo_header_meta_fifo");
-#pragma HLS STREAM variable = tcp_pseudo_header_meta_fifo depth    = 16
-#pragma HLS DATA_PACK                                     variable = tcp_pseudo_header_meta_fifo
+#pragma HLS STREAM variable = tcp_pseudo_header_meta_fifo depth = 16
+#pragma HLS aggregate variable = tcp_pseudo_header_meta_fifo compact = bit
   // tcp option are parsed into meta header
   static stream<TcpPseudoHeaderMeta> tcp_pseudo_header_meta_parsed_fifo(
       "tcp_pseudo_header_meta_parsed_fifo");
 #pragma HLS STREAM variable = tcp_pseudo_header_meta_parsed_fifo depth = 16
-#pragma HLS DATA_PACK variable = tcp_pseudo_header_meta_parsed_fifo
+#pragma HLS aggregate variable = tcp_pseudo_header_meta_parsed_fifo compact = bit
   // tcp option are parsed into meta header and checked by checksum
   static stream<TcpPseudoHeaderMeta> tcp_pseudo_header_meta_valid_fifo(
       "tcp_pseudo_header_meta_valid_fifo");
 #pragma HLS STREAM variable = tcp_pseudo_header_meta_valid_fifo depth = 16
-#pragma HLS DATA_PACK variable = tcp_pseudo_header_meta_valid_fifo
+#pragma HLS aggregate variable = tcp_pseudo_header_meta_valid_fifo compact = bit
 
   static stream<RxEngFsmMetaData> rx_eng_fsm_meta_data_fifo("rx_eng_fsm_meta_data_fifo");
-#pragma HLS STREAM variable = rx_eng_fsm_meta_data_fifo depth    = 16
-#pragma HLS DATA_PACK                                   variable = rx_eng_fsm_meta_data_fifo
+#pragma HLS STREAM variable = rx_eng_fsm_meta_data_fifo depth = 16
+#pragma HLS aggregate variable = rx_eng_fsm_meta_data_fifo compact = bit
 
-  static stream<NetAXIS> tcp_payload_fifo("tcp_payload_fifo");
-#pragma HLS STREAM variable = tcp_payload_fifo depth    = 512
-#pragma HLS DATA_PACK                          variable = tcp_payload_fifo
+  static stream<NetAXISWord> tcp_payload_fifo("tcp_payload_fifo");
+#pragma HLS STREAM variable = tcp_payload_fifo depth = 512
+#pragma HLS aggregate variable = tcp_payload_fifo compact = bit
 
   // payload drop fifo
   static stream<bool> payload_dropped_by_checksum_fifo("payload_dropped_by_checksum_fifo");
 #pragma HLS STREAM variable = payload_dropped_by_checksum_fifo depth = 16
-#pragma HLS DATA_PACK variable = payload_dropped_by_checksum_fifo
+#pragma HLS aggregate variable = payload_dropped_by_checksum_fifo compact = bit
 
   static stream<bool> payload_dropped_by_port_session_fifo("payload_dropped_by_port_session_fifo");
 #pragma HLS STREAM variable = payload_dropped_by_port_session_fifo depth = 16
-#pragma HLS DATA_PACK variable = payload_dropped_by_port_session_fifo
+#pragma HLS aggregate variable = payload_dropped_by_port_session_fifo compact = bit
 
   static stream<bool> payload_dropped_by_rx_fsm_fifo("payload_dropped_by_rx_fsm_fifo");
 #pragma HLS STREAM variable = payload_dropped_by_rx_fsm_fifo depth = 16
-#pragma HLS DATA_PACK variable                                     = payload_dropped_by_rx_fsm_fifo
+#pragma HLS aggregate variable = payload_dropped_by_rx_fsm_fifo compact = bit
   // payload corresponding TDSET fifo, write by port table , read by RxEngTcpPayloadDropper
   static stream<NetAXISDest> tcp_payload_tdest_fifo("tcp_payload_tdest_fifo");
-#pragma HLS STREAM variable = tcp_payload_tdest_fifo depth    = 16
-#pragma HLS DATA_PACK                                variable = tcp_payload_tdest_fifo
+#pragma HLS STREAM variable = tcp_payload_tdest_fifo depth = 16
+#pragma HLS aggregate variable = tcp_payload_tdest_fifo compact = bit
 
   // event
   static stream<EventWithTuple> rx_eng_meta_set_event_fifo("rx_eng_meta_set_event_fifo");
-#pragma HLS STREAM variable = rx_eng_meta_set_event_fifo depth    = 8
-#pragma HLS DATA_PACK                                    variable = rx_eng_meta_set_event_fifo
+#pragma HLS STREAM variable = rx_eng_meta_set_event_fifo depth = 8
+#pragma HLS aggregate variable = rx_eng_meta_set_event_fifo compact = bit
 
   static stream<Event> rx_eng_fsm_set_event_fifo("rx_eng_fsm_set_event_fifo");
-#pragma HLS STREAM variable = rx_eng_fsm_set_event_fifo depth    = 8
-#pragma HLS DATA_PACK                                   variable = rx_eng_fsm_set_event_fifo
+#pragma HLS STREAM variable = rx_eng_fsm_set_event_fifo depth = 8
+#pragma HLS aggregate variable = rx_eng_fsm_set_event_fifo compact = bit
 
   RxEngTcpPseudoHeaderInsert(
       rx_ip_pkt_in, tcp_pseudo_packet_for_checksum_fifo, tcp_pseudo_packet_for_rx_eng_fifo);
