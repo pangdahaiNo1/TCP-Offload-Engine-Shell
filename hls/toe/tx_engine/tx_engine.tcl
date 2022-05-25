@@ -29,7 +29,7 @@ add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
                   ${src_top_dir}/utils/axi_utils.cpp \
                   ${src_top_dir}/utils/axi_utils_test.hpp \
                   ${src_top_dir}/toe/rx_engine/rx_engine.cpp \
-                  ${src_top_dir}/toe/tcp_conn.hpp" -cflags "-I${src_top_dir} -DDEBUG"
+                  ${src_top_dir}/toe/toe_conn.hpp" -cflags "-I${src_top_dir} -DDEBUG"
 
 if {$hls_act == "csim"} {
    csim_design -clean  -argv  "${pcap_input_dir}/echo_server_golden.pcap"

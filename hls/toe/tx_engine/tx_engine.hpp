@@ -1,5 +1,3 @@
-
-
 #ifndef _TX_ENGINE_HPP_
 #define _TX_ENGINE_HPP_
 
@@ -7,7 +5,7 @@
 #include "toe/memory_access/memory_access.hpp"
 #include "toe/tcp_header.hpp"
 #include "toe/toe_config.hpp"
-#include "toe/toe_intf.hpp"
+#include "toe/toe_conn.hpp"
 
 struct TxEngFsmMetaData {
   ap_uint<32> seq_number;
@@ -104,18 +102,33 @@ void TxEngTcpFsm(
     // four tuple from tx enigne FSM
     stream<FourTuple> &tx_eng_fsm_four_tuple);
 
-void TxEngConstructPseudoPacket(stream<NetAXIS> &tx_tcp_pseduo_header,
-                                stream<bool> &   tx_tcp_packet_contains_payload,
-                                stream<NetAXIS> &tx_tcp_packet_payload,
-                                stream<NetAXIS> &tx_tcp_pseduo_packet_for_tx_eng,
-                                stream<NetAXIS> &tx_tcp_pseduo_packet_for_checksum);
+void TxEngFourTupleHandler(stream<ReverseTableToTxEngRsp> &slookup_rev_table_to_tx_eng_rsp,
+                           stream<bool> &                  tx_four_tuple_source,
+                           stream<FourTuple> &             tx_eng_fsm_four_tuple,
+                           stream<FourTuple> &             tx_four_tuple_for_tcp_header,
+                           stream<IpAddrPair> &            tx_ip_pair_for_ip_header);
 
-void TxEngRemovePseudoHeader(stream<NetAXIS> &tx_tcp_pseduo_packet_for_tx_eng,
-                             stream<NetAXIS> &tx_tcp_packet);
+void TxEngPseudoFullHeaderConstruct(stream<TxEngFsmMetaData> &tx_eng_fsm_meta_data,
+                                    stream<FourTuple> &       tx_four_tuple_for_tcp_header,
+                                    stream<bool> &            tx_tcp_packet_contains_payload,
+                                    stream<NetAXISWord> &     tx_tcp_pseudo_full_header_out);
 
-void TxEngConstructIpv4Packet(stream<NetAXIS> &     tx_ipv4_header,
+void TxEngConstructPseudoPacket(stream<NetAXISWord> &tx_tcp_pseudo_full_header,
+                                stream<bool> &       tx_tcp_packet_contains_payload,
+                                stream<NetAXISWord> &tx_tcp_packet_payload,
+                                stream<NetAXISWord> &tx_tcp_pseudo_packet_for_tx_eng,
+                                stream<NetAXISWord> &tx_tcp_pseudo_packet_for_checksum);
+
+void TxEngRemovePseudoHeader(stream<NetAXISWord> &tx_tcp_pseduo_packet_for_tx_eng,
+                             stream<NetAXISWord> &tx_tcp_packet);
+
+void TxEngConstructIpv4Header(stream<ap_uint<16> > &tx_tcp_payload_length,
+                              stream<IpAddrPair> &  tx_tcp_ip_pair,
+                              stream<NetAXISWord> & tx_ipv4_header);
+
+void TxEngConstructIpv4Packet(stream<NetAXISWord> & tx_ipv4_header,
                               stream<ap_uint<16> > &tx_tcp_checksum,
-                              stream<NetAXIS> &     tx_tcp_packet,
+                              stream<NetAXISWord> & tx_tcp_packet,
                               stream<NetAXIS> &     tx_ip_pkt_out);
 
 void tx_engine(
@@ -145,5 +158,4 @@ void tx_engine(
     stream<NetAXIS> &tx_ip_pkt_out
 
 );
-
 #endif  // TX_ENGINE_HPP

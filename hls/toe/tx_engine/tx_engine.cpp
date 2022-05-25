@@ -732,11 +732,11 @@ void TxEngFourTupleHandler(
 void                 TxEngPseudoFullHeaderConstruct(stream<TxEngFsmMetaData> &tx_eng_fsm_meta_data,
                                                     stream<FourTuple> &       tx_four_tuple_for_tcp_header,
                                                     stream<bool> &            tx_tcp_packet_contains_payload,
-                                                    stream<NetAXIS> &         tx_tcp_pseudo_full_header_out) {
+                                                    stream<NetAXISWord> &     tx_tcp_pseudo_full_header_out) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
-  NetAXIS                 send_word = NetAXIS();
+  NetAXISWord             send_word = NetAXISWord();
   static TxEngFsmMetaData tx_fsm_meta_data_reg;
   static FourTuple        four_tuple;
   bool                    packet_contains_payload;
@@ -829,19 +829,19 @@ void                 TxEngPseudoFullHeaderConstruct(stream<TxEngFsmMetaData> &tx
  *  It appends the pseudo TCP header with the corresponding payload stream.
  * @param[in] tx_tcp_pseudo_full_header = tcp pseudo header + tcp header
  */
-void                 TxEngConstructPseudoPacket(stream<NetAXIS> &tx_tcp_pseudo_full_header,
-                                                stream<bool> &   tx_tcp_packet_contains_payload,
-                                                stream<NetAXIS> &tx_tcp_packet_payload,
-                                                stream<NetAXIS> &tx_tcp_pseudo_packet_for_tx_eng,
-                                                stream<NetAXIS> &tx_tcp_pseudo_packet_for_checksum) {
+void                 TxEngConstructPseudoPacket(stream<NetAXISWord> &tx_tcp_pseudo_full_header,
+                                                stream<bool> &       tx_tcp_packet_contains_payload,
+                                                stream<NetAXISWord> &tx_tcp_packet_payload,
+                                                stream<NetAXISWord> &tx_tcp_pseudo_packet_for_tx_eng,
+                                                stream<NetAXISWord> &tx_tcp_pseudo_packet_for_checksum) {
 #pragma HLS INLINE   off
 #pragma HLS LATENCY  max = 1
 #pragma HLS pipeline II  = 1
 
-  static NetAXIS prev_word;
-  NetAXIS        payload_word;
-  NetAXIS        send_word = NetAXIS();
-  bool           packet_contains_payload;
+  static NetAXISWord prev_word;
+  NetAXISWord        payload_word;
+  NetAXISWord        send_word = NetAXISWord();
+  bool               packet_contains_payload;
 
   enum TxPseudoPktFsmState { READ_PSEUDO, READ_PAYLOAD, EXTRA_WORD };
   static TxPseudoPktFsmState fsm_state = READ_PSEUDO;
@@ -905,15 +905,15 @@ void                 TxEngConstructPseudoPacket(stream<NetAXIS> &tx_tcp_pseudo_f
  *  It remove the tcp pseudo header in tcp pseduo packet, the output stream is TCP header + TCP
  * payload
  */
-void                 TxEngRemovePseudoHeader(stream<NetAXIS> &tx_tcp_pseudo_packet_for_tx_eng,
-                                             stream<NetAXIS> &tx_tcp_packet) {
+void                 TxEngRemovePseudoHeader(stream<NetAXISWord> &tx_tcp_pseudo_packet_for_tx_eng,
+                                             stream<NetAXISWord> &tx_tcp_packet) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
-  static NetAXIS prev_word;
-  static bool    first_word = true;
-  NetAXIS        cur_word;
-  NetAXIS        send_word = NetAXIS();
+  static NetAXISWord prev_word;
+  static bool        first_word = true;
+  NetAXISWord        cur_word;
+  NetAXISWord        send_word = NetAXISWord();
   enum TxEngPseduoHdrRemoverFsmState { READ, EXTRA_WORD };
   static TxEngPseduoHdrRemoverFsmState fsm_state = READ;
 
@@ -972,13 +972,13 @@ void                 TxEngRemovePseudoHeader(stream<NetAXIS> &tx_tcp_pseudo_pack
  */
 void                 TxEngConstructIpv4Header(stream<ap_uint<16> > &tx_tcp_payload_length,
                                               stream<IpAddrPair> &  tx_tcp_ip_pair,
-                                              stream<NetAXIS> &     tx_ipv4_header) {
+                                              stream<NetAXISWord> & tx_ipv4_header) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
   static IpAddrPair ip_addr_pair;
 
-  NetAXIS send_word = NetAXIS(0, 0, 0, 1);
+  NetAXISWord send_word = NetAXISWord(0, 0, 0, 1);
   // total length in ipv4 header
   ap_uint<16> ip_length          = 0;
   ap_uint<16> tcp_payload_length = 0;
@@ -1034,17 +1034,17 @@ void                 TxEngConstructIpv4Header(stream<ap_uint<16> > &tx_tcp_paylo
  *
  * insert TCP checksum, no insert ip checksum!
  */
-void                 TxEngConstructIpv4Packet(stream<NetAXIS> &     tx_ipv4_header,
+void                 TxEngConstructIpv4Packet(stream<NetAXISWord> & tx_ipv4_header,
                                               stream<ap_uint<16> > &tx_tcp_checksum,
-                                              stream<NetAXIS> &     tx_tcp_packet,
+                                              stream<NetAXISWord> & tx_tcp_packet,
                                               stream<NetAXIS> &     tx_ip_pkt_out) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
-  NetAXIS        ipv4_header;
-  NetAXIS        tcp_packet;
-  NetAXIS        send_word = NetAXIS();
-  static NetAXIS prevWord;
+  NetAXISWord        ipv4_header;
+  NetAXISWord        tcp_packet;
+  NetAXISWord        send_word = NetAXISWord();
+  static NetAXISWord prevWord;
 
   ap_uint<16> tcp_checksum;
   enum teips_states { READ_FIRST, READ_PAYLOAD, EXTRA_WORD };
@@ -1074,7 +1074,7 @@ void                 TxEngConstructIpv4Packet(stream<NetAXIS> &     tx_ipv4_head
           teips_fsm_state = READ_PAYLOAD;
 
         prevWord = tcp_packet;
-        tx_ip_pkt_out.write(send_word);
+        tx_ip_pkt_out.write(send_word.to_net_axis());
       }
       break;
     case READ_PAYLOAD:
@@ -1096,14 +1096,14 @@ void                 TxEngConstructIpv4Packet(stream<NetAXIS> &     tx_ipv4_head
         }
 
         prevWord = tcp_packet;
-        tx_ip_pkt_out.write(send_word);
+        tx_ip_pkt_out.write(send_word.to_net_axis());
       }
       break;
     case EXTRA_WORD:
       send_word.data(159, 0) = prevWord.data(511, 352);
       send_word.keep(19, 0)  = prevWord.keep(63, 44);
       send_word.last         = 1;
-      tx_ip_pkt_out.write(send_word);
+      tx_ip_pkt_out.write(send_word.to_net_axis());
       teips_fsm_state = READ_FIRST;
       break;
   }
@@ -1136,23 +1136,29 @@ void tx_engine(
     stream<NetAXIS> &tx_ip_pkt_out
 
 ) {
-#pragma HLS                        DATAFLOW
-#pragma HLS INTERFACE ap_ctrl_none port = return
-#pragma HLS                        INLINE
+
+#pragma HLS INTERFACE axis port = mover_read_mem_cmd_out
+#pragma HLS aggregate variable = mover_read_mem_cmd_out compact = bit
+
+#pragma HLS INTERFACE axis port = mover_read_mem_data_in
+#if (TCP_NODELAY)
+#pragma HLS INTERFACE axis port = tx_app_to_tx_eng_data
+#endif
+#pragma HLS INTERFACE axis port = tx_ip_pkt_out
 
   // Memory Read delay around 76 cycles, 10 cycles/packet, so keep meta of at
   // least 8 packets
   static stream<TxEngFsmMetaData> tx_eng_fsm_meta_data_fifo("tx_eng_fsm_meta_data_fifo");
-#pragma HLS stream variable = tx_eng_fsm_meta_data_fifo depth    = 16
-#pragma HLS DATA_PACK                                   variable = tx_eng_fsm_meta_data_fifo
+#pragma HLS stream variable = tx_eng_fsm_meta_data_fifo depth = 16
+#pragma HLS aggregate variable = tx_eng_fsm_meta_data_fifo compact = bit
 
   static stream<ap_uint<16> > tx_tcp_payload_length_fifo("tx_tcp_payload_length_fifo");
-#pragma HLS stream variable = tx_tcp_payload_length_fifo depth    = 16
-#pragma HLS DATA_PACK                                    variable = tx_tcp_payload_length_fifo
+#pragma HLS stream variable = tx_tcp_payload_length_fifo depth = 16
+#pragma HLS aggregate variable = tx_tcp_payload_length_fifo compact = bit
 
   static stream<MemBufferRWCmd> tx_eng_to_mem_cmd_fifo("tx_eng_to_mem_cmd_fifo");
-#pragma HLS stream variable = tx_eng_to_mem_cmd_fifo depth    = 16
-#pragma HLS DATA_PACK                                variable = tx_eng_to_mem_cmd_fifo
+#pragma HLS stream variable = tx_eng_to_mem_cmd_fifo depth = 16
+#pragma HLS aggregate variable = tx_eng_to_mem_cmd_fifo compact = bit
 
   static stream<bool> tx_eng_is_ddr_bypass_fifo("tx_eng_is_ddr_bypass_fifo");
 #pragma HLS stream variable = tx_eng_is_ddr_bypass_fifo depth = 16
@@ -1161,59 +1167,59 @@ void tx_engine(
 #pragma HLS stream variable = tx_four_tuple_source_fifo depth = 32
 
   static stream<FourTuple> tx_eng_fsm_four_tuple_fifo("tx_eng_fsm_four_tuple_fifo");
-#pragma HLS stream variable = tx_eng_fsm_four_tuple_fifo depth    = 16
-#pragma HLS DATA_PACK                                    variable = tx_eng_fsm_four_tuple_fifo
+#pragma HLS stream variable = tx_eng_fsm_four_tuple_fifo depth = 16
+#pragma HLS aggregate variable = tx_eng_fsm_four_tuple_fifo compact = bit
 
   static stream<FourTuple> tx_four_tuple_for_tcp_header_fifo("tx_four_tuple_for_tcp_header_fifo");
 #pragma HLS stream variable = tx_four_tuple_for_tcp_header_fifo depth = 16
-#pragma HLS DATA_PACK variable = tx_four_tuple_for_tcp_header_fifo
+#pragma HLS aggregate variable = tx_four_tuple_for_tcp_header_fifo
 
   static stream<IpAddrPair> tx_ip_pair_for_ip_header_fifo("tx_ip_pair_for_ip_header_fifo");
-#pragma HLS stream variable = tx_ip_pair_for_ip_header_fifo depth    = 16
-#pragma HLS DATA_PACK                                       variable = tx_ip_pair_for_ip_header_fifo
+#pragma HLS stream variable = tx_ip_pair_for_ip_header_fifo depth = 16
+#pragma HLS aggregate variable = tx_ip_pair_for_ip_header_fifo compact = bit
 
   static stream<MemBufferRWCmdDoubleAccess> mem_buffer_double_access_fifo(
       "mem_buffer_double_access_fifo");
-#pragma HLS stream variable = mem_buffer_double_access_fifo depth    = 16
-#pragma HLS DATA_PACK                                       variable = mem_buffer_double_access_fifo
+#pragma HLS stream variable = mem_buffer_double_access_fifo depth = 16
+#pragma HLS aggregate variable = mem_buffer_double_access_fifo compact = bit
 
   // read from memory
-  static stream<NetAXIS> tx_eng_read_tcp_payload_fifo("tx_eng_read_tcp_payload_fifo");
-#pragma HLS stream variable = tx_eng_read_tcp_payload_fifo depth    = 512
-#pragma HLS DATA_PACK                                      variable = tx_eng_read_tcp_payload_fifo
+  static stream<NetAXISWord> tx_eng_read_tcp_payload_fifo("tx_eng_read_tcp_payload_fifo");
+#pragma HLS stream variable = tx_eng_read_tcp_payload_fifo depth = 512
+#pragma HLS aggregate variable = tx_eng_read_tcp_payload_fifo compact = bit
 
   static stream<bool> tx_tcp_packet_contains_payload_fifo("tx_tcp_packet_contains_payload_fifo");
 #pragma HLS stream variable = tx_tcp_packet_contains_payload_fifo depth = 32
 
-  static stream<NetAXIS> tx_tcp_pseudo_full_header_fifo("tx_tcp_pseudo_full_header_fifo");
+  static stream<NetAXISWord> tx_tcp_pseudo_full_header_fifo("tx_tcp_pseudo_full_header_fifo");
 #pragma HLS stream variable = tx_tcp_pseudo_full_header_fifo depth = 512
-#pragma HLS DATA_PACK variable                                     = tx_tcp_pseudo_full_header_fifo
+#pragma HLS aggregate variable = tx_tcp_pseudo_full_header_fifo compact = bit
 
-  static stream<NetAXIS> tx_tcp_pseudo_packet_for_tx_eng_fifo(
+  static stream<NetAXISWord> tx_tcp_pseudo_packet_for_tx_eng_fifo(
       "tx_tcp_pseudo_packet_for_tx_eng_fifo");
 #pragma HLS stream variable = tx_tcp_pseudo_packet_for_tx_eng_fifo depth = 512
-#pragma HLS DATA_PACK variable = tx_tcp_pseudo_packet_for_tx_eng_fifo
+#pragma HLS aggregate variable = tx_tcp_pseudo_packet_for_tx_eng_fifo compact = bit
 
-  static stream<NetAXIS> tx_tcp_pseudo_packet_for_checksum_fifo(
+  static stream<NetAXISWord> tx_tcp_pseudo_packet_for_checksum_fifo(
       "tx_tcp_pseudo_packet_for_checksum_fifo");
 #pragma HLS stream variable = tx_tcp_pseudo_packet_for_checksum_fifo depth = 512
-#pragma HLS DATA_PACK variable = tx_tcp_pseudo_packet_for_checksum_fifo
+#pragma HLS aggregate variable = tx_tcp_pseudo_packet_for_checksum_fifo compact = bit
 
-  static stream<NetAXIS> tx_tcp_packet_fifo("tx_tcp_packet_fifo");
-#pragma HLS stream variable = tx_tcp_packet_fifo depth    = 512
-#pragma HLS DATA_PACK                            variable = tx_tcp_packet_fifo
-  static stream<NetAXIS> tx_ipv4_header_fifo("tx_ipv4_header_fifo");
-#pragma HLS stream variable = tx_ipv4_header_fifo depth    = 512
-#pragma HLS DATA_PACK                             variable = tx_ipv4_header_fifo
+  static stream<NetAXISWord> tx_tcp_packet_fifo("tx_tcp_packet_fifo");
+#pragma HLS stream variable = tx_tcp_packet_fifo depth = 512
+#pragma HLS aggregate variable = tx_tcp_packet_fifo compact = bit
+  static stream<NetAXISWord> tx_ipv4_header_fifo("tx_ipv4_header_fifo");
+#pragma HLS stream variable = tx_ipv4_header_fifo depth = 512
+#pragma HLS aggregate variable = tx_ipv4_header_fifo compact = bit
 
   static stream<SubChecksum> tcp_pseudo_packet_subchecksum_fifo(
       "tcp_pseudo_packet_subchecksum_fifo");
 #pragma HLS STREAM variable = tcp_pseudo_packet_subchecksum_fifo depth = 16
-#pragma HLS DATA_PACK variable = tcp_pseudo_packet_subchecksum_fifo
+#pragma HLS aggregate variable = tcp_pseudo_packet_subchecksum_fifo compact = bit
 
   static stream<ap_uint<16> > tcp_pseudo_packet_checksum_fifo("tcp_pseudo_packet_checksum_fifo");
 #pragma HLS STREAM variable = tcp_pseudo_packet_checksum_fifo depth = 16
-#pragma HLS DATA_PACK variable = tcp_pseudo_packet_checksum_fifo
+#pragma HLS aggregate variable = tcp_pseudo_packet_checksum_fifo compact = bit
 
   TxEngTcpFsm(ack_delay_to_tx_eng_event,
               tx_eng_read_count_fifo,
