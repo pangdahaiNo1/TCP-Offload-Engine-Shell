@@ -1,57 +1,9 @@
 #include "session_lookup_controller.hpp"
+#include "toe/mock/mock_cam.hpp"
 #include "toe/mock/mock_toe.hpp"
-
-#include <map>
 
 using namespace hls;
 using namespace std;
-
-static std::map<ThreeTuple, TcpSessionID> mock_cam;
-void MockCam(stream<RtlSLookupToCamLupReq> &slookup_to_cam_lup_req,
-             stream<RtlCamToSlookupLupRsp> &cam_to_slookup_lup_rsp,
-             stream<RtlSlookupToCamUpdReq> &slookup_to_cam_upd_req,
-             stream<RtlCamToSlookupUpdRsp> &cam_to_slookup_upd_rsp) {
-  RtlSLookupToCamLupReq lookup_req;
-  RtlSlookupToCamUpdReq upddate_req;
-
-  std::map<ThreeTuple, TcpSessionID>::const_iterator iter;
-
-  if (!slookup_to_cam_lup_req.empty()) {
-    slookup_to_cam_lup_req.read(lookup_req);
-    iter = mock_cam.find(lookup_req.key);
-    if (iter != mock_cam.end())  // hit
-    {
-      cout << "Current lookup session: " << iter->second << endl;
-      cam_to_slookup_lup_rsp.write(RtlCamToSlookupLupRsp(true, iter->second, lookup_req.source));
-    } else {
-      cam_to_slookup_lup_rsp.write(RtlCamToSlookupLupRsp(false, lookup_req.source));
-    }
-  }
-
-  if (!slookup_to_cam_upd_req.empty()) {
-    slookup_to_cam_upd_req.read(upddate_req);
-    iter = mock_cam.find(upddate_req.key);
-    if (iter == mock_cam.end()) {
-      if (upddate_req.op == INSERT) {
-        mock_cam[upddate_req.key] = upddate_req.value;
-        cam_to_slookup_upd_rsp.write(
-            RtlCamToSlookupUpdRsp(upddate_req.value, INSERT, upddate_req.source));
-        cout << "Current Update session: " << upddate_req.value << endl;
-
-      } else {
-        cerr << "delete a non-existing one" << endl;
-      }
-    } else {  // found in map
-      if (upddate_req.op == INSERT) {
-        cerr << "insert a existing one" << endl;
-      } else {
-        mock_cam.erase(upddate_req.key);
-        cam_to_slookup_upd_rsp.write(
-            RtlCamToSlookupUpdRsp(upddate_req.value, DELETE, upddate_req.source));
-      }
-    }
-  }
-}
 
 void CamUpdateReqMerger(stream<RtlSlookupToCamUpdReq> &in1,
                         stream<RtlSlookupToCamUpdReq> &in2,
@@ -103,7 +55,7 @@ void EmptyFifos(std::ofstream &                 out_stream,
 
 int main() {
   // from sttable
-  stream<TcpSessionID> sttable_to_slookup_release_session_req;
+  stream<TcpSessionID> sttable_to_slookup_release_req;
   // rx app
   stream<TcpSessionID> rx_app_to_slookup_check_tdest_req;
   stream<NetAXISDest>  slookup_to_rx_app_check_tdset_rsp;
@@ -140,6 +92,7 @@ int main() {
   TxAppToSlookupReq tx_app_req;
   RxEngToSlookupReq rx_eng_req;
   TcpSessionID      session_id;
+  MockCam           mock_cam;
   while (sim_cycle < 100) {
     switch (sim_cycle) {
       case 1:
@@ -171,7 +124,7 @@ int main() {
       default:
         break;
     }
-    session_lookup_controller(sttable_to_slookup_release_session_req,
+    session_lookup_controller(sttable_to_slookup_release_req,
                               rx_app_to_slookup_check_tdest_req,
                               slookup_to_rx_app_check_tdset_rsp,
                               rx_eng_to_slookup_req,
@@ -189,10 +142,10 @@ int main() {
                               slookup_to_ptable_release_port_req,
                               reg_session_cnt,
                               my_ip_addr);
-    MockCam(rtl_slookup_to_cam_lookup_req,
-            rtl_cam_to_slookup_lookup_rsp,
-            rtl_slookup_to_cam_update_req,
-            rtl_cam_to_slookup_update_rsp);
+    mock_cam.MockCamIntf(rtl_slookup_to_cam_lookup_req,
+                         rtl_cam_to_slookup_lookup_rsp,
+                         rtl_slookup_to_cam_update_req,
+                         rtl_cam_to_slookup_update_rsp);
     EmptyFifos(outputFile,
                slookup_to_rx_app_check_tdset_rsp,
                slookup_to_rx_eng_rsp,

@@ -4,42 +4,56 @@
 #include "utils/axi_utils_test.hpp"
 #include "utils/pcap/pcap_to_stream.hpp"
 
-void TestPseduoPktoIpv4Pkt(stream<NetAXIS> &golden_tcp_pseudo_pkt_in,
-                           stream<NetAXIS> &golden_ip_header_in) {
-  stream<TcpPseudoFullHeader> tcp_pseudo_pkts_header;
-  stream<NetAXIS>             tcp_pseudo_pkts_fifo;
-  stream<NetAXIS>             tcp_pseudo_pkts_for_checksum_fifo;
-  while (!golden_tcp_pseudo_pkt_in.empty()) {
-    TcpPseudoFullHeader pkts;
-    NetAXIS             cur_word = golden_tcp_pseudo_pkt_in.read();
-    tcp_pseudo_pkts_fifo.write(cur_word);
-    tcp_pseudo_pkts_for_checksum_fifo.write(cur_word);
-    pkts.FromWord(cur_word.data(TCP_HEADER_WITH_PSEUDO_WIDTH - 1, 0));
-    cout << std::hex << pkts.to_string() << endl;
-    ;
-    while (!cur_word.last) {
-      cur_word = golden_tcp_pseudo_pkt_in.read();
-      tcp_pseudo_pkts_fifo.write(cur_word);
-      tcp_pseudo_pkts_for_checksum_fifo.write(cur_word);
-    }
-  }
+void TestTcpTxConstructIpv4Pkt(stream<NetAXISWord> &input_tcp_packet) {
+  // open output file
+  // std::ofstream outputFile;
+  // outputFile.open("./out_tcp_pseudo_header.dat");
+  // if (!outputFile) {
+  //   std::cout << "Error: could not open test output file." << std::endl;
+  // }
+  // some fifos
+  stream<NetAXISWord> input_tcp_packet_ip_header("input_tcp_packet_ip_header");
+  stream<NetAXISWord> tx_tcp_pseudo_packet_for_checksum_fifo(
+      "tx_tcp_pseudo_packet_for_checksum_fifo");
+  stream<NetAXISWord>  tx_tcp_packet_fifo("tx_tcp_packet_fifo");
+  stream<NetAXISWord>  tx_tcp_pseudo_packet_for_tx_eng_fifo("tx_tcp_pseudo_packet_for_tx_eng_fifo");
+  stream<SubChecksum>  tcp_pseudo_packet_subchecksum_fifo("tcp_pseudo_packet_subchecksum_fifo");
+  stream<ap_uint<16> > tcp_pseudo_packet_checksum_fifo("tcp_pseudo_packet_checksum_fifo");
+  stream<NetAXIS>      tx_tcp_ip_packet_fifo("tx_tcp_ip_packet_fifo");
+
+  stream<NetAXISWord> input_tcp_packet_copy;
+  // simulation
+  // construct ip header from input tcp packet
   int sim_cycle = 0;
-  // tx engine test bench
-  stream<NetAXIS>      tcp_packet_fifo;
-  stream<SubChecksum>  tcp_packet_subchecksum_fifo;
-  stream<ap_uint<16> > tcp_packet_checksum_fifo;
-  stream<NetAXIS>      tcp_ip_packet_fifo;
-  while (sim_cycle < 50) {
+  while (sim_cycle < 200) {
+    // construct ip header from input tcp packet
+    if (!input_tcp_packet.empty()) {
+      NetAXISWord cur_word = input_tcp_packet.read();
+      input_tcp_packet_copy.write(cur_word);
+      NetAXISWord ip_word(cur_word.data(IPV4_HEADER_WIDTH - 1, 0), 0, 0xFFFFF, 1);
+      input_tcp_packet_ip_header.write(ip_word);
+      while (!cur_word.last) {
+        cur_word = input_tcp_packet.read();
+        input_tcp_packet_copy.write(cur_word);
+      }
+    }
+    // construct tcp pseudo packet from input tcp packet
+    RxEngTcpPseudoHeaderInsert(input_tcp_packet_copy,
+                               tx_tcp_pseudo_packet_for_checksum_fifo,
+                               tx_tcp_pseudo_packet_for_tx_eng_fifo);
+
     // the tcp pseudo packet input contains the valid checksum, then calculate checksum here will
     // make all tcp checksum = 0, if not zero, the testbench are failed
-    ComputeSubChecksum(tcp_pseudo_pkts_for_checksum_fifo, tcp_packet_subchecksum_fifo);
-    CheckChecksum(tcp_packet_subchecksum_fifo, tcp_packet_checksum_fifo);
-    TxEngRemovePseudoHeader(tcp_pseudo_pkts_fifo, tcp_packet_fifo);
-    TxEngConstructIpv4Packet(
-        golden_ip_header_in, tcp_packet_checksum_fifo, tcp_packet_fifo, tcp_ip_packet_fifo);
+    ComputeSubChecksum(tx_tcp_pseudo_packet_for_checksum_fifo, tcp_pseudo_packet_subchecksum_fifo);
+    CheckChecksum(tcp_pseudo_packet_subchecksum_fifo, tcp_pseudo_packet_checksum_fifo);
+    TxEngRemovePseudoHeader(tx_tcp_pseudo_packet_for_tx_eng_fifo, tx_tcp_packet_fifo);
+    TxEngConstructIpv4Packet(input_tcp_packet_ip_header,
+                             tcp_pseudo_packet_checksum_fifo,
+                             tx_tcp_packet_fifo,
+                             tx_tcp_ip_packet_fifo);
     sim_cycle++;
   }
-  StreamToPcap("tx_ip_tcp.pcap", true, true, tcp_ip_packet_fifo, true);
+  StreamToPcap("tx_ip_tcp.pcap", true, true, tx_tcp_ip_packet_fifo, true);
 }
 
 int main(int argc, char **argv) {
@@ -49,31 +63,11 @@ int main(int argc, char **argv) {
   }
   char *input_tcp_pcap_file = argv[1];
   cout << "Read TCP Packets from " << input_tcp_pcap_file << endl;
-  stream<NetAXIS> input_tcp_ip_pkt("input_tcp_ip_pkt");
-  stream<NetAXIS> input_tcp_ip_pkt_for_ipheader("input_tcp_ip_pkt_for_ipheader");
-  PcapToStream(input_tcp_pcap_file, true, input_tcp_ip_pkt);
-  PcapToStream(input_tcp_pcap_file, true, input_tcp_ip_pkt_for_ipheader);
+  stream<NetAXIS>     input_tcp_ip_pkt_read_in("input_tcp_ip_pkt_read_in");
+  stream<NetAXISWord> input_tcp_ip_pkt("input_tcp_ip_pkt");
+  PcapToStream(input_tcp_pcap_file, true, input_tcp_ip_pkt_read_in);
+  NetAXIStreamToNetAXIStreamWord(input_tcp_ip_pkt_read_in, input_tcp_ip_pkt);
 
-  int sim_cycle = 0;
-  // construct ip header
-  stream<NetAXIS> golden_ip_header_in;
-  while (!input_tcp_ip_pkt_for_ipheader.empty()) {
-    NetAXIS cur_word = input_tcp_ip_pkt_for_ipheader.read();
-    NetAXIS ip_word(cur_word.data(IPV4_HEADER_WIDTH - 1, 0), 0, 0xFFFFF, 1);
-    golden_ip_header_in.write(ip_word);
-    while (!cur_word.last) {
-      cur_word = input_tcp_ip_pkt_for_ipheader.read();
-    }
-  }
-
-  stream<NetAXIS> tcp_pseudo_pkt1;
-  stream<NetAXIS> tcp_pseudo_pkt2;
-  // construct pseudo packet
-  while (sim_cycle < 50) {
-    RxEngTcpPseudoHeaderInsert(input_tcp_ip_pkt, tcp_pseudo_pkt1, tcp_pseudo_pkt2);
-    sim_cycle++;
-  }
-  SaveNetAXISToFile(tcp_pseudo_pkt1, "tcp_pseudo_pkt1.dat");
-  TestPseduoPktoIpv4Pkt(tcp_pseudo_pkt2, golden_ip_header_in);
+  TestTcpTxConstructIpv4Pkt(input_tcp_ip_pkt);
   return 0;
 }

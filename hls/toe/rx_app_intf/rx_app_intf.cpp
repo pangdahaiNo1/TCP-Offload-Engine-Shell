@@ -121,24 +121,24 @@ void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_read_da
   }
 }
 
-void NetAppNotificationTdestHandler(stream<AppNotification> &       app_notification_no_tdest,
+void NetAppNotificationTdestHandler(stream<AppNotificationNoTDEST> &app_notification_no_tdest,
                                     stream<NetAXISAppNotification> &net_app_notification,
                                     stream<TcpSessionID> &          slookup_tdest_lookup_req,
                                     stream<NetAXISDest> &           slookup_tdest_lookup_rsp) {
 #pragma HLS PIPELINE                     II = 1
 #pragma HLS INLINE                       off
 #pragma HLS INTERFACE axis register both port = net_app_notification
-  static bool            tdest_req_lock = false;
-  static AppNotification notify_reg;
+  static bool                   tdest_req_lock = false;
+  static AppNotificationNoTDEST notify_reg;
 
   if (!app_notification_no_tdest.empty() && !tdest_req_lock) {
     notify_reg = app_notification_no_tdest.read();
-    slookup_tdest_lookup_req.write(notify_reg.data.session_id);
+    slookup_tdest_lookup_req.write(notify_reg.session_id);
     tdest_req_lock = true;
   } else if (!slookup_tdest_lookup_rsp.empty() && tdest_req_lock) {
     NetAXISDest            temp_role_id = slookup_tdest_lookup_rsp.read();
     NetAXISAppNotification net_app_notify;
-    net_app_notify.data = notify_reg.data;
+    net_app_notify.data = notify_reg;
     net_app_notify.dest = temp_role_id;
     net_app_notification.write(net_app_notify);
     tdest_req_lock = false;
@@ -164,9 +164,9 @@ void rx_app_intf(
 
     // net role app - notification
     // Rx engine to Rx app
-    stream<AppNotification> &rx_eng_to_rx_app_notification,
+    stream<AppNotificationNoTDEST> &rx_eng_to_rx_app_notification,
     // Timer to Rx app
-    stream<AppNotification> &rtimer_to_rx_app_notification,
+    stream<AppNotificationNoTDEST> &rtimer_to_rx_app_notification,
     // lookup for tdest, req/rsp connect to slookup controller
     stream<TcpSessionID> &rx_app_to_slookup_tdest_lookup_req,
     stream<NetAXISDest> & slookup_to_rx_app_tdest_lookup_rsp,
@@ -200,7 +200,8 @@ void rx_app_intf(
                    rx_app_to_net_app_data);
 
   // to be merged in Slookup controller for looking TDEST
-  static stream<AppNotification> rx_app_notification_no_tdest("rx_app_notification_no_tdest");
+  static stream<AppNotificationNoTDEST> rx_app_notification_no_tdest(
+      "rx_app_notification_no_tdest");
 #pragma HLS STREAM variable = rx_app_notification_no_tdest depth = 16
 #pragma HLS aggregate variable = rx_app_notification_no_tdest compact = bit
   AxiStreamMerger(

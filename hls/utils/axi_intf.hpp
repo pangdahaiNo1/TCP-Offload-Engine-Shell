@@ -31,7 +31,7 @@ struct NetAXISWord {
   NetAXISKeep keep;
   ap_uint<1>  last;
   // NetAXISWord() : data(0), id(0), user(0), dest(0), keep(0), last(0) {}
-  NetAXISWord() : data(0), dest(0), keep(0), last(1) {}
+  NetAXISWord() : data(0), dest(0), keep(0), last(0) {}
   NetAXISWord(NetAXISData data, NetAXISDest dest, NetAXISKeep keep, ap_uint<1> last)
       : data(data), dest(dest), keep(keep), last(last) {}
   NetAXISWord(const NetAXIS &net_axis) {

@@ -196,21 +196,21 @@ void CamUpdateRspHandler(stream<RtlCamToSlookupUpdRsp> &rtl_cam_to_slookup_updat
  * @details:
  * @param[in] reverse_table_insert_req: handle the insert request from Rx Eng or Tx app, @ref
  * CamLookupRspHandler
- * @param[in] sttable_to_slookup_release_session_req: handle the delete request from State table
+ * @param[in] sttable_to_slookup_release_req: handle the delete request from State table
  * @param[out] slookup_to_ptable_release_port_req: when delete a session, delete port table
  * @param[out] slookup_to_cam_delete_req: when delete a session, delete the CAM
  * @param[out] slookup_rev_table_to_tx_eng_rsp: handle the lookup request from Tx eng
- * @param[in] rx_app_to_slookup_check_tdest_req: handle SessionID to TDEST lookup
- * @param[out] slookup_to_rx_app_check_tdset_rsp
+ * @param[in] rx_app_to_slookup_tdest_lookup_req: handle SessionID to TDEST lookup
+ * @param[out] slookup_to_rx_app_tdest_lookup_rsp
  *
  */
 void SlookupReverseTableInterface(
     // insert req
     stream<SlookupToRevTableUpdReq> &reverse_table_insert_req,
-    stream<TcpSessionID> &           sttable_to_slookup_release_session_req,
+    stream<TcpSessionID> &           sttable_to_slookup_release_req,
     // rx app
-    stream<TcpSessionID> &rx_app_to_slookup_check_tdest_req,
-    stream<NetAXISDest> & slookup_to_rx_app_check_tdset_rsp,
+    stream<TcpSessionID> &rx_app_to_slookup_tdest_lookup_req,
+    stream<NetAXISDest> & slookup_to_rx_app_tdest_lookup_rsp,
     // tx app
     stream<TcpSessionID> &tx_app_to_slookup_check_tdest_req,
     stream<NetAXISDest> & slookup_to_tx_app_check_tdest_rsp,
@@ -250,12 +250,12 @@ void SlookupReverseTableInterface(
     tx_eng_rsp.four_tuple.dst_tcp_port = slookup_rev_table[session_id].three_tuple.there_tcp_port;
     tx_eng_rsp.role_id                 = slookup_rev_table[session_id].role_id;
     slookup_rev_table_to_tx_eng_rsp.write(tx_eng_rsp);
-  } else if (!rx_app_to_slookup_check_tdest_req.empty()) {
-    rx_app_to_slookup_check_tdest_req.read(session_id);
+  } else if (!rx_app_to_slookup_tdest_lookup_req.empty()) {
+    rx_app_to_slookup_tdest_lookup_req.read(session_id);
     if (valid_tuple[session_id]) {
-      slookup_to_rx_app_check_tdset_rsp.write(slookup_rev_table[session_id].role_id);
+      slookup_to_rx_app_tdest_lookup_rsp.write(slookup_rev_table[session_id].role_id);
     } else {
-      slookup_to_rx_app_check_tdset_rsp.write(INVALID_TDEST);
+      slookup_to_rx_app_tdest_lookup_rsp.write(INVALID_TDEST);
     }
   } else if (!tx_app_to_slookup_check_tdest_req.empty()) {
     tx_app_to_slookup_check_tdest_req.read(session_id);
@@ -264,8 +264,8 @@ void SlookupReverseTableInterface(
     } else {
       slookup_to_tx_app_check_tdest_rsp.write(INVALID_TDEST);
     }
-  } else if (!sttable_to_slookup_release_session_req.empty()) {
-    sttable_to_slookup_release_session_req.read(session_id);
+  } else if (!sttable_to_slookup_release_req.empty()) {
+    sttable_to_slookup_release_req.read(session_id);
     cur_tuple_to_release = slookup_rev_table[session_id].three_tuple;
     if (valid_tuple[session_id])  // if valid
     {
@@ -284,10 +284,10 @@ void SlookupReverseTableInterface(
  */
 void session_lookup_controller(
     // from sttable
-    stream<TcpSessionID> &sttable_to_slookup_release_session_req,
+    stream<TcpSessionID> &sttable_to_slookup_release_req,
     // rx app
-    stream<TcpSessionID> &rx_app_to_slookup_check_tdest_req,
-    stream<NetAXISDest> & slookup_to_rx_app_check_tdset_rsp,
+    stream<TcpSessionID> &rx_app_to_slookup_tdest_lookup_req,
+    stream<NetAXISDest> & slookup_to_rx_app_tdest_lookup_rsp,
     // rx eng
     stream<RxEngToSlookupReq> &rx_eng_to_slookup_req,
     stream<SessionLookupRsp> & slookup_to_rx_eng_rsp,
@@ -312,10 +312,19 @@ void session_lookup_controller(
 //#pragma HLS DATAFLOW
 #pragma HLS INLINE
 
+#pragma HLS INTERFACE axis register port = rtl_slookup_to_cam_lookup_req
+#pragma HLS INTERFACE axis register port = rtl_cam_to_slookup_lookup_rsp
+#pragma HLS INTERFACE axis register port = rtl_slookup_to_cam_update_req
+#pragma HLS INTERFACE axis register port = rtl_cam_to_slookup_update_rsp
+#pragma HLS aggregate variable = rtl_slookup_to_cam_lookup_req compact = bit
+#pragma HLS aggregate variable = rtl_cam_to_slookup_lookup_rsp compact = bit
+#pragma HLS aggregate variable = rtl_slookup_to_cam_update_req compact = bit
+#pragma HLS aggregate variable = rtl_cam_to_slookup_update_rsp compact = bit
+
   // Fifos
   static stream<ap_uint<14> > slookup_available_id_fifo("slookup_available_id_fifo");
-  static stream<ap_uint<14> > slookup_released_id_fifo("slookup_released_id_fifo");
 #pragma HLS stream variable = slookup_available_id_fifo depth = 16384
+  static stream<ap_uint<14> > slookup_released_id_fifo("slookup_released_id_fifo");
 #pragma HLS stream variable = slookup_released_id_fifo depth = 2
 
   static stream<RtlSlookupToCamUpdReq> slookup_to_cam_insert_req_fifo(
@@ -356,9 +365,9 @@ void session_lookup_controller(
   CamUpdateRspHandler(rtl_cam_to_slookup_update_rsp, cam_to_slookup_insert_rsp_fifo);
 
   SlookupReverseTableInterface(reverse_table_insert_req_fifo,
-                               sttable_to_slookup_release_session_req,
-                               rx_app_to_slookup_check_tdest_req,
-                               slookup_to_rx_app_check_tdset_rsp,
+                               sttable_to_slookup_release_req,
+                               rx_app_to_slookup_tdest_lookup_req,
+                               slookup_to_rx_app_tdest_lookup_rsp,
                                tx_app_to_slookup_check_tdest_req,
                                slookup_to_tx_app_check_tdest_rsp,
                                tx_eng_to_slookup_rev_table_req,

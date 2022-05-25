@@ -19,7 +19,7 @@ void RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_read_data_req,
                       stream<NetAXISWord> &rx_eng_to_rx_app_data,
                       stream<NetAXIS> &    rx_app_to_net_app_data);
 
-void NetAppNotificationTdestHandler(stream<AppNotification> &       app_notification_no_tdest,
+void NetAppNotificationTdestHandler(stream<AppNotificationNoTDEST> &app_notification_no_tdest,
                                     stream<NetAXISAppNotification> &net_app_notification,
                                     stream<TcpSessionID> &          slookup_tdest_lookup_req,
                                     stream<NetAXISDest> &           slookup_tdest_lookup_rsp);
@@ -43,9 +43,9 @@ void rx_app_intf(
 
     // net role app - notification
     // Rx engine to Rx app
-    stream<AppNotification> &rx_eng_to_rx_app_notification,
+    stream<AppNotificationNoTDEST> &rx_eng_to_rx_app_notification,
     // Timer to Rx app
-    stream<AppNotification> &rtimer_to_rx_app_notification,
+    stream<AppNotificationNoTDEST> &rtimer_to_rx_app_notification,
     // lookup for tdest, req/rsp connect to slookup controller
     stream<TcpSessionID> &rx_app_to_slookup_tdest_lookup_req,
     stream<NetAXISDest> & slookup_to_rx_app_tdest_lookup_rsp,

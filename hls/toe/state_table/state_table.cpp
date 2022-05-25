@@ -12,7 +12,7 @@ using namespace hls;
  *  @param[in]		rx_eng_to_sttable_req read or write
  *  @param[in]		tx_app_to_sttable_req read or write
  *  @param[in]		tx_app_to_sttable_lup_req only read
- *  @param[in]		timer_to_sttable_release_req release session id
+ *  @param[in]		sttable_to_slookup_release_state release session id
  *  @param[out]		sttable_to_rx_eng_rsp read response
  *  @param[out]		sttable_to_tx_app_rsp read response
  *  @param[out]		sttable_to_tx_app_lup_rsp
@@ -21,7 +21,7 @@ using namespace hls;
 void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_req,
                                  stream<StateTableReq> &tx_app_to_sttable_req,
                                  stream<TcpSessionID> & tx_app_to_sttable_lup_req,
-                                 stream<TcpSessionID> & timer_to_sttable_release_req,
+                                 stream<TcpSessionID> & sttable_to_slookup_release_state,
                                  stream<SessionState> & sttable_to_rx_eng_rsp,
                                  stream<SessionState> & sttable_to_tx_app_rsp,
                                  stream<SessionState> & sttable_to_tx_app_lup_rsp,
@@ -90,8 +90,8 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_req,
     }
   }
   // Timer to release session
-  else if (!timer_to_sttable_release_req.empty() && !timer_release_locked) {
-    timer_to_sttable_release_req.read(timer_release_req_session_id);
+  else if (!sttable_to_slookup_release_state.empty() && !timer_release_locked) {
+    sttable_to_slookup_release_state.read(timer_release_req_session_id);
     // Check if locked
     if (((timer_release_req_session_id == rx_eng_rw_req_session_id) &&
          rx_eng_rw_req_session_id_locked) ||

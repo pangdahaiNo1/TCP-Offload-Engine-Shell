@@ -78,10 +78,10 @@ void EmptyTxAppDataFifos(std::ofstream &                 out_stream,
 
 void EmptyDataMoverFifos(std::ofstream &       out_stream,
                          stream<DataMoverCmd> &tx_app_to_mem_write_cmd,
-                         stream<NetAXISWord> &     tx_app_to_mem_write_data,
+                         stream<NetAXISWord> & tx_app_to_mem_write_data,
                          int                   sim_cycle) {
   DataMoverCmd cmd_out;
-  NetAXISWord      data_out;
+  NetAXISWord  data_out;
 
   while (!tx_app_to_mem_write_cmd.empty()) {
     tx_app_to_mem_write_cmd.read(cmd_out);
@@ -101,7 +101,7 @@ void TestTxAppConn() {
   stream<NetAXISAppOpenConnRsp>  tx_app_to_net_app_open_conn_rsp;
   stream<NetAXISAppCloseConnReq> net_app_to_tx_app_close_conn_req;
   // passive open
-  stream<NewClientNotificationNoTDEST>       rx_eng_to_tx_app_new_client_notification;
+  stream<NewClientNotificationNoTDEST> rx_eng_to_tx_app_new_client_notification;
   stream<NetAXISNewClientNotification> net_app_new_client_notification;
   // rx eng
   stream<OpenConnRspNoTDEST> rx_eng_to_tx_app_notification;
@@ -208,7 +208,7 @@ void TestTxAppData(stream<NetAXIS> &input_tcp_packets) {
   stream<Event> tx_app_to_event_eng_set_event;
   // to datamover
   stream<DataMoverCmd> tx_app_to_mem_write_cmd;
-  stream<NetAXISWord>      tx_app_to_mem_write_data;
+  stream<NetAXISWord>  tx_app_to_mem_write_data;
 
   // open output file
   std::ofstream outputFile;
