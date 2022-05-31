@@ -25,6 +25,37 @@ public:
     _mock_memory   = unordered_map<uint64_t, ap_uint<8> >();
     _s2mm_cmd_fifo = queue<DataMoverCmd>();
   }
+  void MockMemIntf(std::ofstream &       out_stream,
+                   stream<DataMoverCmd> &mover_read_mem_cmd,
+                   stream<NetAXIS> &     mover_read_mem_data,
+
+                   stream<DataMoverCmd> &   mover_write_mem_cmd,
+                   stream<NetAXIS> &        mover_write_mem_data,
+                   stream<DataMoverStatus> &mover_write_mem_status,
+                   int                      sim_cycle) {
+    DataMoverCmd cur_cmd;
+    // S2MM-Write data to mem
+    if (!mover_write_mem_cmd.empty()) {
+      cur_cmd = mover_write_mem_cmd.read();
+
+      out_stream << "Cycle " << std::dec << sim_cycle << ": TOE to Mem Write data cmd\t";
+      out_stream << cur_cmd.to_string() << "\n";
+
+      _s2mm_cmd_fifo.push(cur_cmd);
+    }
+    if (!mover_write_mem_data.empty()) {
+      S2MMWriteToMem(mover_write_mem_data.read());
+    }
+    // MM2S - read data from mem
+    if (!mover_read_mem_cmd.empty()) {
+      cur_cmd = mover_read_mem_cmd.read();
+
+      out_stream << "Cycle " << std::dec << sim_cycle << ": TOE to Mem Read data cmd\t";
+      out_stream << cur_cmd.to_string() << "\n";
+
+      MM2SReadFromMem(cur_cmd, mover_read_mem_data);
+    }
+  }
   void PushS2MMCmd(const DataMoverCmd &cmd) { _s2mm_cmd_fifo.push(cmd); }
 
   // assume the head cmd.bbt is larger than one_beat data length
