@@ -289,7 +289,6 @@ int main(int argc, char **argv) {
     return -1;
   }
   char *input_tcp_pcap_file = argv[1];
-  cout << "Read TCP Packets from " << input_tcp_pcap_file << endl;
   stream<NetAXIS>     input_tcp_packets("input_tcp_packets");
   stream<NetAXIS>     input_tcp_packets2("input_tcp_packets2");
   stream<NetAXIS>     input_tcp_packets3("input_tcp_packets3");

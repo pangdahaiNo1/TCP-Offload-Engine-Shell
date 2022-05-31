@@ -84,7 +84,6 @@ int main(int argc, char **argv) {
   char *              golden_input_file_tcp = argv[1];
   stream<NetAXIS>     input_golden_tcp_packets_read_in("input_golden_tcp_packets_read_in");
   stream<NetAXISWord> input_golden_tcp_packets("input_golden_tcp_packets");
-  cout << "Read TCP Packets from " << golden_input_file_tcp << endl;
   PcapToStream(golden_input_file_tcp, true, input_golden_tcp_packets_read_in);
   NetAXIStreamToNetAXIStreamWord(input_golden_tcp_packets_read_in, input_golden_tcp_packets);
 

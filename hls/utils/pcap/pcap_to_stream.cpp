@@ -173,6 +173,7 @@ void PcapToStream(char *file_to_load,                 // pcapfilename
                   stream<NetAXIS> &output_data        // output data
 ) {
   NetAXIS curr_word;
+  cout << "Read TCP Packets from " << file_to_load << endl;
 
   if (OpenFile(file_to_load, remove_file_ethernet_header) == 0) {
     while (!input_data.empty()) {

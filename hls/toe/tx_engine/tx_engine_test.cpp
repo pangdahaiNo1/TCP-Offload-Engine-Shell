@@ -21,7 +21,7 @@ void TestTcpTxConstructIpv4Pkt(stream<NetAXISWord> &input_tcp_packet) {
   stream<ap_uint<16> > tcp_pseudo_packet_checksum_fifo("tcp_pseudo_packet_checksum_fifo");
   stream<NetAXIS>      tx_tcp_ip_packet_fifo("tx_tcp_ip_packet_fifo");
 
-  stream<NetAXISWord> input_tcp_packet_copy;
+  stream<NetAXIS> input_tcp_packet_copy;
   // simulation
   // construct ip header from input tcp packet
   int sim_cycle = 0;
@@ -29,12 +29,12 @@ void TestTcpTxConstructIpv4Pkt(stream<NetAXISWord> &input_tcp_packet) {
     // construct ip header from input tcp packet
     if (!input_tcp_packet.empty()) {
       NetAXISWord cur_word = input_tcp_packet.read();
-      input_tcp_packet_copy.write(cur_word);
+      input_tcp_packet_copy.write(cur_word.to_net_axis());
       NetAXISWord ip_word(cur_word.data(IPV4_HEADER_WIDTH - 1, 0), 0, 0xFFFFF, 1);
       input_tcp_packet_ip_header.write(ip_word);
       while (!cur_word.last) {
         cur_word = input_tcp_packet.read();
-        input_tcp_packet_copy.write(cur_word);
+        input_tcp_packet_copy.write(cur_word.to_net_axis());
       }
     }
     // construct tcp pseudo packet from input tcp packet
@@ -62,7 +62,6 @@ int main(int argc, char **argv) {
     return -1;
   }
   char *input_tcp_pcap_file = argv[1];
-  cout << "Read TCP Packets from " << input_tcp_pcap_file << endl;
   stream<NetAXIS>     input_tcp_ip_pkt_read_in("input_tcp_ip_pkt_read_in");
   stream<NetAXISWord> input_tcp_ip_pkt("input_tcp_ip_pkt");
   PcapToStream(input_tcp_pcap_file, true, input_tcp_ip_pkt_read_in);
