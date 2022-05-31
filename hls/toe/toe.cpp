@@ -48,8 +48,8 @@ void toe_top(
     ap_uint<16> &reg_session_cnt,
     // in big endian
     IpAddr &my_ip_addr) {
-   //   #pragma HLS                        DATAFLOW
-      #pragma HLS INTERFACE ap_ctrl_none port = return
+  //   #pragma HLS                        DATAFLOW
+#pragma HLS INTERFACE ap_ctrl_none port = return
 // interfaces
 // rx engine
 #pragma HLS INTERFACE axis register both port = rx_ip_pkt_in
@@ -85,10 +85,6 @@ void toe_top(
 #pragma HLS INTERFACE axis register port = rtl_cam_to_slookup_lookup_rsp
 #pragma HLS INTERFACE axis register port = rtl_slookup_to_cam_update_req
 #pragma HLS INTERFACE axis register port = rtl_cam_to_slookup_update_rsp
-#pragma HLS aggregate variable = rtl_slookup_to_cam_lookup_req compact = bit
-#pragma HLS aggregate variable = rtl_cam_to_slookup_lookup_rsp compact = bit
-#pragma HLS aggregate variable = rtl_slookup_to_cam_update_req compact = bit
-#pragma HLS aggregate variable = rtl_cam_to_slookup_update_rsp compact = bit
 // ip
 #pragma HLS INTERFACE ap_stable register port = my_ip_addr name = my_ip_addr
 // session count register
@@ -112,7 +108,7 @@ void toe_top(
 #pragma HLS aggregate variable = rx_eng_to_event_eng_set_event_fifo compact = bit
   stream<Event, 4> timer_to_event_eng_set_event_fifo("timer_to_event_eng_set_event_fifo");
 #pragma HLS aggregate variable = timer_to_event_eng_set_event_fifo compact = bit
-  stream<ap_uint<1> ,8> tx_eng_read_count_fifo("tx_eng_read_count_fifo");
+  stream<ap_uint<1>, 8> tx_eng_read_count_fifo("tx_eng_read_count_fifo");
 
   // port table
   stream<TcpPortNumber, 8> rx_eng_to_ptable_check_req_fifo("rx_eng_to_ptable_check_req_fifo");

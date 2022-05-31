@@ -339,6 +339,7 @@ struct AppTransDataRspNoTDEST {
   TxAppTransDataError error;
   TcpSessionBuffer    remaining_space;
   ap_uint<16>         length;
+  AppTransDataRspNoTDEST() {}
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
@@ -356,6 +357,7 @@ typedef hls::axis<AppTransDataRspNoTDEST, 0, 0, NET_TDEST_WIDTH> NetAXISAppTrans
 struct AppTransDataRsp {
   AppTransDataRspNoTDEST data;
   NetAXISDest            dest;
+  AppTransDataRsp() {}
   AppTransDataRsp(AppTransDataRspNoTDEST rsp, NetAXISDest role_id) : data(rsp), dest(role_id) {}
 
   AppTransDataRsp(const NetAXISAppTransDataRsp &net_axis) {
@@ -882,6 +884,14 @@ struct AppNotification {
     new_axis.dest = dest;
     return new_axis;
   }
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "AppNotify: " << data.to_string() << "\t";
+    sstream << "Dest: " << dest.to_string(16) << "\t";
+    return sstream.str();
+  }
+#endif
 };
 
 // Tx app use ip:port to create session with other side
@@ -1187,6 +1197,16 @@ struct ThreeTuple {
     }
     return false;
   }
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "Here Port " << SwapByte(here_tcp_port).to_string(16) << "\t";
+    sstream << "There IP:Port " << SwapByte(their_ip_addr).to_string(16) << ":"
+            << SwapByte(there_tcp_port).to_string(16) << "\t";
+    return sstream.str();
+  }
+
+#endif
 };
 
 /***
@@ -1245,6 +1265,13 @@ struct RtlSLookupToCamLupReq {
   SlookupSource source;
   RtlSLookupToCamLupReq() {}
   RtlSLookupToCamLupReq(ThreeTuple tuple, SlookupSource src) : key(tuple), source(src) {}
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "Key: " << key.to_string() << "Source: " << source;
+    return sstream.str();
+  }
+#endif
 };
 
 /** @ingroup session_lookup_controller
@@ -1258,6 +1285,16 @@ struct RtlSlookupToCamUpdReq {
   RtlSlookupToCamUpdReq() {}
   RtlSlookupToCamUpdReq(ThreeTuple key, TcpSessionID value, SlookupOp op, SlookupSource src)
       : key(key), value(value), op(op), source(src) {}
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "Key: " << key.to_string() << "\t"
+            << "Source: " << source << "\t"
+            << "Update Op: " << op << "\t"
+            << "Update Val: " << value.to_string(16);
+    return sstream.str();
+  }
+#endif
 };
 
 /** @ingroup session_lookup_controller
@@ -1272,6 +1309,16 @@ struct RtlCamToSlookupLupRsp {
   RtlCamToSlookupLupRsp(bool hit, SlookupSource src) : hit(hit), session_id(0), source(src) {}
   RtlCamToSlookupLupRsp(bool hit, TcpSessionID id, SlookupSource src)
       : hit(hit), session_id(id), source(src) {}
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "Key: " << key.to_string() << "\t"
+            << "Val: " << session_id.to_string(16) << "\t"
+            << "Hit:? " << hit << "\t"
+            << "Source: " << source;
+    return sstream.str();
+  }
+#endif
 };
 
 /** @ingroup session_lookup_controller
@@ -1287,4 +1334,14 @@ struct RtlCamToSlookupUpdRsp {
   RtlCamToSlookupUpdRsp(SlookupOp op, SlookupSource src) : op(op), source(src) {}
   RtlCamToSlookupUpdRsp(TcpSessionID id, SlookupOp op, SlookupSource src)
       : session_id(id), op(op), source(src) {}
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "Key: " << key.to_string() << "\t"
+            << "Update Val: " << session_id.to_string(16) << "\t"
+            << "Update Source: " << source << "\t"
+            << "Success:? " << success << "\t";
+    return sstream.str();
+  }
+#endif
 };
