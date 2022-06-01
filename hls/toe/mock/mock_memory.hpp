@@ -124,7 +124,7 @@ public:
    * <40bit addr> <val>
    *
    */
-  std::string DumpMockMemory() {
+  void DumpMockMemoryToFile(string file_name) {
     // sort addr
     std::vector<uint64_t> keys;
 
@@ -143,7 +143,11 @@ public:
       sstream << uppercase << setfill('0') << setw(2) << hex << _mock_memory[keys[i]].to_ushort();
       sstream << endl;
     }
-    return sstream.str();
+    std::ofstream output_stream;
+    output_stream.open(file_name);
+    output_stream << sstream.str();
+    output_stream.close();
+    return;
   }
 
   int LoadMockMemoryFromFile(string file_name) {
