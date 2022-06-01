@@ -1,24 +1,22 @@
 
 #include "ack_delay.hpp"
+#include "toe/mock/mock_logger.hpp"
 #include "toe/mock/mock_toe.hpp"
 
 #include <iostream>
 
 using namespace hls;
 
-void EmptyFifos(std::ofstream &         out_stream,
-                stream<EventWithTuple> &ack_delay_to_tx_eng_event,
-                int                     sim_cycle) {
+void EmptyFifos(MockLogger &logger, stream<EventWithTuple> &ack_delay_to_tx_eng_event) {
   EventWithTuple out_event;
 
   while (!ack_delay_to_tx_eng_event.empty()) {
     ack_delay_to_tx_eng_event.read(out_event);
-    out_stream << "Cycle " << std::dec << sim_cycle << ": AckDelay to Tx Engine Event\n";
-    out_stream << out_event.to_string() << "\n";
+    logger.InfoOutput("AckDelay to Tx Engine Event", out_event.to_string(), true);
   }
 }
-
-int main() {
+MockLogger logger("./inner_out.dat");
+int        main() {
   stream<EventWithTuple> event_eng_to_ack_delay_event;
   stream<EventWithTuple> ack_delay_to_tx_eng_event;
   stream<ap_uint<1> >    ack_delay_read_cnt_fifo;
@@ -26,13 +24,7 @@ int main() {
 
   EventWithTuple ev;
 
-  // open output file
-  std::ofstream outputFile;
-
-  outputFile.open("./out.dat");
-  if (!outputFile) {
-    std::cout << "Error: could not open test output file." << std::endl;
-  }
+  MockLogger top_logger("./top_out.dat");
 
   int sim_cycle = 0;
   while (sim_cycle < 20) {
@@ -60,8 +52,10 @@ int main() {
               ack_delay_to_tx_eng_event,
               ack_delay_read_cnt_fifo,
               ack_delay_write_cnt_fifo);
-    EmptyFifos(outputFile, ack_delay_to_tx_eng_event, sim_cycle);
+    EmptyFifos(top_logger, ack_delay_to_tx_eng_event);
     sim_cycle++;
+    top_logger.SetSimCycle(sim_cycle);
+    logger.SetSimCycle(sim_cycle);
   }
 
   return 0;

@@ -20,9 +20,11 @@ set_clock_uncertainty 0.2
 set_top ack_delay
 
 add_files "${prj_src_dir}/${prj_name}.cpp \
-             ${src_top_dir}/utils/axi_utils.hpp " -cflags "-I${src_top_dir} -DDEBUG"
+             ${src_top_dir}/utils/axi_utils.hpp" -cflags "-I${src_top_dir} -DDEBUG"
 
-add_files -tb "${prj_src_dir}/${prj_name}_test.cpp ${src_top_dir}/toe/mock/mock_toe.hpp"  -cflags "-I${src_top_dir} -DDEBUG"
+add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
+               ${src_top_dir}/toe/mock/mock_toe.hpp \
+               ${src_top_dir}/toe/mock/mock_logger.hpp "  -cflags "-I${src_top_dir} -DDEBUG"
 
 
 if {$hls_act == "csim"} {
