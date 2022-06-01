@@ -1,6 +1,8 @@
 #include "event_engine.hpp"
-
 using namespace hls;
+// logger
+#include "toe/mock/mock_logger.hpp"
+extern MockLogger logger;
 
 /** @ingroup event_engine
  *  Arbitrates between the different event source FIFOs and forwards the event
@@ -33,16 +35,24 @@ void                 event_engine(stream<Event> &         tx_app_to_event_eng_se
   if (!rx_eng_to_event_eng_set_event.empty()) {
     rx_eng_to_event_eng_set_event.read(cur_event);
     event_eng_to_ack_delay_event.write(cur_event);
+    logger.Info("Event eng read a event from Rx engine, then send to ack delay",
+                cur_event.to_string(),
+                true);
     eveng_write_event_count++;
   } else if (eveng_write_event_count == eveng_ack_delay_read_count &&
              eveng_ack_delay_write_count == eveng_tx_eng_read_count) {
     if (!timer_to_event_eng_set_event.empty()) {
       timer_to_event_eng_set_event.read(cur_event);
       event_eng_to_ack_delay_event.write(cur_event);
+      logger.Info(
+          "Event eng read a event from Timer, then send to ack delay", cur_event.to_string(), true);
       eveng_write_event_count++;
     } else if (!tx_app_to_event_eng_set_event.empty()) {
       tx_app_to_event_eng_set_event.read(cur_event);
       event_eng_to_ack_delay_event.write(cur_event);
+      logger.Info("Event eng read a event from Tx App, then send to ack delay",
+                  cur_event.to_string(),
+                  true);
       eveng_write_event_count++;
     }
   }

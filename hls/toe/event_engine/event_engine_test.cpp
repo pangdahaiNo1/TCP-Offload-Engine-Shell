@@ -1,44 +1,64 @@
 #include "event_engine.hpp"
-
-#include <iostream>
+#include "toe/mock/mock_logger.hpp"
+#include "toe/mock/mock_toe.hpp"
 
 using namespace hls;
 
-int main() {
-  stream<Event>          txApp2eventEng_setEvent("txApp2eventEng_setEvent");
-  stream<EventWithTuple> rxEng2eventEng_setEvent("rxEng2eventEng_setEvent");
-  stream<Event>          timer2eventEng_setEvent("timer2eventEng_setEvent");
-  stream<EventWithTuple> eventEng2txEng_event("eventEng2txEng_event");
-  stream<ap_uint<1> >    ackDelayFifoReadCount("ackDelayFifoReadCount");
-  stream<ap_uint<1> >    ackDelayFifoWriteCount("ackDelayFifoWriteCount");
-  stream<ap_uint<1> >    txEngFifoReadCount("txEngFifoReadCount");
+void EmptyFifos(MockLogger &logger, stream<EventWithTuple> &event_eng_to_ack_delay_event) {
+  EventWithTuple out_event;
 
+  while (!event_eng_to_ack_delay_event.empty()) {
+    event_eng_to_ack_delay_event.read(out_event);
+    logger.Info("EventEngine to Ack delay Event", out_event.to_string(), true);
+  }
+}
+
+MockLogger logger("./inner_out.dat");
+int        main() {
+  stream<Event>          tx_app_to_event_eng_set_event;
+  stream<EventWithTuple> rx_eng_to_event_eng_set_event;
+  stream<Event>          timer_to_event_eng_set_event;
+  stream<EventWithTuple> event_eng_to_ack_delay_event;
+  stream<ap_uint<1> >    ack_delay_read_count_fifo;
+  stream<ap_uint<1> >    ack_delay_write_count_fifo;
+  stream<ap_uint<1> >    tx_eng_read_count_fifo;
+
+  MockLogger     top_logger("./top_out.dat");
   EventWithTuple ev;
-  int            count = 0;
-  while (count < 50) {
-    event_engine(txApp2eventEng_setEvent,
-                 rxEng2eventEng_setEvent,
-                 timer2eventEng_setEvent,
-                 eventEng2txEng_event,
-                 ackDelayFifoReadCount,
-                 ackDelayFifoWriteCount,
-                 txEngFifoReadCount);
 
-    if (count == 20) {
-      FourTuple tuple;
-      tuple.src_ip_addr  = 0x0101010a;
-      tuple.src_tcp_port = 12;
-      tuple.dst_ip_addr  = 0x0101010b;
-      tuple.dst_tcp_port = 788789;
-      txApp2eventEng_setEvent.write(Event(TX, 23));
-      rxEng2eventEng_setEvent.write(EventWithTuple(Event(RST, 0x8293479023), tuple));
-      timer2eventEng_setEvent.write(Event(RT, 22));
+  int sim_cycle = 0;
+  while (sim_cycle < 20) {
+    switch (sim_cycle) {
+      case 1:
+        ev = EventWithTuple(Event(ACK, 1), mock_tuple);
+        rx_eng_to_event_eng_set_event.write(ev);
+        break;
+      case 2:
+        ack_delay_read_count_fifo.write(1);
+        ev = EventWithTuple(Event(ACK, 2), mock_tuple);
+        timer_to_event_eng_set_event.write(ev);
+        break;
+      case 3:
+        ack_delay_read_count_fifo.write(1);
+        ev = EventWithTuple(Event(ACK, 2), mock_tuple);
+        tx_app_to_event_eng_set_event.write(ev);
+        break;
+      default:
+        break;
     }
-    if (!eventEng2txEng_event.empty()) {
-      eventEng2txEng_event.read(ev);
-      std::cout << ev.type << std::endl;
-    }
-    count++;
+    event_engine(tx_app_to_event_eng_set_event,
+                 rx_eng_to_event_eng_set_event,
+                 timer_to_event_eng_set_event,
+                 event_eng_to_ack_delay_event,
+                 ack_delay_read_count_fifo,
+                 ack_delay_write_count_fifo,
+                 tx_eng_read_count_fifo
+
+    );
+    EmptyFifos(top_logger, event_eng_to_ack_delay_event);
+    sim_cycle++;
+    top_logger.SetSimCycle(sim_cycle);
+    logger.SetSimCycle(sim_cycle);
   }
   return 0;
 }
