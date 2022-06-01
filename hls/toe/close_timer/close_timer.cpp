@@ -1,6 +1,8 @@
 #include "close_timer.hpp"
-
 using namespace hls;
+// logger
+#include "toe/mock/mock_logger.hpp"
+extern MockLogger logger;
 
 /** @ingroup close_timer
  *  Reads in Session-IDs, the corresponding is kept in the TIME-WAIT state for 60s before
@@ -33,6 +35,7 @@ void                 close_timer(stream<TcpSessionID> &rx_eng_to_timer_set_ctime
     ctimer_prev_session_id--;
   } else if (!rx_eng_to_timer_set_ctimer.empty()) {
     rx_eng_to_timer_set_ctimer.read(ctimer_set_session_id);
+    logger.Info("Rx engine to ctimer", ctimer_set_session_id.to_string(16), false);
     ctimer_wait_for_write = true;
   } else {
     ctimer_prev_session_id = ctimer_cur_session_id;
@@ -44,6 +47,8 @@ void                 close_timer(stream<TcpSessionID> &rx_eng_to_timer_set_ctime
         close_timer_table[ctimer_cur_session_id].time   = 0;
         close_timer_table[ctimer_cur_session_id].active = false;
         ctimer_to_sttable_release_state.write(ctimer_cur_session_id);
+        logger.Info(
+            "Ctimer to state table release session", ctimer_cur_session_id.to_string(16), false);
       }
     }
 
