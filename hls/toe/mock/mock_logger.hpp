@@ -24,7 +24,7 @@ public:
     }
   }
 
-  inline void InfoOutput(string description, string state, bool state_in_new_line) {
+  INLINE void Info(string description, string state, bool state_in_new_line) {
     if (!state_in_new_line) {
       output_stream << "Cycle " << sim_cycle << ": " << description << "\t" << state << "\n";
     } else {
@@ -33,14 +33,14 @@ public:
     }
   }
 
-  void IncreaseSimCycle() { sim_cycle++; }
-  void SetSimCycle(uint64_t cycle) { sim_cycle = cycle; };
+  INLINE void IncreaseSimCycle() { sim_cycle++; }
+  INLINE void SetSimCycle(uint64_t cycle) { sim_cycle = cycle; };
 };
 #else
 
 class MockLogger {
 public:
-  inline void InfoOutput(const char *fmt...) { _AP_UNUSED_PARAM(fmt); }
+  INLINE void Info(const char *fmt...) { _AP_UNUSED_PARAM(fmt); }
 };
 #endif
 

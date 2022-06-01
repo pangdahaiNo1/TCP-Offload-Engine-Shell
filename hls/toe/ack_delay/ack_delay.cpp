@@ -1,9 +1,8 @@
 #include "ack_delay.hpp"
-#ifndef __SYNTHESIS__
+using namespace hls;
+// logger
 #include "toe/mock/mock_logger.hpp"
 extern MockLogger logger;
-#endif
-using namespace hls;
 
 void                 ack_delay(stream<EventWithTuple> &event_eng_to_ack_delay_event,
                                stream<EventWithTuple> &ack_delay_to_tx_eng_event,
@@ -19,9 +18,7 @@ void                 ack_delay(stream<EventWithTuple> &event_eng_to_ack_delay_ev
 
   if (!event_eng_to_ack_delay_event.empty()) {
     event_eng_to_ack_delay_event.read(event);
-#ifndef __SYNTHESIS__
-    logger.InfoOutput("Event eng to ack delay", event.to_string(), true);
-#endif
+    logger.Info("Event eng to ack delay", event.to_string(), true);
     ack_delay_read_cnt_fifo.write(1);
     // Check if there is a delayed ACK
     if (event.type == ACK && ack_table[event.session_id] == 0) {
@@ -30,9 +27,7 @@ void                 ack_delay(stream<EventWithTuple> &event_eng_to_ack_delay_ev
       // Assumption no SYN/RST
       ack_table[event.session_id] = 0;
       ack_delay_to_tx_eng_event.write(event);
-#ifndef __SYNTHESIS__
-      logger.InfoOutput("Ack delay to tx engine", event.to_string(), true);
-#endif
+      logger.Info("Ack delay to tx engine", event.to_string(), true);
       ack_delay_write_cnt_fifo.write(1);
     }
   } else {
@@ -40,9 +35,7 @@ void                 ack_delay(stream<EventWithTuple> &event_eng_to_ack_delay_ev
       if (ack_table[ack_delay_cur_session_id] == 1) {
         event = Event(ACK, ack_delay_cur_session_id);
         ack_delay_to_tx_eng_event.write(event);
-#ifndef __SYNTHESIS__
-        logger.InfoOutput("Ack delay to tx engine delayed ACK timeout", event.to_string(), true);
-#endif
+        logger.Info("Ack delay to tx engine delayed ACK timeout", event.to_string(), true);
         ack_delay_write_cnt_fifo.write(1);
       }
       // Decrease value

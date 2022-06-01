@@ -12,7 +12,7 @@ void EmptyFifos(MockLogger &logger, stream<EventWithTuple> &ack_delay_to_tx_eng_
 
   while (!ack_delay_to_tx_eng_event.empty()) {
     ack_delay_to_tx_eng_event.read(out_event);
-    logger.InfoOutput("AckDelay to Tx Engine Event", out_event.to_string(), true);
+    logger.Info("AckDelay to Tx Engine Event", out_event.to_string(), true);
   }
 }
 MockLogger logger("./inner_out.dat");
