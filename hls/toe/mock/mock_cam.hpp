@@ -44,22 +44,27 @@ public:
       slookup_to_cam_upd_req.read(update_req);
 
       logger.Info("Slookup to CAM Update Req", update_req.to_string(), false);
-      iter = _mock_cam.find(update_req.key);
-      if (iter == _mock_cam.end()) {
-        if (update_req.op == INSERT) {
+      iter                  = _mock_cam.find(update_req.key);
+      update_rsp.op         = update_req.op;
+      update_rsp.key        = update_req.key;
+      update_rsp.session_id = update_req.value;
+      update_rsp.source     = update_req.source;
+      update_rsp.success    = false;
+      if (update_req.op == INSERT) {
+        if (iter == _mock_cam.end()) {
           _mock_cam[update_req.key] = update_req.value;
-          update_rsp = RtlCamToSlookupUpdRsp(update_req.value, INSERT, update_req.source);
-          cout << "Current Update session: " << update_req.value << endl;
-
+          update_rsp.success        = true;
         } else {
-          std::cerr << "delete a non-existing one" << endl;
+          // insert a existing one, insert error
+          update_rsp.success = false;
         }
-      } else {  // found in map
-        if (update_req.op == INSERT) {
-          std::cerr << "insert a existing one" << endl;
+      } else if (update_req.op == DELETE) {
+        if (iter == _mock_cam.end()) {
+          // delete a non-existing one , delete error
+          update_rsp.success = false;
         } else {
           _mock_cam.erase(update_req.key);
-          update_rsp = RtlCamToSlookupUpdRsp(update_req.value, DELETE, update_req.source);
+          update_rsp.success = true;
         }
       }
       cam_to_slookup_upd_rsp.write(update_rsp);
