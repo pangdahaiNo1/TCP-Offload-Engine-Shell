@@ -1,7 +1,8 @@
-
 #include "session_lookup_controller.hpp"
-
 using namespace hls;
+// logger
+#include "toe/mock/mock_logger.hpp"
+extern MockLogger logger;
 
 /** @ingroup session_lookup_controller
  *  Get New Available SessionId
@@ -11,8 +12,6 @@ using namespace hls;
 void                 GetNewAvailableSessionId(stream<ap_uint<14> > &released_id_in,
                                               stream<ap_uint<14> > &available_id_out) {
 #pragma HLS PIPELINE II = 1
-#pragma HLS INLINE   off
-
   static ap_uint<14> cur_session_id = 0;
 #pragma HLS reset variable = cur_session_id
   ap_uint<14> session_id;
@@ -50,7 +49,6 @@ void CamLookupRspHandler(
     // insert req
     stream<SlookupToRevTableUpdReq> &reverse_table_insert_req) {
 #pragma HLS PIPELINE II = 1
-#pragma HLS INLINE   off
 
   static stream<RevTableEntry> slookup_rev_table_req_cache_fifo("slookup_rev_table_req_cache_fifo");
 #pragma HLS STREAM variable = slookup_rev_table_req_cache_fifo depth = 4
@@ -64,8 +62,9 @@ void CamLookupRspHandler(
   SlookupReqInternal    req_internal;
   RtlCamToSlookupLupRsp cam_rsp;
   RtlCamToSlookupUpdRsp cam_update_rsp;
-  // ap_uint<16>              session_id;
-  ap_uint<14> available_session_id = 0;
+  RtlSLookupToCamLupReq cam_lup_req;
+  ap_uint<14>           available_session_id = 0;
+  SessionLookupRsp      slookup_rsp;
 
   enum SlookupFsmState { LUP_REQ, LUP_RSP, UPD_RSP };
   static SlookupFsmState slc_fsm_state = LUP_REQ;
@@ -74,28 +73,28 @@ void CamLookupRspHandler(
     case LUP_REQ:
       if (!tx_app_to_slookup_req.empty()) {
         tx_app_to_slookup_req.read(tx_app_req);
-        // req_internal.tuple.myIp = tx_app_req.four_tuple.src_ip_addr;
         req_internal.tuple.there_ip_addr  = tx_app_req.four_tuple.dst_ip_addr;
         req_internal.tuple.there_tcp_port = tx_app_req.four_tuple.dst_tcp_port;
         req_internal.tuple.here_tcp_port  = tx_app_req.four_tuple.src_tcp_port;
         req_internal.allow_creation       = true;
         req_internal.source               = TX_APP;
         req_internal.role_id              = tx_app_req.role_id;
-        slookup_to_cam_lup_req.write(
-            RtlSLookupToCamLupReq(req_internal.tuple, req_internal.source));
+        cam_lup_req = RtlSLookupToCamLupReq(req_internal.tuple, req_internal.source);
+        slookup_to_cam_lup_req.write(cam_lup_req);
+        logger.Info("Slookup To CAM Lookup from Tx APP", cam_lup_req.to_string(), false);
         slookup_to_cam_req_cache_fifo.write(req_internal);
         slc_fsm_state = LUP_RSP;
       } else if (!rx_eng_to_slookup_req.empty()) {
         rx_eng_to_slookup_req.read(rx_eng_req);
         req_internal.tuple.there_ip_addr  = rx_eng_req.four_tuple.src_ip_addr;
         req_internal.tuple.there_tcp_port = rx_eng_req.four_tuple.src_tcp_port;
-        // req_internal.tuple.myIp = rx_eng_req.tuple.dst_ip_addr;
-        req_internal.tuple.here_tcp_port = rx_eng_req.four_tuple.dst_tcp_port;
-        req_internal.allow_creation      = rx_eng_req.allow_creation;
-        req_internal.source              = RX;
-        req_internal.role_id             = rx_eng_req.role_id;
-        slookup_to_cam_lup_req.write(
-            RtlSLookupToCamLupReq(req_internal.tuple, req_internal.source));
+        req_internal.tuple.here_tcp_port  = rx_eng_req.four_tuple.dst_tcp_port;
+        req_internal.allow_creation       = rx_eng_req.allow_creation;
+        req_internal.source               = RX;
+        req_internal.role_id              = rx_eng_req.role_id;
+        cam_lup_req = RtlSLookupToCamLupReq(req_internal.tuple, req_internal.source);
+        slookup_to_cam_lup_req.write(cam_lup_req);
+        logger.Info("Slookup To CAM Lookup from Rx Eng", cam_lup_req.to_string(), false);
         slookup_to_cam_req_cache_fifo.write(req_internal);
         slc_fsm_state = LUP_RSP;
       }
@@ -112,33 +111,37 @@ void CamLookupRspHandler(
               RevTableEntry(req_internal.tuple, req_internal.role_id));
           slc_fsm_state = UPD_RSP;
         } else {
+          slookup_rsp = SessionLookupRsp(cam_rsp.session_id, cam_rsp.hit, req_internal.role_id);
           if (cam_rsp.source == RX) {
-            slookup_to_rx_eng_rsp.write(
-                SessionLookupRsp(cam_rsp.session_id, cam_rsp.hit, req_internal.role_id));
+            logger.Info("Slookup To Rx Eng lookup Rsp", slookup_rsp.to_string(), false);
+            slookup_to_rx_eng_rsp.write(slookup_rsp);
           } else {
-            slookup_to_tx_app_rsp.write(
-                SessionLookupRsp(cam_rsp.session_id, cam_rsp.hit, req_internal.role_id));
+            logger.Info("Slookup To Tx App lookup Rsp", slookup_rsp.to_string(), false);
+            slookup_to_tx_app_rsp.write(slookup_rsp);
           }
           slc_fsm_state = LUP_REQ;
         }
       }
       break;
-    // case UPD_REQ:
-    // break;
     case UPD_RSP:
       if (!cam_to_slookup_upd_rsp.empty() && !slookup_rev_table_req_cache_fifo.empty()) {
         cam_to_slookup_upd_rsp.read(cam_update_rsp);
         slookup_rev_table_req_cache_fifo.read(reverse_table_one_entry);
-        if (cam_update_rsp.source == RX) {
-          slookup_to_rx_eng_rsp.write(
-              SessionLookupRsp(cam_update_rsp.session_id, true, reverse_table_one_entry.role_id));
-        } else {
-          slookup_to_tx_app_rsp.write(
-              SessionLookupRsp(cam_update_rsp.session_id, true, reverse_table_one_entry.role_id));
-        }
+        // update rev table requset
         reverse_table_insert_req.write(SlookupToRevTableUpdReq(cam_update_rsp.session_id,
                                                                reverse_table_one_entry.three_tuple,
                                                                reverse_table_one_entry.role_id));
+
+        // reponse to rx engine or tx app
+        slookup_rsp =
+            SessionLookupRsp(cam_update_rsp.session_id, true, reverse_table_one_entry.role_id);
+        if (cam_update_rsp.source == RX) {
+          logger.Info("Slookup To Rx Eng Update Rsp", slookup_rsp.to_string(), false);
+          slookup_to_rx_eng_rsp.write(slookup_rsp);
+        } else {
+          logger.Info("Slookup To Tx App Update Rsp", slookup_rsp.to_string(), false);
+          slookup_to_tx_app_rsp.write(slookup_rsp);
+        }
         slc_fsm_state = LUP_REQ;
       }
       break;
@@ -155,21 +158,26 @@ void                 CamUpdateReqSender(stream<RtlSlookupToCamUpdReq> &slookup_t
                                         stream<ap_uint<14> > &         slookup_released_id,
                                         ap_uint<16> &                  reg_session_cnt) {
 #pragma HLS PIPELINE II = 1
-#pragma HLS INLINE   off
 
   static ap_uint<16>    used_session_id_cnt = 0;
   RtlSlookupToCamUpdReq cam_upd_req;
 
   if (!slookup_to_cam_insert_req.empty()) {
-    rtl_slookup_to_cam_update_req.write(slookup_to_cam_insert_req.read());
+    slookup_to_cam_insert_req.read(cam_upd_req);
+    logger.Info("Slookup To CAM Insert Req", cam_upd_req.to_string(), false);
+    rtl_slookup_to_cam_update_req.write(cam_upd_req);
     used_session_id_cnt++;
     reg_session_cnt = used_session_id_cnt;
+    logger.Info("Slookup Current Session count", reg_session_cnt.to_string(16), false);
   } else if (!slookup_to_cam_delete_req.empty()) {
     slookup_to_cam_delete_req.read(cam_upd_req);
+    logger.Info("Slookup To CAM Delete Req", cam_upd_req.to_string(), false);
     rtl_slookup_to_cam_update_req.write(cam_upd_req);
     slookup_released_id.write(cam_upd_req.value(13, 0));
     used_session_id_cnt--;
     reg_session_cnt = used_session_id_cnt;
+    logger.Info("Slookup Current Released Seesion ", cam_upd_req.value(13, 0).to_string(16), false);
+    logger.Info("Slookup Current Session count", reg_session_cnt.to_string(16), false);
   }
 }
 
@@ -180,12 +188,12 @@ void                 CamUpdateReqSender(stream<RtlSlookupToCamUpdReq> &slookup_t
 void CamUpdateRspHandler(stream<RtlCamToSlookupUpdRsp> &rtl_cam_to_slookup_update_rsp,
                          stream<RtlCamToSlookupUpdRsp> &cam_to_slookup_upd_rsp) {
 #pragma HLS PIPELINE II = 1
-#pragma HLS INLINE   off
 
   RtlCamToSlookupUpdRsp cam_upd_rsp;
 
   if (!rtl_cam_to_slookup_update_rsp.empty()) {
     rtl_cam_to_slookup_update_rsp.read(cam_upd_rsp);
+    logger.Info("Slookup To CAM Update rsp", cam_upd_rsp.to_string(), false);
     if (cam_upd_rsp.op == INSERT) {
       cam_to_slookup_upd_rsp.write(cam_upd_rsp);
     }
@@ -226,8 +234,8 @@ void SlookupReverseTableInterface(
 #pragma HLS INLINE   off
 
   static RevTableEntry slookup_rev_table[TCP_MAX_SESSIONS];
-#pragma HLS RESOURCE variable = slookup_rev_table core = RAM_T2P_BRAM
-#pragma HLS DEPENDENCE variable                        = slookup_rev_table inter false
+#pragma HLS bind_storage variable = slookup_rev_table type = RAM_T2P impl = BRAM
+#pragma HLS DEPENDENCE variable = slookup_rev_table inter false
   static bool valid_tuple[TCP_MAX_SESSIONS];
 #pragma HLS DEPENDENCE variable = valid_tuple inter false
 
@@ -235,9 +243,11 @@ void SlookupReverseTableInterface(
   ReverseTableToTxEngRsp  tx_eng_rsp;
   ThreeTuple              cur_tuple_to_release;
   TcpSessionID            session_id;
+  NetAXISDest             ret_role_id;
 
   if (!reverse_table_insert_req.empty()) {
     reverse_table_insert_req.read(insert_req);
+    logger.Info("Slookup Insert Reverse table", insert_req.to_string(), false);
     slookup_rev_table[insert_req.key] =
         RevTableEntry(insert_req.tuple_value, insert_req.role_value);
     valid_tuple[insert_req.key] = true;
@@ -249,29 +259,39 @@ void SlookupReverseTableInterface(
     tx_eng_rsp.four_tuple.src_tcp_port = slookup_rev_table[session_id].three_tuple.here_tcp_port;
     tx_eng_rsp.four_tuple.dst_tcp_port = slookup_rev_table[session_id].three_tuple.there_tcp_port;
     tx_eng_rsp.role_id                 = slookup_rev_table[session_id].role_id;
+    logger.Info("Slookup Rev Table to Tx eng rsp", tx_eng_rsp.to_string(), false);
     slookup_rev_table_to_tx_eng_rsp.write(tx_eng_rsp);
   } else if (!rx_app_to_slookup_tdest_lookup_req.empty()) {
     rx_app_to_slookup_tdest_lookup_req.read(session_id);
+
     if (valid_tuple[session_id]) {
-      slookup_to_rx_app_tdest_lookup_rsp.write(slookup_rev_table[session_id].role_id);
+      ret_role_id = slookup_rev_table[session_id].role_id;
     } else {
-      slookup_to_rx_app_tdest_lookup_rsp.write(INVALID_TDEST);
+      ret_role_id = INVALID_TDEST;
     }
+    logger.Info("Slookup Rev Table to Rx App TDEST rsp", ret_role_id.to_string(16), false);
+    slookup_to_rx_app_tdest_lookup_rsp.write(ret_role_id);
   } else if (!tx_app_to_slookup_check_tdest_req.empty()) {
     tx_app_to_slookup_check_tdest_req.read(session_id);
     if (valid_tuple[session_id]) {
-      slookup_to_tx_app_check_tdest_rsp.write(slookup_rev_table[session_id].role_id);
+      ret_role_id = slookup_rev_table[session_id].role_id;
     } else {
-      slookup_to_tx_app_check_tdest_rsp.write(INVALID_TDEST);
+      ret_role_id = INVALID_TDEST;
     }
+    logger.Info("Slookup Rev Table to Tx App TDEST rsp", ret_role_id.to_string(16), false);
+    slookup_to_tx_app_check_tdest_rsp.write(ret_role_id);
   } else if (!sttable_to_slookup_release_req.empty()) {
     sttable_to_slookup_release_req.read(session_id);
+    logger.Info("Slookup Rev Table release Session", session_id.to_string(16), false);
     cur_tuple_to_release = slookup_rev_table[session_id].three_tuple;
     if (valid_tuple[session_id])  // if valid
     {
-      slookup_to_ptable_release_port_req.write(cur_tuple_to_release.here_tcp_port);
+      TcpPortNumber release_port = SwapByte(cur_tuple_to_release.here_tcp_port);
+      slookup_to_ptable_release_port_req.write(release_port);
       slookup_to_cam_delete_req.write(
           RtlSlookupToCamUpdReq(cur_tuple_to_release, session_id, DELETE, RX));
+      logger.Info(
+          "Slookup Rev Table to Port table release port LE ", release_port.to_string(16), false);
     }
     valid_tuple[session_id] = false;
   }
@@ -309,8 +329,8 @@ void session_lookup_controller(
     // registers
     ap_uint<16> &reg_session_cnt,
     IpAddr &     my_ip_addr) {
-//#pragma HLS DATAFLOW
-#pragma HLS INLINE
+#pragma HLS DATAFLOW
+  //#pragma HLS INLINE
 
 #pragma HLS INTERFACE axis register port = rtl_slookup_to_cam_lookup_req
 #pragma HLS INTERFACE axis register port = rtl_cam_to_slookup_lookup_rsp

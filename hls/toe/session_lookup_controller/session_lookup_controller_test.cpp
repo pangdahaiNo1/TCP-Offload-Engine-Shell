@@ -1,57 +1,48 @@
 #include "session_lookup_controller.hpp"
 #include "toe/mock/mock_cam.hpp"
+#include "toe/mock/mock_logger.hpp"
 #include "toe/mock/mock_toe.hpp"
 
 using namespace hls;
-using namespace std;
 
-void CamUpdateReqMerger(stream<RtlSlookupToCamUpdReq> &in1,
-                        stream<RtlSlookupToCamUpdReq> &in2,
-                        stream<RtlSlookupToCamUpdReq> &out) {
-  if (!in1.empty()) {
-    out.write(in1.read());
-  } else if (!in2.empty()) {
-    out.write(in2.read());
-  }
-}
-
-void EmptyFifos(std::ofstream &                 out_stream,
+void EmptyFifos(MockLogger &                    logger,
                 stream<NetAXISDest> &           slookup_to_rx_app_check_tdset_rsp,
                 stream<SessionLookupRsp> &      slookup_to_rx_eng_rsp,
                 stream<SessionLookupRsp> &      slookup_to_tx_app_rsp,
                 stream<NetAXISDest> &           slookup_to_tx_app_check_tdest_rsp,
                 stream<ReverseTableToTxEngRsp> &slookup_rev_table_to_tx_eng_rsp,
-                stream<TcpPortNumber> &         slookup_to_ptable_release_port_req,
-                int                             sim_cycle) {
+                stream<TcpPortNumber> &         slookup_to_ptable_release_port_req) {
   NetAXISDest            rx_or_tx_app_tdest;
   SessionLookupRsp       slookup_rsp;
   ReverseTableToTxEngRsp tx_eng_rsp;
+  TcpPortNumber          release_port;
   while (!slookup_to_rx_app_check_tdset_rsp.empty()) {
     slookup_to_rx_app_check_tdset_rsp.read(rx_or_tx_app_tdest);
-    out_stream << "Cycle " << sim_cycle << ": Slookup to Rx app TDEST rsp\t";
-    out_stream << dec << rx_or_tx_app_tdest << "\n";
+    logger.Info("Slookup to Rx app TDEST rsp", rx_or_tx_app_tdest.to_string(16), false);
   }
   while (!slookup_to_rx_eng_rsp.empty()) {
     slookup_to_rx_eng_rsp.read(slookup_rsp);
-    out_stream << "Cycle " << sim_cycle << ": Slookup to Rx engine rsp\t";
-    out_stream << slookup_rsp.to_string() << "\n";
+    logger.Info("Slookup to Rx Engine rsp", slookup_rsp.to_string(), false);
   }
   while (!slookup_to_tx_app_rsp.empty()) {
     slookup_to_tx_app_rsp.read(slookup_rsp);
-    out_stream << "Cycle " << sim_cycle << ": Slookup to Tx APP rsp\t";
-    out_stream << slookup_rsp.to_string() << "\n";
+    logger.Info("Slookup to Tx App rsp", slookup_rsp.to_string(), false);
   }
   while (!slookup_to_tx_app_check_tdest_rsp.empty()) {
     slookup_to_tx_app_check_tdest_rsp.read(rx_or_tx_app_tdest);
-    out_stream << "Cycle " << sim_cycle << ": Slookup to Tx App TDEST rsp\t";
-    out_stream << dec << rx_or_tx_app_tdest << "\n";
+    logger.Info("Slookup to Tx app TDEST rsp", rx_or_tx_app_tdest.to_string(16), false);
   }
   while (!slookup_rev_table_to_tx_eng_rsp.empty()) {
     slookup_rev_table_to_tx_eng_rsp.read(tx_eng_rsp);
-    out_stream << "Cycle " << sim_cycle << ": Slookup to Tx App TDEST rsp\t";
-    out_stream << tx_eng_rsp.to_string() << "\n";
+    logger.Info("Slookup to Tx Engine rsp", tx_eng_rsp.to_string(), false);
+  }
+  while (!slookup_to_ptable_release_port_req.empty()) {
+    slookup_to_ptable_release_port_req.read(release_port);
+    logger.Info("Slookup to PortTable release ID ", release_port.to_string(16), false);
   }
 }
+
+MockLogger logger("./slookup_inner.log");
 
 int main() {
   // from sttable
@@ -79,14 +70,10 @@ int main() {
   stream<TcpPortNumber> slookup_to_ptable_release_port_req;
   // registers
   ap_uint<16> reg_session_cnt;
-  IpAddr      my_ip_addr;
+  IpAddr      my_ip_addr = mock_src_ip_addr;
 
-  std::ofstream outputFile;
+  MockLogger top_logger("./slookup_top.log");
 
-  outputFile.open("./out.dat");
-  if (!outputFile) {
-    std::cout << "Error: could not open test output file." << std::endl;
-  }
   int sim_cycle = 0;
 
   TxAppToSlookupReq tx_app_req;
@@ -101,7 +88,7 @@ int main() {
         tx_app_to_slookup_req.write(tx_app_req);
         break;
       case 2:
-        rx_eng_req.four_tuple     = reverser_mock_tuple;
+        rx_eng_req.four_tuple     = reverse_mock_tuple;
         rx_eng_req.role_id        = 0x3;
         rx_eng_req.allow_creation = false;
         rx_eng_to_slookup_req.write(rx_eng_req);
@@ -120,7 +107,11 @@ int main() {
         break;
       case 13:
         tx_app_to_slookup_check_tdest_req.write(0);
+        rx_app_to_slookup_check_tdest_req.write(1);
         break;
+      case 20:
+        sttable_to_slookup_release_req.write(0);
+        sttable_to_slookup_release_req.write(1);
       default:
         break;
     }
@@ -142,19 +133,21 @@ int main() {
                               slookup_to_ptable_release_port_req,
                               reg_session_cnt,
                               my_ip_addr);
-    mock_cam.MockCamIntf(rtl_slookup_to_cam_lookup_req,
+    mock_cam.MockCamIntf(top_logger,
+                         rtl_slookup_to_cam_lookup_req,
                          rtl_cam_to_slookup_lookup_rsp,
                          rtl_slookup_to_cam_update_req,
                          rtl_cam_to_slookup_update_rsp);
-    EmptyFifos(outputFile,
+    EmptyFifos(top_logger,
                slookup_to_rx_app_check_tdset_rsp,
                slookup_to_rx_eng_rsp,
                slookup_to_tx_app_rsp,
                slookup_to_tx_app_check_tdest_rsp,
                slookup_rev_table_to_tx_eng_rsp,
-               slookup_to_ptable_release_port_req,
-               sim_cycle);
+               slookup_to_ptable_release_port_req);
     sim_cycle++;
+    top_logger.SetSimCycle(sim_cycle);
+    logger.SetSimCycle(sim_cycle);
   }
 
   return 0;

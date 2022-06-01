@@ -22,10 +22,16 @@ set_top session_lookup_controller
 add_files "${prj_src_dir}/${prj_name}.cpp \
              ${src_top_dir}/utils/axi_utils.hpp " -cflags "-I${src_top_dir} -DDEBUG"
 
-add_files -tb "${prj_src_dir}/${prj_name}_test.cpp"
+add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
+               ${src_top_dir}/toe/mock/mock_toe.hpp \
+               ${src_top_dir}/toe/mock/mock_logger.hpp "  -cflags "-I${src_top_dir} -DDEBUG"
 
 if {$hls_act == "csim"} {
    csim_design -clean  
+   exit
 }
 csynth_design
+if {$hls_act == "cosim"} {
+   cosim_design -rtl verilog  
+}
 exit

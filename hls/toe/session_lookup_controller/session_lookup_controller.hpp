@@ -29,6 +29,17 @@ struct SlookupToRevTableUpdReq {
   SlookupToRevTableUpdReq(){};
   SlookupToRevTableUpdReq(TcpSessionID key, ThreeTuple tuple, NetAXISDest role)
       : key(key), tuple_value(tuple), role_value(role) {}
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "Key " << key.to_string(16) << "\t"
+            << "ThreeTuple " << tuple_value.to_string() << "\t"
+            << "Role " << role_value << "\t";
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 /** @defgroup session_lookup_controller Session Lookup Controller
