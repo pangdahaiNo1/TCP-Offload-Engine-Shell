@@ -40,7 +40,7 @@ public:
 
 class MockLogger {
 public:
-  inline void InfoOutput(const char *fmt...) {}
+  inline void InfoOutput(const char *fmt...) { _AP_UNUSED_PARAM(fmt); }
 };
 #endif
 
