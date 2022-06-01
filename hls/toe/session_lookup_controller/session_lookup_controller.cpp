@@ -75,7 +75,7 @@ void CamLookupRspHandler(
       if (!tx_app_to_slookup_req.empty()) {
         tx_app_to_slookup_req.read(tx_app_req);
         // req_internal.tuple.myIp = tx_app_req.four_tuple.src_ip_addr;
-        req_internal.tuple.their_ip_addr  = tx_app_req.four_tuple.dst_ip_addr;
+        req_internal.tuple.there_ip_addr  = tx_app_req.four_tuple.dst_ip_addr;
         req_internal.tuple.there_tcp_port = tx_app_req.four_tuple.dst_tcp_port;
         req_internal.tuple.here_tcp_port  = tx_app_req.four_tuple.src_tcp_port;
         req_internal.allow_creation       = true;
@@ -87,7 +87,7 @@ void CamLookupRspHandler(
         slc_fsm_state = LUP_RSP;
       } else if (!rx_eng_to_slookup_req.empty()) {
         rx_eng_to_slookup_req.read(rx_eng_req);
-        req_internal.tuple.their_ip_addr  = rx_eng_req.four_tuple.src_ip_addr;
+        req_internal.tuple.there_ip_addr  = rx_eng_req.four_tuple.src_ip_addr;
         req_internal.tuple.there_tcp_port = rx_eng_req.four_tuple.src_tcp_port;
         // req_internal.tuple.myIp = rx_eng_req.tuple.dst_ip_addr;
         req_internal.tuple.here_tcp_port = rx_eng_req.four_tuple.dst_tcp_port;
@@ -245,7 +245,7 @@ void SlookupReverseTableInterface(
   } else if (!tx_eng_to_slookup_rev_table_req.empty()) {
     tx_eng_to_slookup_rev_table_req.read(session_id);
     tx_eng_rsp.four_tuple.src_ip_addr  = my_ip_addr;
-    tx_eng_rsp.four_tuple.dst_ip_addr  = slookup_rev_table[session_id].three_tuple.their_ip_addr;
+    tx_eng_rsp.four_tuple.dst_ip_addr  = slookup_rev_table[session_id].three_tuple.there_ip_addr;
     tx_eng_rsp.four_tuple.src_tcp_port = slookup_rev_table[session_id].three_tuple.here_tcp_port;
     tx_eng_rsp.four_tuple.dst_tcp_port = slookup_rev_table[session_id].three_tuple.there_tcp_port;
     tx_eng_rsp.role_id                 = slookup_rev_table[session_id].role_id;

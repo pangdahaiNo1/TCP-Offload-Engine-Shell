@@ -1174,19 +1174,19 @@ struct MemBufferRWCmdDoubleAccess {
  * which uses an std::map
  */
 struct ThreeTuple {
-  IpAddr        their_ip_addr;
+  IpAddr        there_ip_addr;
   TcpPortNumber here_tcp_port;
   TcpPortNumber there_tcp_port;
-  ThreeTuple() {}
-  ThreeTuple(IpAddr their_ip_addr, TcpPortNumber here_tcp_port, TcpPortNumber there_tcp_port)
-      : their_ip_addr(their_ip_addr)
+  ThreeTuple() :there_ip_addr(0), here_tcp_port(0), there_tcp_port(0) {}
+  ThreeTuple(IpAddr there_ip_addr, TcpPortNumber here_tcp_port, TcpPortNumber there_tcp_port)
+      : there_ip_addr(there_ip_addr)
       , here_tcp_port(here_tcp_port)
       , there_tcp_port(there_tcp_port) {}
 
   bool operator<(const ThreeTuple &other) const {
-    if (their_ip_addr < other.their_ip_addr) {
+    if (there_ip_addr < other.there_ip_addr) {
       return true;
-    } else if (their_ip_addr == other.their_ip_addr) {
+    } else if (there_ip_addr == other.there_ip_addr) {
       if (here_tcp_port < other.here_tcp_port) {
         return true;
       } else if (here_tcp_port == other.here_tcp_port) {
@@ -1201,7 +1201,7 @@ struct ThreeTuple {
   std::string to_string() {
     std::stringstream sstream;
     sstream << "Here Port " << SwapByte(here_tcp_port).to_string(16) << "\t";
-    sstream << "There IP:Port " << SwapByte(their_ip_addr).to_string(16) << ":"
+    sstream << "There IP:Port " << SwapByte(there_ip_addr).to_string(16) << ":"
             << SwapByte(there_tcp_port).to_string(16) << "\t";
     return sstream.str();
   }
@@ -1263,7 +1263,7 @@ enum SlookupOp { INSERT, DELETE };
 struct RtlSLookupToCamLupReq {
   ThreeTuple    key;
   SlookupSource source;
-  RtlSLookupToCamLupReq() {}
+  RtlSLookupToCamLupReq() :key(), source(RX) {}
   RtlSLookupToCamLupReq(ThreeTuple tuple, SlookupSource src) : key(tuple), source(src) {}
 #ifndef __SYNTHESIS__
   std::string to_string() {
