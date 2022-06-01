@@ -23,9 +23,9 @@ TcpPortNumber mock_dst_tcp_port = 0x1580;      // 32789
 TcpPortNumber mock_src_tcp_port = 0x8000;      // 120
 
 FourTuple mock_tuple(mock_src_ip_addr, mock_dst_ip_addr, mock_src_tcp_port, mock_dst_tcp_port);
-FourTuple reverser_mock_tuple(mock_dst_ip_addr,
-                              mock_src_ip_addr,
-                              mock_dst_tcp_port,
-                              mock_src_tcp_port);
+FourTuple reverse_mock_tuple(mock_dst_ip_addr,
+                             mock_src_ip_addr,
+                             mock_dst_tcp_port,
+                             mock_src_tcp_port);
 
 #endif
