@@ -1,33 +1,30 @@
 #include "port_table.hpp"
+#include "toe/mock/mock_logger.hpp"
 #include "toe/mock/mock_toe.hpp"
-
 using namespace hls;
 
-void EmptyFifos(std::ofstream &           out_stream,
+void EmptyFifos(MockLogger &              logger,
                 stream<PtableToRxEngRsp> &ptable_to_rx_eng_check_rsp,
                 stream<ListenPortRsp> &   ptable_to_rx_app_listen_port_rsp,
-                stream<TcpPortNumber> &   ptable_to_tx_app_rsp,
-                int                       sim_cycle) {
+                stream<TcpPortNumber> &   ptable_to_tx_app_rsp) {
   PtableToRxEngRsp to_rx_eng_rsp;
   ListenPortRsp    to_rx_app_rsp;
   TcpPortNumber    to_tx_app_free_port;
 
   while (!ptable_to_rx_eng_check_rsp.empty()) {
     ptable_to_rx_eng_check_rsp.read(to_rx_eng_rsp);
-    out_stream << "Cycle " << std::dec << sim_cycle << ": Porttable to Rx Engine response\n";
-    out_stream << to_rx_eng_rsp.to_string() << "\n";
+    logger.Info("Porttable to Rx Engine rsp ", to_rx_eng_rsp.to_string(), false);
   }
   while (!ptable_to_rx_app_listen_port_rsp.empty()) {
     ptable_to_rx_app_listen_port_rsp.read(to_rx_app_rsp);
-    out_stream << "Cycle " << std::dec << sim_cycle << ": Porttable to Rx App response\n";
-    out_stream << to_rx_app_rsp.data.to_string() << "\nRole ID: " << to_rx_app_rsp.dest << endl;
+    logger.Info("Porttable to Rx App rsp ", to_rx_app_rsp.to_string(), false);
   }
   while (!ptable_to_tx_app_rsp.empty()) {
     ptable_to_tx_app_rsp.read(to_tx_app_free_port);
-    out_stream << "Cycle " << std::dec << sim_cycle << ": Porttable to Tx App free port\n";
-    out_stream << to_tx_app_free_port << endl;
+    logger.Info("Porttable to Tx App free port ", to_tx_app_free_port.to_string(16), false);
   }
 }
+MockLogger logger("./ptable_inner.log");
 
 int main() {
   stream<TcpPortNumber>    rx_eng_to_ptable_check_req;
@@ -39,24 +36,19 @@ int main() {
   stream<TcpPortNumber>    ptable_to_tx_app_rsp;
 
   // open output file
-  std::ofstream outputFile;
-
-  outputFile.open("./out.dat");
-  if (!outputFile) {
-    std::cout << "Error: could not open test output file." << std::endl;
-  }
+  MockLogger top_logger("ptable_top.log");
 
   // check net app listen req/rsp and check
   ListenPortReq app_req;
-  app_req.data = 0x0080;
-  app_req.dest = 0x1;
+
   TcpPortNumber rx_eng_req;
 
   int sim_cycle = 0;
-  outputFile << "Test NetApp listen port req/rsp" << endl;
   while (sim_cycle < 20) {
     switch (sim_cycle) {
       case 1:
+        app_req.data = 0x0080;
+        app_req.dest = 0x1;
         rx_app_to_ptable_listen_port_req.write(app_req);
         break;
       case 2:
@@ -91,26 +83,26 @@ int main() {
                ptable_to_rx_eng_check_rsp,
                ptable_to_rx_app_listen_port_rsp,
                ptable_to_tx_app_rsp);
-    EmptyFifos(outputFile,
+    EmptyFifos(top_logger,
                ptable_to_rx_eng_check_rsp,
                ptable_to_rx_app_listen_port_rsp,
-               ptable_to_tx_app_rsp,
-               sim_cycle);
+               ptable_to_tx_app_rsp);
     sim_cycle++;
+    top_logger.SetSimCycle(sim_cycle);
+    logger.SetSimCycle(sim_cycle);
   }
-  outputFile << "--------------------------\n\n";
 
   // check tx app get free port and check
   sim_cycle                = 0;
-  NetAXISDest tx_app_tdest = 1;
-  outputFile << "Test NetApp get free port req/rsp" << endl;
+  NetAXISDest tx_app_tdest = 0;
   while (sim_cycle < 20) {
     switch (sim_cycle) {
       case 1:
+        tx_app_tdest = 1;
         tx_app_to_ptable_req.write(tx_app_tdest);
         break;
       case 2:
-        rx_eng_to_ptable_check_req.write(32789);
+        rx_eng_to_ptable_check_req.write(0x8000);
         tx_app_tdest = 2;
         tx_app_to_ptable_req.write(tx_app_tdest);
         break;
@@ -119,6 +111,8 @@ int main() {
         tx_app_to_ptable_req.write(tx_app_tdest);
         break;
       case 4:
+        rx_eng_to_ptable_check_req.write(0x8002);
+
         break;
       default:
         break;
@@ -130,14 +124,14 @@ int main() {
                ptable_to_rx_eng_check_rsp,
                ptable_to_rx_app_listen_port_rsp,
                ptable_to_tx_app_rsp);
-    EmptyFifos(outputFile,
+    EmptyFifos(top_logger,
                ptable_to_rx_eng_check_rsp,
                ptable_to_rx_app_listen_port_rsp,
-               ptable_to_tx_app_rsp,
-               sim_cycle);
+               ptable_to_tx_app_rsp);
     sim_cycle++;
+    top_logger.SetSimCycle(sim_cycle);
+    logger.SetSimCycle(sim_cycle);
   }
-  outputFile << "--------------------------\n\n";
 
   return 0;
 }

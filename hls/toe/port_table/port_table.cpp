@@ -1,6 +1,9 @@
 #include "port_table.hpp"
 
 #include "toe/toe_config.hpp"
+// logger
+#include "toe/mock/mock_logger.hpp"
+extern MockLogger logger;
 
 using namespace hls;
 
@@ -33,6 +36,7 @@ void                 ListeningPortTable(stream<ListenPortReq> &   rx_app_to_ptab
   if (!rx_app_to_ptable_listen_port_req.empty()) {
     // check range, TODO make sure currPort is not equal in 2 consecutive cycles
     rx_app_to_ptable_listen_port_req.read(curr_req);
+    logger.Info("Rx App to Ptable", curr_req.to_string(), false);
 
     listen_rsp.data.wrong_port_number = (curr_req.data.bit(15));
     listen_rsp.data.port_number       = curr_req.data;
@@ -87,6 +91,7 @@ void                 FreePortTable(stream<TcpPortNumber> &   slookup_to_ptable_r
   TcpPortNumber slup_port_req;
   TcpPortNumber cur_free_port;
   ap_uint<15>   port_check_used;
+  NetAXISDest   tx_app_tdest;
 
   if (!slookup_to_ptable_release_port_req_req.empty()) {
     slookup_to_ptable_release_port_req_req.read(slup_port_req);
@@ -98,16 +103,18 @@ void                 FreePortTable(stream<TcpPortNumber> &   slookup_to_ptable_r
     ptable_check_used_rsp_fifo.write(PtableToRxEngRsp(free_port_table[port_check_used].is_open,
                                                       free_port_table[port_check_used].role_id));
   } else if (!tx_app_to_ptable_req.empty()) {
+    tx_app_tdest = tx_app_to_ptable_req.read();
+    logger.Info("Tx App to Ptable", tx_app_tdest.to_string(16), false);
     if (!free_port_table[pt_cursor].is_open && !ptable_to_tx_app_rsp.full()) {
       cur_free_port(14, 0)               = pt_cursor;
       cur_free_port[15]                  = 1;
       free_port_table[pt_cursor].is_open = true;
-      free_port_table[pt_cursor].role_id = tx_app_to_ptable_req.read();
+      free_port_table[pt_cursor].role_id = tx_app_tdest;
       ptable_to_tx_app_rsp.write(cur_free_port);
     }
-    // cout<<"here" <<endl;
+    // only receive a tx app request, then increase the port cursor
+    pt_cursor++;
   }
-  pt_cursor++;
 }
 
 void                 CheckInMultiplexer(stream<TcpPortNumber> &rx_eng_to_ptable_check_req,
@@ -127,6 +134,7 @@ void                 CheckInMultiplexer(stream<TcpPortNumber> &rx_eng_to_ptable_
   if (!rx_eng_to_ptable_check_req.empty()) {
     rx_eng_to_ptable_check_req.read(req_check_port);
     // request port is swapped
+    logger.Info("Ptable check port", req_check_port.to_string(16), false);
     req_swapped_check_port = (req_check_port);
 
     if (!req_swapped_check_port.bit(15)) {
@@ -175,6 +183,8 @@ void                 CheckOutMultiplexer(stream<bool> &            ptable_check_
     case READ_LISTENING:
       if (!ptable_check_listening_rsp_fifo.empty()) {
         ptable_check_listening_rsp_fifo.read(listening_table_rsp);
+        logger.Info(
+            "Ptable check port from listen_port rsp", listening_table_rsp.to_string(), false);
         ptable_to_rx_eng_check_rsp.write(listening_table_rsp);
         cm_fsmState = READ_DST;
       }
@@ -183,6 +193,7 @@ void                 CheckOutMultiplexer(stream<bool> &            ptable_check_
     case READ_USED:
       if (!ptable_check_used_rsp_fifo.empty()) {
         ptable_check_used_rsp_fifo.read(free_table_rsp);
+        logger.Info("Ptable check port from free_port rsp", free_table_rsp.to_string(), false);
         ptable_to_rx_eng_check_rsp.write(free_table_rsp);
         cm_fsmState = READ_DST;
       }
