@@ -1,6 +1,8 @@
 #include "probe_timer.hpp"
-
 using namespace hls;
+// logger
+#include "toe/mock/mock_logger.hpp"
+extern MockLogger logger;
 
 /** @ingroup probe_timer
  *  Reads in the Session-ID and activates. a timer with an interval of 0.05 seconds. When the timer
@@ -28,6 +30,7 @@ void                  probe_timer(stream<TcpSessionID> &rx_eng_to_timer_clear_pt
 
   TcpSessionID ptimer_cur_session_id;
   bool         ptimer_cur_id_to_be_clear = false;
+  Event        to_event_eng;
 
   if (ptimer_wait_for_write) {
     if (ptimer_set_session_id != ptimer_prev_session_id) {
@@ -38,6 +41,7 @@ void                  probe_timer(stream<TcpSessionID> &rx_eng_to_timer_clear_pt
     ptimer_prev_session_id--;
   } else if (!tx_eng_to_timer_set_ptimer.empty()) {
     tx_eng_to_timer_set_ptimer.read(ptimer_set_session_id);
+    logger.Info("Tx Engine set PTimer", ptimer_set_session_id.to_string(16), false);
     ptimer_wait_for_write = true;
   } else {
     ptimer_cur_session_id  = ptimer_cur_check_session_id;
@@ -45,6 +49,8 @@ void                  probe_timer(stream<TcpSessionID> &rx_eng_to_timer_clear_pt
 
     if (!rx_eng_to_timer_clear_ptimer.empty()) {
       rx_eng_to_timer_clear_ptimer.read(ptimer_cur_session_id);
+      logger.Info("Rx Engine clear PTimer", ptimer_set_session_id.to_string(16), false);
+
       ptimer_cur_id_to_be_clear = true;
     } else {
       ptimer_cur_check_session_id++;
@@ -60,10 +66,14 @@ void                  probe_timer(stream<TcpSessionID> &rx_eng_to_timer_clear_pt
         probe_timer_table[ptimer_cur_session_id].active = false;
         // It's not an RT, we want to resume TX
 #if !(TCP_NODELAY)
-        ptimer_to_event_eng_set_event.write(Event(TX, ptimer_cur_session_id));
+        to_event_eng = Event(TX, ptimer_cur_session_id);
 #else
-        ptimer_to_event_eng_set_event.write(Event(RT, ptimer_cur_session_id));
+        to_event_eng = Event(RT, ptimer_cur_session_id);
+
 #endif
+        logger.Info("PTimer to Event engine", to_event_eng.to_string(), false);
+        ptimer_to_event_eng_set_event.write(to_event_eng);
+
         ptimer_cur_id_to_be_clear = false;
       } else {
         probe_timer_table[ptimer_cur_session_id].time -= 1;

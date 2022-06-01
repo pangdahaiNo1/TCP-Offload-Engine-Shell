@@ -1,46 +1,43 @@
 
 #include "probe_timer.hpp"
+#include "toe/mock/mock_logger.hpp"
 #include "toe/mock/mock_toe.hpp"
-
-#include <iostream>
 
 using namespace hls;
 
-void EmptyFifos(std::ofstream &out_stream,
-                stream<Event> &ptimer_to_event_eng_set_event,
-                int            sim_cycle) {
+void EmptyFifos(MockLogger &logger, stream<Event> &ptimer_to_event_eng_set_event) {
   Event ev;
 
   while (!ptimer_to_event_eng_set_event.empty()) {
     ptimer_to_event_eng_set_event.read(ev);
-    out_stream << "Cycle " << std::dec << sim_cycle << ": Probe Timer to Event Eng\n";
-    out_stream << ev.to_string() << "\n";
+    logger.Info("Probe Timer to Event Eng", ev.to_string(), false);
   }
 }
+MockLogger logger("./ptimer_inner.log");
 
 int main() {
   stream<TcpSessionID> rx_eng_to_timer_clear_ptimer;
   stream<TcpSessionID> tx_eng_to_timer_set_ptimer;
   stream<Event>        ptimer_to_event_eng_set_event;
 
-  std::ofstream outfile_stream;
+  MockLogger top_logger("./ptimer_top.log");
 
-  outfile_stream.open("./out.dat");
-  if (!outfile_stream) {
-    std::cout << "Error: could not open test output file." << std::endl;
-  }
   int          sim_cycle   = 0;
-  TcpSessionID to_timer_id = 1;
+  TcpSessionID to_timer_id = 0;
   while (sim_cycle < 12800) {
     switch (sim_cycle) {
       case 1:
-        rx_eng_to_timer_clear_ptimer.write(to_timer_id);
+        // tx engine set
+        to_timer_id = 0x1;
+        tx_eng_to_timer_set_ptimer.write(to_timer_id);
         break;
       case 2:
+        // tx engine set
         to_timer_id = 0x2;
         tx_eng_to_timer_set_ptimer.write(to_timer_id);
         break;
       case 10:
+        // rx engine clear session 2
         to_timer_id = 0x2;
         rx_eng_to_timer_clear_ptimer.write(to_timer_id);
         break;
@@ -50,9 +47,11 @@ int main() {
     }
     probe_timer(
         rx_eng_to_timer_clear_ptimer, tx_eng_to_timer_set_ptimer, ptimer_to_event_eng_set_event);
-    EmptyFifos(outfile_stream, ptimer_to_event_eng_set_event, sim_cycle);
+    EmptyFifos(top_logger, ptimer_to_event_eng_set_event);
 
     sim_cycle++;
+    top_logger.SetSimCycle(sim_cycle);
+    logger.SetSimCycle(sim_cycle);
   }
 
   return 0;
