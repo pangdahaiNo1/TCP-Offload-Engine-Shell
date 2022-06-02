@@ -12,7 +12,10 @@
 #include <unordered_map>
 #include <vector>
 using hls::stream;
-using namespace std;
+using std::queue;
+using std::to_string;
+using std::unordered_map;
+using std::vector;
 
 // little endian memory
 class MockMem {
@@ -138,9 +141,9 @@ public:
     uint64_t          one_line_bytes = 8;
     for (int i = 0; i < keys.size(); i++) {
       prev_addr = keys[i];
-      sstream << "0x" << uppercase << setfill('0') << setw(10) << hex << keys[i] << " ";
-      sstream << uppercase << setfill('0') << setw(2) << hex << _mock_memory[keys[i]].to_ushort();
-      sstream << endl;
+      sstream << "0x" << std::uppercase << std::setfill('0') << std::setw(10) << std::hex << keys[i]
+              << " " << std::uppercase << std::setfill('0') << std::setw(2) << std::hex
+              << _mock_memory[keys[i]].to_ushort() << endl;
     }
     std::ofstream output_stream;
     output_stream.open(file_name);
