@@ -1,6 +1,8 @@
 #include "retransmit_timer.hpp"
-
 using namespace hls;
+// logger
+#include "toe/mock/mock_logger.hpp"
+extern MockLogger logger;
 
 /** @ingroup retransmit_timer
  *  The @ref tx_engine sends the Session-ID and Eventy type through the @param
@@ -25,7 +27,6 @@ void                 retransmit_timer(stream<RxEngToRetransTimerReq> &rx_eng_to_
                                       stream<AppNotificationNoTDEST> &rtimer_to_rx_app_notification,
                                       stream<OpenConnRspNoTDEST> &    rtimer_to_tx_app_notification) {
 #pragma HLS PIPELINE II = 1
-  //#pragma HLS INLINE
 
 #pragma HLS aggregate variable = rx_eng_to_timer_clear_rtimer compact = bit
 #pragma HLS aggregate variable = tx_eng_to_timer_set_rtimer compact = bit
@@ -42,30 +43,33 @@ void                 retransmit_timer(stream<RxEngToRetransTimerReq> &rx_eng_to_
   static TcpSessionID           rtimer_cur_session_id  = 0;
   static bool                   rtimer_wait_for_write  = false;
   static TcpSessionID           rtimer_prev_session_id = 0;
-  static RxEngToRetransTimerReq rx_eng_upd_req;
+  static RxEngToRetransTimerReq rx_eng_req;
 
-  RetransmitTimerEntry   rtimer_cur_entry;
-  TcpSessionID           rtimer_cur_enrty_id;
+  RetransmitTimerEntry rtimer_cur_entry;
+  TcpSessionID         rtimer_cur_enrty_id;
+  // 0 = default, 1 = tx engine
   ap_uint<1>             cur_op_is_tx_eng_or_default = 0;
   TxEngToRetransTimerReq tx_eng_req;
 
-  if (rtimer_wait_for_write && rx_eng_upd_req.session_id != rtimer_prev_session_id) {
-    if (!rx_eng_upd_req.stop) {
-      retrans_timer_table[rx_eng_upd_req.session_id].time = TIME_1s;
+  if (rtimer_wait_for_write && rx_eng_req.session_id != rtimer_prev_session_id) {
+    if (!rx_eng_req.stop) {
+      retrans_timer_table[rx_eng_req.session_id].time = TIME_1s;
     } else {
-      retrans_timer_table[rx_eng_upd_req.session_id].time   = 0;
-      retrans_timer_table[rx_eng_upd_req.session_id].active = false;
+      retrans_timer_table[rx_eng_req.session_id].time   = 0;
+      retrans_timer_table[rx_eng_req.session_id].active = false;
     }
-    retrans_timer_table[rx_eng_upd_req.session_id].retries = 0;
-    rtimer_wait_for_write                                  = false;
+    retrans_timer_table[rx_eng_req.session_id].retries = 0;
+    rtimer_wait_for_write                              = false;
   } else if (!rx_eng_to_timer_clear_rtimer.empty() && !rtimer_wait_for_write) {
-    rx_eng_to_timer_clear_rtimer.read(rx_eng_upd_req);
+    rx_eng_to_timer_clear_rtimer.read(rx_eng_req);
+    logger.Info("Rx eng clear RTimer", rx_eng_req.to_string(), false);
     rtimer_wait_for_write = true;
   } else {
     rtimer_cur_enrty_id = rtimer_cur_session_id;
 
     if (!tx_eng_to_timer_set_rtimer.empty()) {
       tx_eng_to_timer_set_rtimer.read(tx_eng_req);
+      logger.Info("Tx eng set RTimer", tx_eng_req.to_string(), false);
       rtimer_cur_enrty_id         = tx_eng_req.session_id;
       cur_op_is_tx_eng_or_default = 1;
       if (tx_eng_req.session_id - 3 < rtimer_cur_session_id &&
@@ -89,19 +93,19 @@ void                 retransmit_timer(stream<RxEngToRetransTimerReq> &rx_eng_to_
         if (!rtimer_cur_entry.active) {
           switch (rtimer_cur_entry.retries) {
             case 0:
-              rtimer_cur_entry.time = TIME_1s;  // TIME_5s;
+              rtimer_cur_entry.time = TIME_1s;
               break;
             case 1:
-              rtimer_cur_entry.time = TIME_5s;  // TIME_7s;
+              rtimer_cur_entry.time = TIME_5s;
               break;
             case 2:
-              rtimer_cur_entry.time = TIME_10s;  // TIME_15s;
+              rtimer_cur_entry.time = TIME_10s;
               break;
-            case 3:                              // TCP_MAX_RETX_ATTEMPTS
-              rtimer_cur_entry.time = TIME_15s;  // TIME_20s;
+            case 3:
+              rtimer_cur_entry.time = TIME_15s;
               break;
             default:
-              rtimer_cur_entry.time = TIME_30s;  // TIME_30s;
+              rtimer_cur_entry.time = TIME_30s;
               break;
           }
         }
@@ -119,18 +123,28 @@ void                 retransmit_timer(stream<RxEngToRetransTimerReq> &rx_eng_to_
             rtimer_cur_entry.active = false;
             if (rtimer_cur_entry.retries < TCP_MAX_RETX_ATTEMPTS) {
               rtimer_cur_entry.retries++;
-              rtimer_to_event_eng_set_event.write(
-                  Event(rtimer_cur_entry.type, rtimer_cur_enrty_id, rtimer_cur_entry.retries));
+              Event rt_event(rtimer_cur_entry.type, rtimer_cur_enrty_id, rtimer_cur_entry.retries);
+              logger.Info("RTimer To Event engine RT Event", rt_event.to_string(), false);
+              rtimer_to_event_eng_set_event.write(rt_event);
             } else {
               rtimer_cur_entry.retries = 0;
+              logger.Info(
+                  "RTimer To STtable caused by MAX RT", rtimer_cur_enrty_id.to_string(16), false);
               rtimer_to_state_table_release_state.write(rtimer_cur_enrty_id);
               if (rtimer_cur_entry.type == SYN) {
                 // Open Session Failed
-                rtimer_to_tx_app_notification.write(OpenConnRspNoTDEST(rtimer_cur_enrty_id, false));
+                OpenConnRspNoTDEST open_conn_rsp(rtimer_cur_enrty_id, false);
+                logger.Info("RTimer To Tx App open session failed caused by MAX RT",
+                            open_conn_rsp.to_string(),
+                            false);
+                rtimer_to_tx_app_notification.write(open_conn_rsp);
               } else {
-                // Session Closed caused by TIMEOUT
-                rtimer_to_rx_app_notification.write(
-                    AppNotificationNoTDEST(rtimer_cur_enrty_id, true));
+                AppNotificationNoTDEST app_notify(rtimer_cur_enrty_id, true);
+                logger.Info("RTimer To Rx app close session caused by MAX RT",
+                            app_notify.to_string(),
+                            false);
+
+                rtimer_to_rx_app_notification.write(app_notify);
               }
             }
           }
