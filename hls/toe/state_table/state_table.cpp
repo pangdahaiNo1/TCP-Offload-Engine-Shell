@@ -1,7 +1,9 @@
 
 #include "state_table.hpp"
-
 using namespace hls;
+// logger
+#include "toe/mock/mock_logger.hpp"
+extern MockLogger logger;
 
 /** @ingroup state_table
  *  Stores the TCP connection state of each session. It is accessed
@@ -12,20 +14,26 @@ using namespace hls;
  *  @param[in]		rx_eng_to_sttable_req read or write
  *  @param[in]		tx_app_to_sttable_req read or write
  *  @param[in]		tx_app_to_sttable_lup_req only read
- *  @param[in]		sttable_to_slookup_release_state release session id
+ *  @param[in]		timer_to_sttable_release_state release session id
  *  @param[out]		sttable_to_rx_eng_rsp read response
  *  @param[out]		sttable_to_tx_app_rsp read response
  *  @param[out]		sttable_to_tx_app_lup_rsp
  *  @param[out]		sttable_to_slookup_release_req release session id
  */
-void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_req,
-                                 stream<StateTableReq> &tx_app_to_sttable_req,
-                                 stream<TcpSessionID> & tx_app_to_sttable_lup_req,
-                                 stream<TcpSessionID> & sttable_to_slookup_release_state,
-                                 stream<SessionState> & sttable_to_rx_eng_rsp,
-                                 stream<SessionState> & sttable_to_tx_app_rsp,
-                                 stream<SessionState> & sttable_to_tx_app_lup_rsp,
-                                 stream<TcpSessionID> & sttable_to_slookup_release_req) {
+void state_table(
+    // from other module req
+    stream<TcpSessionID> &timer_to_sttable_release_state,
+    // rx engine R/W req/rsp
+    stream<StateTableReq> &rx_eng_to_sttable_req,
+    stream<SessionState> & sttable_to_rx_eng_rsp,
+    // tx app read only req/rsp
+    stream<TcpSessionID> &tx_app_to_sttable_lup_req,
+    stream<SessionState> &sttable_to_tx_app_lup_rsp,
+    // tx app R/W req/rsp
+    stream<StateTableReq> &tx_app_to_sttable_req,
+    stream<SessionState> & sttable_to_tx_app_rsp,
+    // to other module req
+    stream<TcpSessionID> &sttable_to_slookup_release_req) {
 #pragma HLS PIPELINE II = 1
 
   static SessionState state_table[TCP_MAX_SESSIONS];
@@ -50,6 +58,7 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_req,
   // TX App connection handler, write or write
   if (!tx_app_to_sttable_req.empty() && !tx_app_rw_locked) {
     tx_app_to_sttable_req.read(tx_app_rw_req);
+    logger.Info("Tx App to State table req", tx_app_rw_req.to_string(), false);
     if ((tx_app_rw_req.session_id == rx_eng_rw_req_session_id) && rx_eng_rw_req_session_id_locked) {
       tx_app_rw_locked = true;
     } else {
@@ -57,6 +66,9 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_req,
         state_table[tx_app_rw_req.session_id] = tx_app_rw_req.state;
         tx_app_rw_req_session_id_locked       = false;
       } else {
+        logger.Info("State table to Tx App rsp",
+                    state_to_string(state_table[tx_app_rw_req.session_id]),
+                    false);
         sttable_to_tx_app_rsp.write(state_table[tx_app_rw_req.session_id]);
         // lock on every read
         tx_app_rw_req_session_id        = tx_app_rw_req.session_id;
@@ -67,17 +79,24 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_req,
   // TX App Stream If, read only
   else if (!tx_app_to_sttable_lup_req.empty()) {
     tx_app_to_sttable_lup_req.read(session_id);
+    logger.Info("Tx App to State table Lup req", tx_app_rw_req.to_string(), false);
+    logger.Info("State table to Tx App Lup rsp", state_to_string(state_table[session_id]), false);
     sttable_to_tx_app_lup_rsp.write(state_table[session_id]);
   }
   // RX Engine, read or write
   else if (!rx_eng_to_sttable_req.empty() && !rx_eng_rw_locked) {
     rx_eng_to_sttable_req.read(rx_eng_rw_req);
+    logger.Info("Rx Eng to State table req", rx_eng_rw_req.to_string(), false);
+
     if ((rx_eng_rw_req.session_id == tx_app_rw_req_session_id) && tx_app_rw_req_session_id_locked) {
       rx_eng_rw_locked = true;
     } else {
       if (rx_eng_rw_req.write) {
         // We check if it was not closed before, not sure if necessary
         if (rx_eng_rw_req.state == CLOSED) {
+          logger.Info("State table to slookup release session",
+                      rx_eng_rw_req.session_id.to_string(16),
+                      false);
           sttable_to_slookup_release_req.write(rx_eng_rw_req.session_id);
         }
         state_table[rx_eng_rw_req.session_id] = rx_eng_rw_req.state;
@@ -86,12 +105,15 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_req,
         sttable_to_rx_eng_rsp.write(state_table[rx_eng_rw_req.session_id]);
         rx_eng_rw_req_session_id        = rx_eng_rw_req.session_id;
         rx_eng_rw_req_session_id_locked = true;
+        logger.Info("State table to rx eng Lup rsp",
+                    state_to_string(state_table[rx_eng_rw_req.session_id]),
+                    false);
       }
     }
   }
   // Timer to release session
-  else if (!sttable_to_slookup_release_state.empty() && !timer_release_locked) {
-    sttable_to_slookup_release_state.read(timer_release_req_session_id);
+  else if (!timer_to_sttable_release_state.empty() && !timer_release_locked) {
+    timer_to_sttable_release_state.read(timer_release_req_session_id);
     // Check if locked
     if (((timer_release_req_session_id == rx_eng_rw_req_session_id) &&
          rx_eng_rw_req_session_id_locked) ||
@@ -100,6 +122,9 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_req,
       timer_release_locked = true;
     } else {
       state_table[timer_release_req_session_id] = CLOSED;
+      logger.Info("State table to slookup release session",
+                  timer_release_req_session_id.to_string(16),
+                  false);
       sttable_to_slookup_release_req.write(timer_release_req_session_id);
     }
   } else if (tx_app_rw_locked) {
@@ -109,6 +134,9 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_req,
         state_table[tx_app_rw_req.session_id] = tx_app_rw_req.state;
         tx_app_rw_req_session_id_locked       = false;
       } else {
+        logger.Info("State table to Tx App rsp",
+                    state_to_string(state_table[tx_app_rw_req.session_id]),
+                    false);
         sttable_to_tx_app_rsp.write(state_table[tx_app_rw_req.session_id]);
         tx_app_rw_req_session_id        = tx_app_rw_req.session_id;
         tx_app_rw_req_session_id_locked = true;
@@ -120,11 +148,17 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_req,
         !tx_app_rw_req_session_id_locked) {
       if (rx_eng_rw_req.write) {
         if (rx_eng_rw_req.state == CLOSED) {
+          logger.Info("State table to slookup release session",
+                      rx_eng_rw_req.session_id.to_string(16),
+                      false);
           sttable_to_slookup_release_req.write(rx_eng_rw_req.session_id);
         }
         state_table[rx_eng_rw_req.session_id] = rx_eng_rw_req.state;
         rx_eng_rw_req_session_id_locked       = false;
       } else {
+        logger.Info("State table to rx eng Lup rsp",
+                    state_to_string(state_table[rx_eng_rw_req.session_id]),
+                    false);
         sttable_to_rx_eng_rsp.write(state_table[rx_eng_rw_req.session_id]);
         rx_eng_rw_req_session_id        = rx_eng_rw_req.session_id;
         rx_eng_rw_req_session_id_locked = true;
@@ -137,6 +171,9 @@ void                 state_table(stream<StateTableReq> &rx_eng_to_sttable_req,
         ((timer_release_req_session_id != tx_app_rw_req_session_id) ||
          !tx_app_rw_req_session_id_locked)) {
       state_table[timer_release_req_session_id] = CLOSED;
+      logger.Info("State table to slookup release session",
+                  timer_release_req_session_id.to_string(16),
+                  false);
       sttable_to_slookup_release_req.write(timer_release_req_session_id);
       timer_release_locked = false;
     }

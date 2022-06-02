@@ -1,269 +1,177 @@
 #include "state_table.hpp"
+#include "toe/mock/mock_logger.hpp"
 #include "toe/mock/mock_toe.hpp"
 
+#include <string>
 using namespace hls;
 
-struct readVerify {
-  int  id;
-  char fifo;
-  int  exp;
-};
+void EmptyFifos(MockLogger &          logger,
+                stream<SessionState> &sttable_to_rx_eng_rsp,
+                stream<SessionState> &sttable_to_tx_app_lup_rsp,
+                stream<SessionState> &sttable_to_tx_app_rsp,
+                stream<TcpSessionID> &sttable_to_slookup_release_req) {
+  SessionState cur_session_state;
+  TcpSessionID to_slookup_req;
 
-void emptyFifos(std::ofstream &       out,
-                stream<SessionState> &rxFifoOut,
-                stream<SessionState> &appFifoOut,
-                stream<SessionState> &app2FifoOut,
-                stream<ap_uint<16> > &slupOut,
-                int                   iter) {
-  SessionState outData;
-  ap_uint<16>  outDataId;
-
-  while (!(rxFifoOut.empty())) {
-    rxFifoOut.read(outData);
-    out << "Step " << std::dec << iter << ": RX Fifo\t\t";
-    out << outData << std::endl;
+  while (!sttable_to_rx_eng_rsp.empty()) {
+    sttable_to_rx_eng_rsp.read(cur_session_state);
+    logger.Info("STable to Rx Eng Session State", state_to_string(cur_session_state), false);
   }
-
-  while (!(appFifoOut.empty())) {
-    appFifoOut.read(outData);
-    out << "Step " << std::dec << iter << ": App Fifo\t\t";
-    out << outData << std::endl;
+  while (!sttable_to_tx_app_lup_rsp.empty()) {
+    sttable_to_tx_app_lup_rsp.read(cur_session_state);
+    logger.Info("STable to Tx App lup Session State", state_to_string(cur_session_state), false);
   }
-
-  while (!(app2FifoOut.empty())) {
-    app2FifoOut.read(outData);
-    out << "Step " << std::dec << iter << ": App2 Fifo\t\t";
-    out << outData << std::endl;
+  while (!sttable_to_tx_app_rsp.empty()) {
+    sttable_to_tx_app_rsp.read(cur_session_state);
+    logger.Info("STable to Tx App Session State", state_to_string(cur_session_state), false);
   }
-
-  while (!(slupOut.empty())) {
-    slupOut.read(outDataId);
-    out << "Step " << std::dec << iter << ": Slup Fifo\t\t";
-    out << std::hex;
-    out << std::setfill('0');
-    out << std::setw(4) << outDataId;
-    out << std::endl;
+  while (!sttable_to_slookup_release_req.empty()) {
+    sttable_to_slookup_release_req.read(to_slookup_req);
+    logger.Info("STable to Slookup Release Session", to_slookup_req.to_string(16), false);
   }
 }
+MockLogger logger("./inner_state_table.log");
 
 int main() {
-  stream<StateTableReq> rxIn;
-  stream<SessionState>  rxOut;
-  stream<StateTableReq> txAppIn;
-  stream<SessionState>  txAppOut;
-  stream<TcpSessionID>  txApp2In;
-  stream<SessionState>  txApp2Out;
-  stream<TcpSessionID>  timerIn;
-  stream<TcpSessionID>  slupOut;
+  stream<TcpSessionID>  timer_to_sttable_release_state;
+  stream<StateTableReq> rx_eng_to_sttable_req;
+  stream<SessionState>  sttable_to_rx_eng_rsp;
+  stream<TcpSessionID>  tx_app_to_sttable_lup_req;
+  stream<SessionState>  sttable_to_tx_app_lup_rsp;
+  stream<StateTableReq> tx_app_to_sttable_req;
+  stream<SessionState>  sttable_to_tx_app_rsp;
+  stream<TcpSessionID>  sttable_to_slookup_release_req;
 
-  StateTableReq inData;
-  SessionState  outData;
+  MockLogger top_logger("./state_table.log");
+  int        sim_cycle = 0;
 
-  std::ifstream inputFile;
-  std::ofstream outputFile;
+  TcpSessionID session_id;
+  TcpSessionID session_id2;
 
-  outputFile.open("./out.dat");
-  if (!outputFile) {
-    std::cout << "Error: could not open test output file." << std::endl;
-  }
-
-  int count = 0;
-
-  /*
-   * Test 1: rx(x, ESTA); timer(x), rx(x, FIN_WAIT)
-   */
-  // ap_uint<16> id = rand() % 100;
-  TcpSessionID id = 0x57;
-  outputFile << "Test 1" << std::endl;
-  outputFile << "Session ID: " << id << std::endl;
-
-  while (count < 20) {
-    switch (count) {
+  while (sim_cycle < 200) {
+    switch (sim_cycle) {
       case 1:
-        rxIn.write(StateTableReq(id, ESTABLISHED, 1));
+        top_logger.Info("Test 1 rx(x, ESTA); timer(x), rx(x, FIN_WAIT)");
+        session_id = 0x10;
+        rx_eng_to_sttable_req.write(StateTableReq(session_id, ESTABLISHED, 1));
         break;
       case 2:
-        timerIn.write(id);
+        timer_to_sttable_release_state.write(session_id);
         break;
       case 3:
-        rxIn.write(StateTableReq(id));
-        break;
-      default:
-        break;
-    }
-    state_table(rxIn, txAppIn, txApp2In, timerIn, rxOut, txAppOut, txApp2Out, slupOut);
-    emptyFifos(outputFile, rxOut, txAppOut, txApp2Out, slupOut, count);
-    count++;
-  }
-  outputFile << "------------------------------------------------" << std::endl;
-
-  // BREAK
-  count = 0;
-  while (count < 200) {
-    state_table(rxIn, txAppIn, txApp2In, timerIn, rxOut, txAppOut, txApp2Out, slupOut);
-    count++;
-  }
-
-  /*
-   * Test 2: rx(x, ESTA); rx(y, ESTA); timer(x), time(y)
-   */
-  // ap_uint<16> id = rand() % 100;
-  count            = 0;
-  id               = 0x6f;
-  TcpSessionID id2 = 0x3a;
-  outputFile << "Test 2" << std::endl;
-  outputFile << "ID: " << id << " ID2: " << id2 << std::endl;
-  while (count < 20) {
-    switch (count) {
-      case 1:
-        rxIn.write(StateTableReq(id, ESTABLISHED, 1));
-        break;
-      case 2:
-        rxIn.write(StateTableReq(id2, ESTABLISHED, 1));
-        break;
-      case 3:
-        timerIn.write(id2);
-        break;
-      case 4:
-        timerIn.write(id);
-        break;
-      case 5:
-        timerIn.write(id);
-        break;
-      default:
-        break;
-    }
-    state_table(rxIn, txAppIn, txApp2In, timerIn, rxOut, txAppOut, txApp2Out, slupOut);
-    emptyFifos(outputFile, rxOut, txAppOut, txApp2Out, slupOut, count);
-    count++;
-  }
-  outputFile << "------------------------------------------------" << std::endl;
-  // BREAK
-  count = 0;
-  while (count < 200) {
-    state_table(rxIn, txAppIn, txApp2In, timerIn, rxOut, txAppOut, txApp2Out, slupOut);
-    count++;
-  }
-
-  /*
-   * Test 3: rx(x); timer(x), rx(x, ESTABLISHED)
-   * Pause then: rx(y), txApp(y), rx(y, ESTABLISHED), txApp(y, value)
-   */
-  // ap_uint<16> id = rand() % 100;
-  count = 0;
-  id    = 0x6f;
-  id2   = 0x3a;
-  outputFile << "Test 3" << std::endl;
-  outputFile << "ID: " << id << " ID2: " << id2 << std::endl;
-  while (count < 40) {
-    switch (count) {
-      case 1:
-        rxIn.write(StateTableReq(id));
-        break;
-      case 2:
-        timerIn.write(id);
-        break;
-      case 5:
-        rxIn.write(StateTableReq(id, ESTABLISHED, 1));
-        break;
-      case 8:
-        rxIn.write(StateTableReq(id));
+        rx_eng_to_sttable_req.write(StateTableReq(session_id, FIN_WAIT_1, 1));
         break;
       case 10:
-        rxIn.write(StateTableReq(id2));
+        top_logger.Info("Test 1 End");
         break;
       case 11:
-        txAppIn.write(StateTableReq(id2));
+        top_logger.Info("Test 2 rx(x, ESTA); rx(y, ESTA); timer(x), time(y)");
+        session_id  = 0x20;
+        session_id2 = 0x21;
+        rx_eng_to_sttable_req.write(StateTableReq(session_id, ESTABLISHED, 1));
+        break;
+      case 12:
+        rx_eng_to_sttable_req.write(StateTableReq(session_id2, ESTABLISHED, 1));
+        break;
+      case 13:
+        timer_to_sttable_release_state.write(session_id2);
         break;
       case 14:
-        rxIn.write(StateTableReq(id2, CLOSING, 1));
+        timer_to_sttable_release_state.write(session_id);
         break;
       case 15:
-        txAppIn.write(StateTableReq(id2, SYN_SENT, 1));
+        timer_to_sttable_release_state.write(session_id);
         break;
-      case 19:
-        txApp2In.write(id2);
+      case 20:
+        top_logger.Info("Test 2 end");
         break;
-      default:
+      case 21:
+        top_logger.Info("Test 3 rx(x); timer(x), rx(x, ESTABLISHED)");
+        top_logger.Info("Test 3 rx(y), txApp(y), rx(y, ESTABLISHED), txApp(y, value)");
+        session_id  = 0x30;
+        session_id2 = 0x31;
+        rx_eng_to_sttable_req.write(StateTableReq(session_id));
         break;
-    }
-    state_table(rxIn, txAppIn, txApp2In, timerIn, rxOut, txAppOut, txApp2Out, slupOut);
-    emptyFifos(outputFile, rxOut, txAppOut, txApp2Out, slupOut, count);
-    count++;
-  }
-  outputFile << "------------------------------------------------" << std::endl;
-  // BREAK
-  count = 0;
-  while (count < 200) {
-    state_table(rxIn, txAppIn, txApp2In, timerIn, rxOut, txAppOut, txApp2Out, slupOut);
-    count++;
-  }
-
-  /*
-   * Test 4: txApp(x); rx(x), txApp(x, SYN_SENT), rx(x, ESTABLISHED), txApp2(x)
-   */
-  // ap_uint<16> id = rand() % 100;
-  count = 0;
-  id    = 0xf3;
-  outputFile << "Test 4" << std::endl;
-  outputFile << "ID: " << id << std::endl;
-  while (count < 40) {
-    switch (count) {
-      case 1:
-        txAppIn.write(StateTableReq(id));
+      case 22:
+        timer_to_sttable_release_state.write(session_id);
         break;
-      case 2:
-        rxIn.write(StateTableReq(id));
+      case 25:
+        rx_eng_to_sttable_req.write(StateTableReq(session_id, ESTABLISHED, 1));
         break;
-      case 5:
-        txAppIn.write(StateTableReq(id, SYN_SENT, 1));
+      case 28:
+        rx_eng_to_sttable_req.write(StateTableReq(session_id));
         break;
-      case 7:
-        rxIn.write(StateTableReq(id, ESTABLISHED, 1));
+      case 30:
+        rx_eng_to_sttable_req.write(StateTableReq(session_id2));
         break;
-      case 19:
-        txApp2In.write(id);
+      case 31:
+        tx_app_to_sttable_req.write(StateTableReq(session_id2));
         break;
-      default:
+      case 34:
+        rx_eng_to_sttable_req.write(StateTableReq(session_id2, CLOSING, 1));
         break;
-    }
-    state_table(rxIn, txAppIn, txApp2In, timerIn, rxOut, txAppOut, txApp2Out, slupOut);
-    emptyFifos(outputFile, rxOut, txAppOut, txApp2Out, slupOut, count);
-    count++;
-  }
-  outputFile << "------------------------------------------------" << std::endl;
-  // BREAK
-  count = 0;
-  while (count < 200) {
-    state_table(rxIn, txAppIn, txApp2In, timerIn, rxOut, txAppOut, txApp2Out, slupOut);
-    count++;
-  }
-
-  /*
-   * Test 5: rxEng(x, ESTABLISED), timer(x), rxEng(x)
-   */
-  // ap_uint<16> id = rand() % 100;
-  count = 0;
-  id    = 0x83;
-  outputFile << "Test 5" << std::endl;
-  outputFile << "ID: " << id << std::endl;
-  while (count < 40) {
-    switch (count) {
-      case 1:
-        rxIn.write(StateTableReq(id, ESTABLISHED, 1));
+      case 35:
+        tx_app_to_sttable_req.write(StateTableReq(session_id2, SYN_SENT, 1));
         break;
-      case 5:
-        timerIn.write(id);
+      case 39:
+        tx_app_to_sttable_lup_req.write(session_id2);
         break;
-      case 6:
-        rxIn.write(StateTableReq(id));
+      case 50:
+        top_logger.Info("Test 3 end");
+        break;
+      case 51:
+        top_logger.Info("Test 4 txApp(x); rx(x), txApp(x, SYN_SENT), rx(x, ESTAB), txApp2(x)");
+        session_id = 0x40;
+        tx_app_to_sttable_req.write(StateTableReq(session_id));
+        break;
+      case 52:
+        rx_eng_to_sttable_req.write(StateTableReq(session_id));
+        break;
+      case 55:
+        tx_app_to_sttable_req.write(StateTableReq(session_id, SYN_SENT, 1));
+        break;
+      case 57:
+        rx_eng_to_sttable_req.write(StateTableReq(session_id, ESTABLISHED, 1));
+        break;
+      case 69:
+        tx_app_to_sttable_lup_req.write(session_id);
+        break;
+      case 70:
+        top_logger.Info("Test 4 end");
+        break;
+      case 71:
+        top_logger.Info("Test 5 rxEng(x, ESTABLISED), timer(x), rxEng(x)");
+        session_id = 0x50;
+        rx_eng_to_sttable_req.write(StateTableReq(session_id, ESTABLISHED, 1));
+        break;
+      case 75:
+        timer_to_sttable_release_state.write(session_id);
+        break;
+      case 76:
+        rx_eng_to_sttable_req.write(StateTableReq(session_id));
+        break;
+      case 80:
+        top_logger.Info("Test 5 end");
         break;
       default:
         break;
     }
-    state_table(rxIn, txAppIn, txApp2In, timerIn, rxOut, txAppOut, txApp2Out, slupOut);
-    emptyFifos(outputFile, rxOut, txAppOut, txApp2Out, slupOut, count);
-    count++;
+    state_table(timer_to_sttable_release_state,
+                rx_eng_to_sttable_req,
+                sttable_to_rx_eng_rsp,
+                tx_app_to_sttable_lup_req,
+                sttable_to_tx_app_lup_rsp,
+                tx_app_to_sttable_req,
+                sttable_to_tx_app_rsp,
+                sttable_to_slookup_release_req);
+    EmptyFifos(top_logger,
+               sttable_to_rx_eng_rsp,
+               sttable_to_tx_app_lup_rsp,
+               sttable_to_tx_app_rsp,
+               sttable_to_slookup_release_req);
+    sim_cycle++;
+    top_logger.SetSimCycle(sim_cycle);
+    logger.SetSimCycle(sim_cycle);
   }
 
   return 0;
