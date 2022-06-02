@@ -33,6 +33,10 @@ public:
     }
   }
 
+  INLINE void Info(string description) {
+    output_stream << "---------" << description << "---------\n";
+  }
+
   INLINE void IncreaseSimCycle() { sim_cycle++; }
   INLINE void SetSimCycle(uint64_t cycle) { sim_cycle = cycle; };
 };

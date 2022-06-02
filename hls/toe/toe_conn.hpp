@@ -70,6 +70,34 @@ enum SessionState {
   TIME_WAIT,
   LAST_ACK
 };
+#ifndef __SYNTHESIS__
+INLINE std::string state_to_string(SessionState state) {
+  switch (state) {
+    case CLOSED:
+      return "CLOSED";
+    case SYN_SENT:
+      return "SYN_SENT";
+    case SYN_RECEIVED:
+      return "SYN_RECEIVED";
+    case ESTABLISHED:
+      return "ESTABLISHED";
+    case FIN_WAIT_1:
+      return "FIN_WAIT_1";
+    case FIN_WAIT_2:
+      return "FIN_WAIT_2";
+    case CLOSING:
+      return "CLOSING";
+    case TIME_WAIT:
+      return "TIME_WAIT";
+    case LAST_ACK:
+      return "LAST_ACK";
+    default:
+      return "[Unknown Session State]";
+  }
+}
+#else
+INLINE char *            state_to_string(SessionState state) { _AP_UNUSED_PARAM(state); return 0; }
+#endif
 
 struct PortTableEntry {
   bool        is_open;
@@ -96,12 +124,14 @@ struct ListenPortReq {
     return new_axis;
   }
 #ifndef __SYNTHESIS__
-  std::string to_string() {
+  INLINE std::string to_string() {
     std::stringstream sstream;
     sstream << "Listen Port Req: " << data.to_string(16) << "\t";
     sstream << "Dest: " << dest.to_string(16) << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -124,10 +154,10 @@ struct ListenPortRspNoTDEST {
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
-    sstream << "Open Port Response: " << std::dec << this->port_number << " \tOpened successfully "
-            << ((this->open_successfully) ? "Yes." : "No.") << "\tWrong port number "
-            << ((this->wrong_port_number) ? "Yes." : "No.") << "\tThe port is already open "
-            << ((this->already_open) ? "Yes." : "No.");
+    sstream << "Port number: " << std::dec << port_number << " \t"
+            << "Opened successfully? " << open_successfully << " \t"
+            << "Wrong number? " << wrong_port_number << " \t"
+            << "Already open? " << already_open;
     return sstream.str();
   }
 #endif
@@ -168,12 +198,14 @@ struct PtableToRxEngRsp {
   PtableToRxEngRsp() : is_open(false), role_id(0) {}
   PtableToRxEngRsp(bool is_open, NetAXISDest dest) : is_open(is_open), role_id(dest) {}
 #ifndef __SYNTHESIS__
-  std::string to_string() {
+  INLINE std::string to_string() {
     std::stringstream sstream;
-    sstream << "Opened: " << (this->is_open ? "Yes." : "No.") << "\t";
+    sstream << "Opened?: " << (this->is_open ? "Yes." : "No.") << "\t";
     sstream << "Role ID: " << this->role_id;
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -183,12 +215,14 @@ struct OpenConnRspNoTDEST {
   OpenConnRspNoTDEST() {}
   OpenConnRspNoTDEST(TcpSessionID id, bool success) : session_id(id), success(success) {}
 #ifndef __SYNTHESIS__
-  std::string to_string() {
+  INLINE std::string to_string() {
     std::stringstream sstream;
     sstream << "Session ID: " << session_id.to_string(16) << "\t";
     sstream << "Success: " << (success ? "Yes." : "No.") << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -388,7 +422,7 @@ struct FourTuple {
   // big endian
   TcpPortNumber src_tcp_port;
   TcpPortNumber dst_tcp_port;
-  FourTuple() {}
+  FourTuple() : src_ip_addr(0), dst_ip_addr(0), src_tcp_port(0), dst_tcp_port(0) {}
   FourTuple(IpAddr        src_ip_addr,
             IpAddr        dst_ip_addr,
             TcpPortNumber src_tcp_port,
@@ -427,13 +461,15 @@ struct StateTableReq {
   StateTableReq(TcpSessionID id, SessionState state, ap_uint<1> write)
       : session_id(id), state(state), write(write) {}
 #ifndef __SYNTHESIS__
-  std::string to_string() {
+  INLINE std::string to_string() {
     std::stringstream sstream;
     sstream << "SessionID: " << session_id.to_string(16) << "\t";
-    sstream << "State: " << state << "\t";
+    sstream << "State: " << state_to_string(state) << "\t";
     sstream << "Write?: " << write << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -854,7 +890,7 @@ struct AppNotificationNoTDEST {
       TcpSessionID id, ap_uint<16> len, IpAddr addr, ap_uint<16> port, bool closed)
       : session_id(id), length(len), ip_addr(addr), dst_tcp_port(port), closed(closed) {}
 #ifndef __SYNTHESIS__
-  std::string to_string() {
+  INLINE std::string to_string() {
     std::stringstream sstream;
     sstream << "SessionID " << (session_id).to_string(16) << "\t";
     sstream << "Length : " << length << "\t";
@@ -863,6 +899,8 @@ struct AppNotificationNoTDEST {
     sstream << "Closed " << (closed ? "Yes." : "No.");
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -885,12 +923,14 @@ struct AppNotification {
     return new_axis;
   }
 #ifndef __SYNTHESIS__
-  std::string to_string() {
+  INLINE std::string to_string() {
     std::stringstream sstream;
     sstream << "AppNotify: " << data.to_string() << "\t";
     sstream << "Dest: " << dest.to_string(16) << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -953,7 +993,7 @@ struct Event {
         ap_uint<3>       retrans_cnt)
       : type(type), session_id(id), buf_addr(addr), length(len), retrans_cnt(retrans_cnt) {}
 #ifndef __SYNTHESIS__
-  std::string to_string() {
+  INLINE std::string to_string() {
     std::stringstream sstream;
     sstream << "EventType: " << this->type << "\t";
     sstream << "SessionID: " << this->session_id << "\t";
@@ -962,6 +1002,8 @@ struct Event {
     sstream << "RetransCnt: " << this->retrans_cnt << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -969,11 +1011,13 @@ struct EventWithTuple : public Event {
   FourTuple four_tuple;
   EventWithTuple() {}
   EventWithTuple(const Event &ev)
-      : Event(ev.type, ev.session_id, ev.buf_addr, ev.length, ev.retrans_cnt) {}
+      : Event(ev.type, ev.session_id, ev.buf_addr, ev.length, ev.retrans_cnt) {
+    four_tuple = FourTuple();
+  }
   EventWithTuple(const Event &ev, FourTuple tuple)
       : Event(ev.type, ev.session_id, ev.buf_addr, ev.length, ev.retrans_cnt), four_tuple(tuple) {}
 #ifndef __SYNTHESIS__
-  std::string to_string() {
+  INLINE std::string to_string() {
     std::stringstream sstream;
     sstream << "EventType: " << this->type << "\t";
     sstream << "SessionID: " << this->session_id << "\t";
@@ -984,6 +1028,8 @@ struct EventWithTuple : public Event {
     sstream << std::hex << four_tuple.to_string();
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -1010,6 +1056,16 @@ struct RxEngToRetransTimerReq {
   RxEngToRetransTimerReq() {}
   RxEngToRetransTimerReq(TcpSessionID id) : session_id(id), stop(false) {}
   RxEngToRetransTimerReq(TcpSessionID id, bool stop) : session_id(id), stop(stop) {}
+#ifndef __SYNTHESIS__
+  INLINE std::string to_string() {
+    std::stringstream sstream;
+    sstream << "SessionID: " << session_id.to_string(16) << "\t"
+            << "Stop?: " << stop;
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 struct TxEngToRetransTimerReq {
@@ -1018,6 +1074,16 @@ struct TxEngToRetransTimerReq {
   TxEngToRetransTimerReq() {}
   TxEngToRetransTimerReq(TcpSessionID id) : session_id(id), type(RT) {}
   TxEngToRetransTimerReq(TcpSessionID id, EventType type) : session_id(id), type(type) {}
+#ifndef __SYNTHESIS__
+  INLINE std::string to_string() {
+    std::stringstream sstream;
+    sstream << "SessionID: " << session_id.to_string(16) << "\t"
+            << "Event Type: " << type;
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 struct RxEngToSlookupReq {
@@ -1035,12 +1101,14 @@ struct TxAppToSlookupReq {
   TxAppToSlookupReq() {}
   TxAppToSlookupReq(FourTuple tuple, NetAXISDest role_id) : four_tuple(tuple), role_id(role_id) {}
 #ifndef __SYNTHESIS__
-  std::string to_string() {
+  INLINE std::string to_string() {
     std::stringstream sstream;
     sstream << "FourTuple: " << this->four_tuple.to_string() << "\t";
     sstream << "RoleID: " << std::hex << role_id.to_string(16);
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -1050,12 +1118,14 @@ struct ReverseTableToTxEngRsp {
   ReverseTableToTxEngRsp() {}
   ReverseTableToTxEngRsp(FourTuple tuple, NetAXISDest role) : four_tuple(tuple), role_id(role) {}
 #ifndef __SYNTHESIS__
-  std::string to_string() {
+  INLINE std::string to_string() {
     std::stringstream sstream;
     sstream << "FourTuple: " << this->four_tuple.to_string() << "\t";
     sstream << "RoleID: " << std::hex << role_id.to_string(16);
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -1063,17 +1133,19 @@ struct SessionLookupRsp {
   TcpSessionID session_id;
   bool         hit;
   NetAXISDest  role_id;
-  SessionLookupRsp() {}
+  SessionLookupRsp() : session_id(0), hit(0), role_id(0) {}
   SessionLookupRsp(TcpSessionID session_id, bool hit, NetAXISDest role_id)
       : session_id(session_id), hit(hit), role_id(role_id) {}
 #ifndef __SYNTHESIS__
-  std::string to_string() {
+  INLINE std::string to_string() {
     std::stringstream sstream;
     sstream << "SessionID: " << this->session_id << "\t";
     sstream << "Hit? " << (hit ? "Yes." : "No.") << "\t";
     sstream << "RoleID: " << std::hex << role_id.to_string(16);
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -1177,7 +1249,7 @@ struct ThreeTuple {
   IpAddr        there_ip_addr;
   TcpPortNumber here_tcp_port;
   TcpPortNumber there_tcp_port;
-  ThreeTuple() :there_ip_addr(0), here_tcp_port(0), there_tcp_port(0) {}
+  ThreeTuple() : there_ip_addr(0), here_tcp_port(0), there_tcp_port(0) {}
   ThreeTuple(IpAddr there_ip_addr, TcpPortNumber here_tcp_port, TcpPortNumber there_tcp_port)
       : there_ip_addr(there_ip_addr)
       , here_tcp_port(here_tcp_port)
@@ -1205,7 +1277,6 @@ struct ThreeTuple {
             << SwapByte(there_tcp_port).to_string(16) << "\t";
     return sstream.str();
   }
-
 #endif
 };
 
@@ -1263,7 +1334,7 @@ enum SlookupOp { INSERT, DELETE };
 struct RtlSLookupToCamLupReq {
   ThreeTuple    key;
   SlookupSource source;
-  RtlSLookupToCamLupReq() :key(), source(RX) {}
+  RtlSLookupToCamLupReq() : key(), source(RX) {}
   RtlSLookupToCamLupReq(ThreeTuple tuple, SlookupSource src) : key(tuple), source(src) {}
 #ifndef __SYNTHESIS__
   std::string to_string() {
@@ -1271,6 +1342,8 @@ struct RtlSLookupToCamLupReq {
     sstream << "Key: " << key.to_string() << "Source: " << source;
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -1290,10 +1363,12 @@ struct RtlSlookupToCamUpdReq {
     std::stringstream sstream;
     sstream << "Key: " << key.to_string() << "\t"
             << "Source: " << source << "\t"
-            << "Update Op: " << op << "\t"
+            << "Update Op Ins/Del: " << op << "\t"
             << "Update Val: " << value.to_string(16);
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -1318,6 +1393,8 @@ struct RtlCamToSlookupLupRsp {
             << "Source: " << source;
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -1334,14 +1411,20 @@ struct RtlCamToSlookupUpdRsp {
   RtlCamToSlookupUpdRsp(SlookupOp op, SlookupSource src) : op(op), source(src) {}
   RtlCamToSlookupUpdRsp(TcpSessionID id, SlookupOp op, SlookupSource src)
       : session_id(id), op(op), source(src) {}
+  RtlCamToSlookupUpdRsp(
+      SlookupOp op, ThreeTuple tuple, TcpSessionID id, bool success, SlookupSource src)
+      : op(op), key(tuple), session_id(id), success(success), source(src) {}
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
     sstream << "Key: " << key.to_string() << "\t"
             << "Update Val: " << session_id.to_string(16) << "\t"
             << "Update Source: " << source << "\t"
+            << "Update Op Ins/Del: " << op << "\t"
             << "Success:? " << success << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
