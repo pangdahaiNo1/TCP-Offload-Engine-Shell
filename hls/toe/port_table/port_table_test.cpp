@@ -76,12 +76,12 @@ int main() {
       default:
         break;
     }
-    port_table(rx_eng_to_ptable_check_req,
+    port_table(slookup_to_ptable_release_port_req,
                rx_app_to_ptable_listen_port_req,
-               slookup_to_ptable_release_port_req,
-               tx_app_to_ptable_req,
-               ptable_to_rx_eng_check_rsp,
                ptable_to_rx_app_listen_port_rsp,
+               rx_eng_to_ptable_check_req,
+               ptable_to_rx_eng_check_rsp,
+               tx_app_to_ptable_req,
                ptable_to_tx_app_rsp);
     EmptyFifos(top_logger,
                ptable_to_rx_eng_check_rsp,
@@ -117,12 +117,12 @@ int main() {
       default:
         break;
     }
-    port_table(rx_eng_to_ptable_check_req,
+    port_table(slookup_to_ptable_release_port_req,
                rx_app_to_ptable_listen_port_req,
-               slookup_to_ptable_release_port_req,
-               tx_app_to_ptable_req,
-               ptable_to_rx_eng_check_rsp,
                ptable_to_rx_app_listen_port_rsp,
+               rx_eng_to_ptable_check_req,
+               ptable_to_rx_eng_check_rsp,
+               tx_app_to_ptable_req,
                ptable_to_tx_app_rsp);
     EmptyFifos(top_logger,
                ptable_to_rx_eng_check_rsp,
