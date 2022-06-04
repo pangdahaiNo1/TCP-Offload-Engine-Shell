@@ -12,10 +12,10 @@ void EmptyFifos(MockLogger &logger, stream<EventWithTuple> &ack_delay_to_tx_eng_
 
   while (!ack_delay_to_tx_eng_event.empty()) {
     ack_delay_to_tx_eng_event.read(out_event);
-    logger.Info("AckDelay to Tx Engine Event", out_event.to_string(), true);
+    logger.Info(ACK_DELAY, EVENT_ENG, "Event", out_event.to_string(), false);
   }
 }
-MockLogger logger("./inner_out.dat");
+MockLogger logger("./ack_delay_inner.log", ACK_DELAY);
 int        main() {
   stream<EventWithTuple> event_eng_to_ack_delay_event;
   stream<EventWithTuple> ack_delay_to_tx_eng_event;
@@ -24,7 +24,7 @@ int        main() {
 
   EventWithTuple ev;
 
-  MockLogger top_logger("./top_out.dat");
+  MockLogger top_logger("./ack_delay_top.log", ACK_DELAY);
 
   int sim_cycle = 0;
   while (sim_cycle < 20) {

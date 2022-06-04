@@ -1,6 +1,8 @@
 #include "rx_app_intf.hpp"
-
 using namespace hls;
+// logger
+#include "toe/mock/mock_logger.hpp"
+extern MockLogger logger;
 
 /** @ingroup rx_app_intf
  *  This application interface is used to open passive connections
@@ -29,15 +31,18 @@ void RxAppPortHandler(stream<NetAXISListenPortReq> &net_app_to_rx_app_listen_por
   switch (fsm_state) {
     case WAIT_NET:
       if (!net_app_to_rx_app_listen_port_req.empty() && !listen_port_lock) {
-        rx_app_to_ptable_listen_port_req.write(net_app_to_rx_app_listen_port_req.read());
+        ListenPortReq listen_req = net_app_to_rx_app_listen_port_req.read();
+        rx_app_to_ptable_listen_port_req.write(listen_req);
+        logger.Info(RX_APP_INTF, PORT_TABLE, "ListenPort Req", listen_req.to_string(), false);
         listen_port_lock = true;
         fsm_state        = WAIT_PTABLE;
       }
       break;
     case WAIT_PTABLE:
       if (!ptable_to_rx_app_listen_port_rsp.empty() && listen_port_lock) {
-        rx_app_to_net_app_listen_port_rsp.write(
-            ptable_to_rx_app_listen_port_rsp.read().to_net_axis());
+        ListenPortRsp listen_rsp = ptable_to_rx_app_listen_port_rsp.read();
+        rx_app_to_net_app_listen_port_rsp.write(listen_rsp.to_net_axis());
+        logger.Info(RX_APP_INTF, NET_APP, "ListenPort Rsp", listen_rsp.to_string(), false);
         listen_port_lock = false;
         fsm_state        = WAIT_NET;
       }
@@ -81,15 +86,20 @@ void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_read_da
   switch (fsm_state) {
     case WAIT_NET_APP_DATA_REQ:
       if (!net_app_read_data_req.empty()) {
-        NetAXISAppReadReq net_app_read_request = net_app_read_data_req.read();
-        AppReadReqNoTEST  app_read_req         = net_app_read_request.data;
+        AppReadReq app_read_request = net_app_read_data_req.read();
+        logger.Info(NET_APP, RX_APP_INTF, "ReadData Req", app_read_request.to_string(), false);
         // Make sure length is not 0, otherwise Data Mover will hang up
-        if (app_read_req.read_length != 0) {
+        if (app_read_request.data.read_length != 0) {
           // record the TDEST
-          rx_app_role_id = net_app_read_request.dest;
+          rx_app_role_id = app_read_request.dest;
           // Get app pointer
-          rx_app_to_rx_sar_req.write(RxSarAppReqRsp(app_read_req.session_id));
-          rx_app_read_length = app_read_req.read_length;
+          rx_app_to_rx_sar_req.write(RxSarAppReqRsp(app_read_request.data.session_id));
+          logger.Info(RX_APP_INTF,
+                      RX_SAR,
+                      "SessionSAR Lup Req",
+                      app_read_request.data.session_id.to_string(16),
+                      false);
+          rx_app_read_length = app_read_request.data.read_length;
           fsm_state          = WAIT_SAR_RSP;
           net_app_data_lock  = true;
         }
@@ -103,8 +113,10 @@ void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_read_da
         net_app_rsp.dest = rx_app_role_id;
         net_app_read_data_rsp.write(net_app_rsp);
         // Update app read pointer
-        rx_app_to_rx_sar_req.write(
-            RxSarAppReqRsp(rx_app_rsp.session_id, rx_app_rsp.app_read + rx_app_read_length));
+        RxSarAppReqRsp rx_sar_upd_req(rx_app_rsp.session_id,
+                                      rx_app_rsp.app_read + rx_app_read_length);
+        rx_app_to_rx_sar_req.write(rx_sar_upd_req);
+        logger.Info(RX_APP_INTF, RX_SAR, "SessionSAR Upd Req", rx_sar_upd_req.to_string(), false);
         fsm_state = WAIT_RX_ENG_DATA;
       }
       break;
@@ -113,6 +125,7 @@ void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_read_da
         rx_eng_to_rx_app_data.read(cur_word);
         // cur_word.dest = rx_app_role_id;  // assume the TDEST is assigned in Rx engine
         rx_app_to_net_app_data.write(cur_word.to_net_axis());
+        logger.Info(RX_APP_INTF, NET_APP, "Data", cur_word.to_string(), false);
         if (cur_word.last) {
           fsm_state         = WAIT_NET_APP_DATA_REQ;
           net_app_data_lock = false;
@@ -133,14 +146,16 @@ void NetAppNotificationTdestHandler(stream<AppNotificationNoTDEST> &app_notifica
 
   if (!app_notification_no_tdest.empty() && !tdest_req_lock) {
     notify_reg = app_notification_no_tdest.read();
+    logger.Info(MISC_MODULE, RX_APP_INTF, "AppNotify", notify_reg.to_string(), false);
     slookup_tdest_lookup_req.write(notify_reg.session_id);
     tdest_req_lock = true;
   } else if (!slookup_tdest_lookup_rsp.empty() && tdest_req_lock) {
-    NetAXISDest            temp_role_id = slookup_tdest_lookup_rsp.read();
-    NetAXISAppNotification net_app_notify;
+    NetAXISDest     temp_role_id = slookup_tdest_lookup_rsp.read();
+    AppNotification net_app_notify;
     net_app_notify.data = notify_reg;
     net_app_notify.dest = temp_role_id;
-    net_app_notification.write(net_app_notify);
+    logger.Info(RX_APP_INTF, NET_APP, "NetAppNotify", notify_reg.to_string(), false);
+    net_app_notification.write(net_app_notify.to_net_axis());
     tdest_req_lock = false;
   }
 }

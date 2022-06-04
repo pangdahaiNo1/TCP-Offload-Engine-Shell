@@ -18,7 +18,7 @@ void                 ack_delay(stream<EventWithTuple> &event_eng_to_ack_delay_ev
 
   if (!event_eng_to_ack_delay_event.empty()) {
     event_eng_to_ack_delay_event.read(event);
-    logger.Info("Event eng to ack delay", event.to_string(), true);
+    logger.Info(EVENT_ENG, ACK_DELAY, "Event", event.to_string(), true);
     ack_delay_read_cnt_fifo.write(1);
     // Check if there is a delayed ACK
     if (event.type == ACK && ack_table[event.session_id] == 0) {
@@ -27,7 +27,7 @@ void                 ack_delay(stream<EventWithTuple> &event_eng_to_ack_delay_ev
       // Assumption no SYN/RST
       ack_table[event.session_id] = 0;
       ack_delay_to_tx_eng_event.write(event);
-      logger.Info("Ack delay to tx engine", event.to_string(), true);
+      logger.Info(ACK_DELAY, TX_ENG, "Event", event.to_string(), true);
       ack_delay_write_cnt_fifo.write(1);
     }
   } else {
@@ -35,7 +35,7 @@ void                 ack_delay(stream<EventWithTuple> &event_eng_to_ack_delay_ev
       if (ack_table[ack_delay_cur_session_id] == 1) {
         event = Event(ACK, ack_delay_cur_session_id);
         ack_delay_to_tx_eng_event.write(event);
-        logger.Info("Ack delay to tx engine delayed ACK timeout", event.to_string(), true);
+        logger.Info(ACK_DELAY, TX_ENG, "Delayed ACK by timeout", event.to_string(), true);
         ack_delay_write_cnt_fifo.write(1);
       }
       // Decrease value

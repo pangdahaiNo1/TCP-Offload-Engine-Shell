@@ -18,31 +18,31 @@ void EmptyFifos(MockLogger &                    logger,
   TcpPortNumber          release_port;
   while (!slookup_to_rx_app_check_tdset_rsp.empty()) {
     slookup_to_rx_app_check_tdset_rsp.read(rx_or_tx_app_tdest);
-    logger.Info("Slookup to Rx app TDEST rsp", rx_or_tx_app_tdest.to_string(16), false);
+    logger.Info(SLUP_CTRL, RX_APP_INTF, "TDEST Rsp", rx_or_tx_app_tdest.to_string(16));
   }
   while (!slookup_to_rx_eng_rsp.empty()) {
     slookup_to_rx_eng_rsp.read(slookup_rsp);
-    logger.Info("Slookup to Rx Engine rsp", slookup_rsp.to_string(), false);
+    logger.Info(SLUP_CTRL, RX_ENG, "SessionLup Rsp", slookup_rsp.to_string());
   }
   while (!slookup_to_tx_app_rsp.empty()) {
     slookup_to_tx_app_rsp.read(slookup_rsp);
-    logger.Info("Slookup to Tx App rsp", slookup_rsp.to_string(), false);
+    logger.Info(SLUP_CTRL, TX_APP_INTF, "SessionLup Rsp", slookup_rsp.to_string());
   }
   while (!slookup_to_tx_app_check_tdest_rsp.empty()) {
     slookup_to_tx_app_check_tdest_rsp.read(rx_or_tx_app_tdest);
-    logger.Info("Slookup to Tx app TDEST rsp", rx_or_tx_app_tdest.to_string(16), false);
+    logger.Info(SLUP_CTRL, TX_APP_INTF, "TDEST Rsp", rx_or_tx_app_tdest.to_string(16));
   }
   while (!slookup_rev_table_to_tx_eng_rsp.empty()) {
     slookup_rev_table_to_tx_eng_rsp.read(tx_eng_rsp);
-    logger.Info("Slookup to Tx Engine rsp", tx_eng_rsp.to_string(), false);
+    logger.Info(SLUP_CTRL, TX_ENG, "RevTable Rsp", tx_eng_rsp.to_string(), false);
   }
   while (!slookup_to_ptable_release_port_req.empty()) {
     slookup_to_ptable_release_port_req.read(release_port);
-    logger.Info("Slookup to PortTable release ID ", release_port.to_string(16), false);
+    logger.Info(SLUP_CTRL, PORT_TABLE, "Release Port Req", release_port.to_string(16), false);
   }
 }
 
-MockLogger logger("./slookup_inner.log");
+MockLogger logger("./slookup_inner.log", SLUP_CTRL);
 
 int main() {
   // from sttable
@@ -72,7 +72,7 @@ int main() {
   ap_uint<16> reg_session_cnt;
   IpAddr      my_ip_addr = mock_src_ip_addr;
 
-  MockLogger top_logger("./slookup_top.log");
+  MockLogger top_logger("./slookup_top.log", SLUP_CTRL);
 
   int sim_cycle = 0;
 

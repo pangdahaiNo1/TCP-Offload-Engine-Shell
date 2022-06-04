@@ -24,7 +24,7 @@ void EmptyFifos(MockLogger &              logger,
     logger.Info("Porttable to Tx App free port ", to_tx_app_free_port.to_string(16), false);
   }
 }
-MockLogger logger("./ptable_inner.log");
+MockLogger logger("./ptable_inner.log", PORT_TABLE);
 
 int main() {
   stream<TcpPortNumber>    rx_eng_to_ptable_check_req;
@@ -36,7 +36,7 @@ int main() {
   stream<TcpPortNumber>    ptable_to_tx_app_rsp;
 
   // open output file
-  MockLogger top_logger("ptable_top.log");
+  MockLogger top_logger("ptable_top.log", PORT_TABLE);
 
   // check net app listen req/rsp and check
   ListenPortReq app_req;

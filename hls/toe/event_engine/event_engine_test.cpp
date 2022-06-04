@@ -9,11 +9,11 @@ void EmptyFifos(MockLogger &logger, stream<EventWithTuple> &event_eng_to_ack_del
 
   while (!event_eng_to_ack_delay_event.empty()) {
     event_eng_to_ack_delay_event.read(out_event);
-    logger.Info("EventEngine to Ack delay Event", out_event.to_string(), true);
+    logger.Info(EVENT_ENG, ACK_DELAY, "Event", out_event.to_string(), true);
   }
 }
 
-MockLogger logger("./inner_out.dat");
+MockLogger logger("./event_eng_inner.log", EVENT_ENG);
 int        main() {
   stream<Event>          tx_app_to_event_eng_set_event;
   stream<EventWithTuple> rx_eng_to_event_eng_set_event;
@@ -23,7 +23,7 @@ int        main() {
   stream<ap_uint<1> >    ack_delay_write_count_fifo;
   stream<ap_uint<1> >    tx_eng_read_count_fifo;
 
-  MockLogger     top_logger("./top_out.dat");
+  MockLogger     top_logger("./event_eng_top.log", EVENT_ENG);
   EventWithTuple ev;
 
   int sim_cycle = 0;

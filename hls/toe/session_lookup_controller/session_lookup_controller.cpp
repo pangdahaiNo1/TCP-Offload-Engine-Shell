@@ -81,7 +81,7 @@ void CamLookupRspHandler(
         req_internal.role_id              = tx_app_req.role_id;
         cam_lup_req = RtlSLookupToCamLupReq(req_internal.tuple, req_internal.source);
         slookup_to_cam_lup_req.write(cam_lup_req);
-        logger.Info("Slookup To CAM Lookup from Tx APP", cam_lup_req.to_string(), false);
+        logger.Info(SLUP_CTRL, CUCKOO_CAM, "Lup Req from TxApp", cam_lup_req.to_string(), false);
         slookup_to_cam_req_cache_fifo.write(req_internal);
         slc_fsm_state = LUP_RSP;
       } else if (!rx_eng_to_slookup_req.empty()) {
@@ -94,7 +94,7 @@ void CamLookupRspHandler(
         req_internal.role_id              = rx_eng_req.role_id;
         cam_lup_req = RtlSLookupToCamLupReq(req_internal.tuple, req_internal.source);
         slookup_to_cam_lup_req.write(cam_lup_req);
-        logger.Info("Slookup To CAM Lookup from Rx Eng", cam_lup_req.to_string(), false);
+        logger.Info(SLUP_CTRL, CUCKOO_CAM, "Lup Req from RxEng", cam_lup_req.to_string(), false);
         slookup_to_cam_req_cache_fifo.write(req_internal);
         slc_fsm_state = LUP_RSP;
       }
@@ -113,10 +113,10 @@ void CamLookupRspHandler(
         } else {
           slookup_rsp = SessionLookupRsp(cam_rsp.session_id, cam_rsp.hit, req_internal.role_id);
           if (cam_rsp.source == RX) {
-            logger.Info("Slookup To Rx Eng lookup Rsp", slookup_rsp.to_string(), false);
+            logger.Info(SLUP_CTRL, RX_ENG, "Lup Rsp", slookup_rsp.to_string(), false);
             slookup_to_rx_eng_rsp.write(slookup_rsp);
           } else {
-            logger.Info("Slookup To Tx App lookup Rsp", slookup_rsp.to_string(), false);
+            logger.Info(SLUP_CTRL, TX_APP_INTF, "Lup Rsp", slookup_rsp.to_string(), false);
             slookup_to_tx_app_rsp.write(slookup_rsp);
           }
           slc_fsm_state = LUP_REQ;
@@ -136,10 +136,10 @@ void CamLookupRspHandler(
         slookup_rsp =
             SessionLookupRsp(cam_update_rsp.session_id, true, reverse_table_one_entry.role_id);
         if (cam_update_rsp.source == RX) {
-          logger.Info("Slookup To Rx Eng Update Rsp", slookup_rsp.to_string(), false);
+          logger.Info(SLUP_CTRL, RX_ENG, "Update Rsp", slookup_rsp.to_string());
           slookup_to_rx_eng_rsp.write(slookup_rsp);
         } else {
-          logger.Info("Slookup To Tx App Update Rsp", slookup_rsp.to_string(), false);
+          logger.Info(SLUP_CTRL, TX_APP_INTF, "Update Rsp", slookup_rsp.to_string());
           slookup_to_tx_app_rsp.write(slookup_rsp);
         }
         slc_fsm_state = LUP_REQ;
@@ -164,14 +164,14 @@ void                 CamUpdateReqSender(stream<RtlSlookupToCamUpdReq> &slookup_t
 
   if (!slookup_to_cam_insert_req.empty()) {
     slookup_to_cam_insert_req.read(cam_upd_req);
-    logger.Info("Slookup To CAM Insert Req", cam_upd_req.to_string(), false);
+    logger.Info(SLUP_CTRL, CUCKOO_CAM, "Insert Req", cam_upd_req.to_string());
     rtl_slookup_to_cam_update_req.write(cam_upd_req);
     used_session_id_cnt++;
     reg_session_cnt = used_session_id_cnt;
     logger.Info("Slookup Current Session count", reg_session_cnt.to_string(16), false);
   } else if (!slookup_to_cam_delete_req.empty()) {
     slookup_to_cam_delete_req.read(cam_upd_req);
-    logger.Info("Slookup To CAM Delete Req", cam_upd_req.to_string(), false);
+    logger.Info(SLUP_CTRL, CUCKOO_CAM, "Delete Req", cam_upd_req.to_string());
     rtl_slookup_to_cam_update_req.write(cam_upd_req);
     slookup_released_id.write(cam_upd_req.value(13, 0));
     used_session_id_cnt--;
@@ -193,7 +193,7 @@ void CamUpdateRspHandler(stream<RtlCamToSlookupUpdRsp> &rtl_cam_to_slookup_updat
 
   if (!rtl_cam_to_slookup_update_rsp.empty()) {
     rtl_cam_to_slookup_update_rsp.read(cam_upd_rsp);
-    logger.Info("Slookup To CAM Update rsp", cam_upd_rsp.to_string(), false);
+    logger.Info(SLUP_CTRL, CUCKOO_CAM, "Update rsp", cam_upd_rsp.to_string());
     if (cam_upd_rsp.op == INSERT) {
       cam_to_slookup_upd_rsp.write(cam_upd_rsp);
     }

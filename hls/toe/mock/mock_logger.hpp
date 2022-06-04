@@ -12,7 +12,7 @@ enum ToeModule {
   RX_APP_INTF,
   RX_ENG,
   RX_SAR,
-  SESSION_LUP,
+  SLUP_CTRL,
   CUCKOO_CAM,
   STATE_TABLE,
   TX_APP_INTF,
@@ -21,7 +21,6 @@ enum ToeModule {
   TOE_TOP,
   MISC_MODULE  // could be some of modules
 };
-
 
 #ifndef __SYNTHESIS__
 #include <ap_common.h>
@@ -37,7 +36,7 @@ private:
   // all modules in 10 chars, including `\0`
   unordered_map<ToeModule, string> module_name = {{NET_APP, "NET_APP  "},
                                                   {ACK_DELAY, "ACK_DELAY"},
-                                                  {CLOSE_TIMER, "CLO_TIMER"},
+                                                  {CLOSE_TIMER, "CLS_TIMER"},
                                                   {EVENT_ENG, "EVENT_ENG"},
                                                   {PORT_TABLE, "PORT_TBLE"},
                                                   {PROBE_TIMER, "PRO_TIMER"},
@@ -45,7 +44,7 @@ private:
                                                   {RX_APP_INTF, "RX_INTF  "},
                                                   {RX_ENG, "RX_ENGINE"},
                                                   {RX_SAR, "RX_SAR_TB"},
-                                                  {SESSION_LUP, "SESSN_LUP"},
+                                                  {SLUP_CTRL, "SLUP_CTRL"},
                                                   {CUCKOO_CAM, "CUKOO_CAM"},
                                                   {STATE_TABLE, "STAT_TBLE"},
                                                   {TX_APP_INTF, "TX_INTF  "},
@@ -77,7 +76,7 @@ public:
                    const string &signal_name,
                    const string &signal_state,
                    bool          state_in_new_line = false) {
-    string delimiter = state_in_new_line ? ("\n\t\t") : ("\t");
+    string delimiter = state_in_new_line ? ("\n\t\t\t") : ("\t");
     if (enable_recv_log || enable_send_log) {
       string from_module_str = "[" + module_name[from_module] + "]";
       string to_module_str   = "[" + module_name[to_module] + "]\t";

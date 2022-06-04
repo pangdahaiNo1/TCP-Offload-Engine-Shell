@@ -9,17 +9,17 @@ void EmptyFifos(MockLogger &logger, stream<TcpSessionID> &ctimer_to_sttable_rele
 
   while (!ctimer_to_sttable_release_state.empty()) {
     ctimer_to_sttable_release_state.read(session_id);
-    logger.Info("Close Timer to State Table for release", session_id.to_string(16), false);
+    logger.Info(CLOSE_TIMER, STATE_TABLE, "Release Session", session_id.to_string(16), false);
   }
 }
 
-MockLogger logger("./inner_out.dat");
+MockLogger logger("./closet_timer_inner.log", CLOSE_TIMER);
 
 int main() {
   stream<TcpSessionID> rx_eng_to_timer_set_ctimer;
   stream<TcpSessionID> ctimer_to_sttable_release_state;
 
-  MockLogger   top_logger("./top_out.dat");
+  MockLogger   top_logger("./closet_timer_top.log", CLOSE_TIMER);
   int          sim_cycle    = 0;
   TcpSessionID to_ctimer_id = 1;
   while (sim_cycle < 12800) {
