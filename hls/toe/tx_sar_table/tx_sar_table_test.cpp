@@ -1,35 +1,35 @@
 
-#include "toe/mock/mock_toe.hpp"
 #include "tx_sar_table.hpp"
+// DONOT change the header files sequence
+#include "toe/mock/mock_logger.hpp"
+#include "toe/mock/mock_toe.hpp"
 using namespace hls;
 
-void EmptyFifos(std::ofstream &          out_stream,
+void EmptyFifos(MockLogger &             logger,
                 stream<TxSarToRxEngRsp> &tx_sar_to_rx_eng_rsp,
                 stream<TxSarToTxEngRsp> &tx_sar_to_tx_eng_rsp,
-                stream<TxSarToTxAppRsp> &tx_sar_to_tx_app_rsp,
-                int                      sim_cycle) {
+                stream<TxSarToTxAppRsp> &tx_sar_to_tx_app_rsp) {
   TxSarToRxEngRsp to_rx_eng_rsp;
   TxSarToTxEngRsp to_tx_eng_rsp;
   TxSarToTxAppRsp to_tx_app_rsp;
 
   while (!tx_sar_to_rx_eng_rsp.empty()) {
     tx_sar_to_rx_eng_rsp.read(to_rx_eng_rsp);
-    out_stream << "Cycle " << std::dec << sim_cycle << ": Tx SAR to Rx Eng\n";
-    out_stream << to_rx_eng_rsp.to_string() << "\n";
+    logger.Info(TX_SAR, RX_ENG, "R/W Rsp", to_rx_eng_rsp.to_string());
   }
 
   while (!tx_sar_to_tx_eng_rsp.empty()) {
     tx_sar_to_tx_eng_rsp.read(to_tx_eng_rsp);
-    out_stream << "Cycle " << std::dec << sim_cycle << ": Tx SAR to Tx Eng\n";
-    out_stream << to_tx_eng_rsp.to_string() << "\n";
+    logger.Info(TX_SAR, TX_ENG, "R/W Rsp", to_rx_eng_rsp.to_string());
   }
 
   while (!tx_sar_to_tx_app_rsp.empty()) {
     tx_sar_to_tx_app_rsp.read(to_tx_app_rsp);
-    out_stream << "Cycle " << std::dec << sim_cycle << ": Tx SAR to Tx App\n";
-    out_stream << to_tx_app_rsp.to_string() << "\n";
+    logger.Info(TX_SAR, TX_APP_INTF, "Lup Rsp", to_rx_eng_rsp.to_string());
   }
 }
+
+MockLogger logger("./tx_sar_inner.log", TX_SAR);
 
 int main() {
   stream<RxEngToTxSarReq> rx_eng_to_tx_sar_req;
@@ -39,15 +39,8 @@ int main() {
   stream<TxAppToTxSarReq> tx_app_to_tx_sar_req;
   stream<TxSarToTxAppRsp> tx_sar_to_tx_app_rsp;
 
-  // open output file
-  std::ofstream outputFile;
-
-  outputFile.open("./out.dat");
-  if (!outputFile) {
-    std::cout << "Error: could not open test output file." << std::endl;
-  }
-
-  int sim_cycle = 0;
+  MockLogger top_logger("./tx_sar_top.log", TX_SAR);
+  int        sim_cycle = 0;
 
   RxEngToTxSarReq rx_eng_req;
   TxEngToTxSarReq tx_eng_req;
@@ -94,9 +87,10 @@ int main() {
                  tx_sar_to_tx_eng_rsp,
                  tx_app_to_tx_sar_req,
                  tx_sar_to_tx_app_rsp);
-    EmptyFifos(
-        outputFile, tx_sar_to_rx_eng_rsp, tx_sar_to_tx_eng_rsp, tx_sar_to_tx_app_rsp, sim_cycle);
+    EmptyFifos(top_logger, tx_sar_to_rx_eng_rsp, tx_sar_to_tx_eng_rsp, tx_sar_to_tx_app_rsp);
     sim_cycle++;
+    top_logger.SetSimCycle(sim_cycle);
+    logger.SetSimCycle(sim_cycle);
   }
 
   return 0;

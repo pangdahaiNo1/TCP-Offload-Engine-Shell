@@ -1,18 +1,26 @@
 #include "tx_sar_table.hpp"
-
 using namespace hls;
+// logger
+#include "toe/mock/mock_logger.hpp"
+extern MockLogger logger;
 
 /** @ingroup tx_sar_table
  *  This data structure stores the TX(transmitting) sliding window
  *  and handles concurrent access from the @ref rx_engine, @ref tx_app_if
  *  and @ref tx_engine
  */
-void                 tx_sar_table(stream<RxEngToTxSarReq> &rx_eng_to_tx_sar_req,
-                                  stream<TxSarToRxEngRsp> &tx_sar_to_rx_eng_rsp,
-                                  stream<TxEngToTxSarReq> &tx_eng_to_tx_sar_req,
-                                  stream<TxSarToTxEngRsp> &tx_sar_to_tx_eng_rsp,
-                                  stream<TxAppToTxSarReq> &tx_app_to_tx_sar_req,
-                                  stream<TxSarToTxAppRsp> &tx_sar_to_tx_app_rsp) {
+void tx_sar_table(
+    // rx eng r/w req/rsp
+    stream<RxEngToTxSarReq> &rx_eng_to_tx_sar_req,
+    stream<TxSarToRxEngRsp> &tx_sar_to_rx_eng_rsp,
+    // tx eng r/w req/rsp
+    stream<TxEngToTxSarReq> &tx_eng_to_tx_sar_req,
+    stream<TxSarToTxEngRsp> &tx_sar_to_tx_eng_rsp,
+    // tx app update tx sar app_written
+    stream<TxAppToTxSarReq> &tx_app_to_tx_sar_req,
+    // tx sar update tx app table
+    // TODO: this is not a response to tx app, should be rename here
+    stream<TxSarToTxAppRsp> &tx_sar_to_tx_app_rsp) {
 #pragma HLS LATENCY  max = 3
 #pragma HLS PIPELINE II  = 1
 
@@ -30,10 +38,12 @@ void                 tx_sar_table(stream<RxEngToTxSarReq> &rx_eng_to_tx_sar_req,
   TxSarToTxEngRsp  to_tx_eng_rsp;
   TcpSessionBuffer tx_sar_min_win;
   TcpSessionBuffer scaled_recv_window = 0;
-
+  TxSarToTxAppRsp  to_tx_app_rsp;
+  TxSarToRxEngRsp  to_rx_eng_rsp;
   // TX Engine read or write
   if (!tx_eng_to_tx_sar_req.empty()) {
     tx_eng_to_tx_sar_req.read(tx_eng_req);
+    logger.Info(TX_ENG, TX_SAR, "R/W Req", tx_eng_req.to_string());
     if (tx_eng_req.write) {
       if (!tx_eng_req.retrans_req) {
         tx_sar_table[tx_eng_req.session_id].not_ackd = tx_eng_req.not_ackd;
@@ -44,14 +54,16 @@ void                 tx_sar_table(stream<RxEngToTxSarReq> &rx_eng_to_tx_sar_req,
           tx_sar_table[tx_eng_req.session_id].slowstart_threshold = (BUFFER_SIZE - 1);
           tx_sar_table[tx_eng_req.session_id].fin_is_ready        = tx_eng_req.fin_is_ready;
           tx_sar_table[tx_eng_req.session_id].fin_is_sent         = tx_eng_req.fin_is_sent;
-          // Init ACK to txAppInterface
+          // Init ACK to tx app table
 #if !(TCP_NODELAY)
-          tx_sar_to_tx_app_rsp.write(
-              TxSarToTxAppRsp(tx_eng_req.session_id, tx_eng_req.not_ackd, 1));
+          to_tx_app_rsp = TxSarToTxAppRsp(tx_eng_req.session_id, tx_eng_req.not_ackd, 1);
 #else
-          tx_sar_to_tx_app_rsp.write(
-              TxSarToTxAppRsp(tx_eng_req.session_id, tx_eng_req.not_ackd, TCP_MSS_TEN_TIMES, 1));
+          to_tx_app_rsp =
+              TxSarToTxAppRsp(tx_eng_req.session_id, tx_eng_req.not_ackd, TCP_MSS_TEN_TIMES, 1);
+
 #endif
+          logger.Info(TX_SAR, TX_APP_INTF, "Upd TxAppTable", to_tx_app_rsp.to_string());
+          tx_sar_to_tx_app_rsp.write(to_tx_app_rsp);
         }
         if (tx_eng_req.fin_is_ready) {
           tx_sar_table[tx_eng_req.session_id].fin_is_ready = tx_eng_req.fin_is_ready;
@@ -100,18 +112,22 @@ void                 tx_sar_table(stream<RxEngToTxSarReq> &rx_eng_to_tx_sar_req,
       }
       to_tx_eng_rsp.min_window     = tx_sar_min_win;
       to_tx_eng_rsp.not_ackd_short = tmp_entry.not_ackd + to_tx_eng_rsp.curr_length;
-
+      logger.Info(TX_SAR, TX_ENG, "Lup rsp", to_tx_eng_rsp.to_string());
       tx_sar_to_tx_eng_rsp.write(to_tx_eng_rsp);
     }
   }
   // TX App update app written only
   else if (!tx_app_to_tx_sar_req.empty()) {
     tx_app_to_tx_sar_req.read(tx_app_req);
+    logger.Info(TX_APP_INTF, TX_SAR, "Upd AppRead Req", tx_app_req.to_string());
+
     tx_sar_table[tx_app_req.session_id].app_written = tx_app_req.app_written;
   }
   // RX Engine read or write
   else if (!rx_eng_to_tx_sar_req.empty()) {
     rx_eng_to_tx_sar_req.read(rx_eng_req);
+    logger.Info(RX_ENG, TX_SAR, "R/W Req", rx_eng_req.to_string());
+
     if (rx_eng_req.write) {
       if (rx_eng_req.win_shift_write) {
         tx_sar_table[rx_eng_req.session_id].win_shift = rx_eng_req.win_shift;
@@ -124,27 +140,28 @@ void                 tx_sar_table(stream<RxEngToTxSarReq> &rx_eng_to_tx_sar_req,
       tx_sar_table[rx_eng_req.session_id].fast_retrans  = rx_eng_req.fast_retrans;
 
 #if (!TCP_NODELAY)
-      tx_sar_to_tx_app_rsp.write(TxSarToTxAppRsp(rx_eng_req.session_id, rx_eng_req.ackd));
+      to_tx_app_rsp = TxSarToTxAppRsp(rx_eng_req.session_id, rx_eng_req.ackd);
 #else
-
       scaled_recv_window(rx_eng_req.win_shift + 15, rx_eng_req.win_shift) = rx_eng_req.recv_window;
       if (rx_eng_req.cong_window < scaled_recv_window) {
         tx_sar_min_win = rx_eng_req.cong_window;
       } else {
         tx_sar_min_win = scaled_recv_window;
       }
-      tx_sar_to_tx_app_rsp.write(
-          TxSarToTxAppRsp(rx_eng_req.session_id, rx_eng_req.ackd, tx_sar_min_win));
+      to_tx_app_rsp = TxSarToTxAppRsp(rx_eng_req.session_id, rx_eng_req.ackd, tx_sar_min_win);
 #endif
+      logger.Info(TX_SAR, TX_APP_INTF, "Upd TxAppTable", to_tx_app_rsp.to_string());
+      tx_sar_to_tx_app_rsp.write(to_tx_app_rsp);
     } else {
-      tx_sar_to_rx_eng_rsp.write(
-          TxSarToRxEngRsp(tx_sar_table[rx_eng_req.session_id].ackd,
-                          tx_sar_table[rx_eng_req.session_id].not_ackd,
-                          tx_sar_table[rx_eng_req.session_id].cong_window,
-                          tx_sar_table[rx_eng_req.session_id].slowstart_threshold,
-                          tx_sar_table[rx_eng_req.session_id].retrans_count,
-                          tx_sar_table[rx_eng_req.session_id].fast_retrans,
-                          tx_sar_table[rx_eng_req.session_id].win_shift));
+      to_rx_eng_rsp = TxSarToRxEngRsp(tx_sar_table[rx_eng_req.session_id].ackd,
+                                      tx_sar_table[rx_eng_req.session_id].not_ackd,
+                                      tx_sar_table[rx_eng_req.session_id].cong_window,
+                                      tx_sar_table[rx_eng_req.session_id].slowstart_threshold,
+                                      tx_sar_table[rx_eng_req.session_id].retrans_count,
+                                      tx_sar_table[rx_eng_req.session_id].fast_retrans,
+                                      tx_sar_table[rx_eng_req.session_id].win_shift);
+      logger.Info(TX_SAR, RX_ENG, "Lup Rsp", to_rx_eng_rsp.to_string());
+      tx_sar_to_rx_eng_rsp.write(to_rx_eng_rsp);
     }
   }
 }
