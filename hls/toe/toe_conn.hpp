@@ -1,7 +1,6 @@
 #pragma once
 
 #include "toe/toe_config.hpp"
-//#include "toe/toe_intf.hpp"
 #include "utils/axi_utils.hpp"
 typedef ap_uint<16> TcpSessionID;
 // only use in little endian
@@ -96,7 +95,10 @@ INLINE std::string state_to_string(SessionState state) {
   }
 }
 #else
-INLINE char *            state_to_string(SessionState state) { _AP_UNUSED_PARAM(state); return 0; }
+INLINE char *            state_to_string(SessionState state) {
+  _AP_UNUSED_PARAM(state);
+  return 0;
+}
 #endif
 
 struct PortTableEntry {
@@ -126,7 +128,7 @@ struct ListenPortReq {
 #ifndef __SYNTHESIS__
   INLINE std::string to_string() {
     std::stringstream sstream;
-    sstream << "Listen Port Req: " << data.to_string(16) << "\t";
+    sstream << "Data: Port: " << data.to_string(16) << "\t";
     sstream << "Dest: " << dest.to_string(16) << "\t";
     return sstream.str();
   }
@@ -154,7 +156,7 @@ struct ListenPortRspNoTDEST {
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
-    sstream << "Port number: " << std::dec << port_number << " \t"
+    sstream << "Port number: " << std::dec << port_number.to_string(16) << " \t"
             << "Opened successfully? " << open_successfully << " \t"
             << "Wrong number? " << wrong_port_number << " \t"
             << "Already open? " << already_open;
@@ -183,12 +185,14 @@ struct ListenPortRsp {
     return new_axis;
   }
 #ifndef __SYNTHESIS__
-  std::string to_string() {
+  INLINE std::string to_string() {
     std::stringstream sstream;
     sstream << "Listen Port Rsp: " << data.to_string() << "\t";
     sstream << "Dest: " << dest.to_string(16) << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -502,6 +506,8 @@ struct RxSarTableEntry {
     sstream << "WinScaleOpt: " << win_shift.to_string(16);
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -509,6 +515,7 @@ struct RxSarLookupRsp {
   ap_uint<32>           recvd;
   TcpSessionBufferScale win_shift;
   // win_size is 16 bit, in tcp header win
+  // usually it is actual_win_size >> win_shift
   ap_uint<16> win_size;
   RxSarLookupRsp() {}
   RxSarLookupRsp(ap_uint<32> recvd, TcpSessionBufferScale win_shift)
@@ -521,6 +528,8 @@ struct RxSarLookupRsp {
     sstream << "WinScaleOpt: " << win_shift.to_string(16);
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -535,7 +544,7 @@ struct RxEngToRxSarReq {
   // TcpSessionBuffer head;
   // TcpSessionBuffer offset;
 
-  RxEngToRxSarReq() {}
+  RxEngToRxSarReq() : recvd(0), session_id(0), win_shift(0), write(0), init(0) {}
   RxEngToRxSarReq(TcpSessionID id) : session_id(id), recvd(0), write(0), init(0) {}
   RxEngToRxSarReq(TcpSessionID id, ap_uint<32> recvd, ap_uint<1> write)
       : session_id(id), recvd(recvd), write(write), init(0) {}
@@ -544,6 +553,19 @@ struct RxEngToRxSarReq {
   RxEngToRxSarReq(
       TcpSessionID id, ap_uint<32> recvd, ap_uint<1> write, ap_uint<1> init, ap_uint<4> wsopt)
       : session_id(id), recvd(recvd), write(write), init(init), win_shift(wsopt) {}
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "Recved Seq No: " << recvd.to_string(16) << "\t";
+    sstream << "SessionID: " << session_id.to_string(16) << "\t";
+    sstream << "WinScaleOpt: " << win_shift.to_string(16) << "\t";
+    sstream << "Write?: " << write << "\t";
+    sstream << "Init?: " << init;
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 // Update Rx SAR table when Rx APP has been read new data, or want to read new data
@@ -551,18 +573,20 @@ struct RxSarAppReqRsp {
   TcpSessionID     session_id;
   TcpSessionBuffer app_read;
   ap_uint<1>       write;
-  RxSarAppReqRsp() {}
+  RxSarAppReqRsp() : session_id(0), app_read(0), write(0) {}
   RxSarAppReqRsp(TcpSessionID id) : session_id(id), app_read(0), write(0) {}
   RxSarAppReqRsp(TcpSessionID id, TcpSessionBuffer appd)
       : session_id(id), app_read(appd), write(1) {}
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
-    sstream << "Recved SessionID No: " << session_id.to_string(16) << "\t";
+    sstream << "SessionID: " << session_id.to_string(16) << "\t";
     sstream << "App Read " << app_read.to_string(16) << "\t";
-    sstream << "Write?: " << write.to_string(16);
+    sstream << "Write?: " << write;
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -661,6 +685,22 @@ struct RxEngToTxSarReq {
       , write(1)
       , win_shift_write(win_shift_write)
       , win_shift(win_shift) {}
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "SessionID: " << session_id.to_string(16) << '\n'
+            << "AckNo: " << ackd.to_string(16) << '\n'
+            << "RecvWin: " << recv_window.to_string(16) << '\n'
+            << "RetransCnt: " << retrans_count.to_string() << '\n'
+            << "WinShift: " << win_shift.to_string(16) << '\n'
+            << "WinShiftUpd?: " << win_shift_write << '\n'
+            << "CongWin: " << cong_window.to_string(16) << '\n'
+            << "Upd?: " << write;
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 struct TxSarToRxEngRsp {
@@ -698,6 +738,8 @@ struct TxSarToRxEngRsp {
     sstream << "WinScaleOpt: " << win_shift.to_string(16);
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 struct TxEngToTxSarReq {
@@ -870,9 +912,14 @@ struct TxSarToTxAppRsp {
 #endif
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
+// notify the app from rx app intf
+// 1. the session is receiving the new data from rx_engine
+// 2. the session is closed caused by reaching the max retransmit attempt count
 struct AppNotificationNoTDEST {
   TcpSessionID  session_id;
   ap_uint<16>   length;
@@ -1093,6 +1140,17 @@ struct RxEngToSlookupReq {
   RxEngToSlookupReq() {}
   RxEngToSlookupReq(FourTuple tuple, bool allow_creation, NetAXISDest role_id)
       : four_tuple(tuple), allow_creation(allow_creation), role_id(role_id) {}
+#ifndef __SYNTHESIS__
+  INLINE std::string to_string() {
+    std::stringstream sstream;
+    sstream << "FourTuple: " << four_tuple.to_string() << "\t"
+            << "Allow Create?: " << allow_creation << "\t"
+            << "RoleID: " << std::hex << role_id.to_string(16);
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 struct TxAppToSlookupReq {
@@ -1151,10 +1209,19 @@ struct SessionLookupRsp {
 
 struct AppReadReqNoTEST {
   TcpSessionID session_id;
-  // ap_uint<16> address;
-  ap_uint<16> read_length;
+  ap_uint<16>  read_length;
   AppReadReqNoTEST() {}
   AppReadReqNoTEST(TcpSessionID id, ap_uint<16> len) : session_id(id), read_length(len) {}
+#ifndef __SYNTHESIS__
+  INLINE std::string to_string() {
+    std::stringstream sstream;
+    sstream << "SessionID: " << session_id.to_string(16) << " ";
+    sstream << "Read Length: " << read_length.to_string(16) << "\t";
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 // TOE interface
@@ -1177,6 +1244,16 @@ struct AppReadReq {
     new_axis.dest = dest;
     return new_axis;
   }
+#ifndef __SYNTHESIS__
+  INLINE std::string to_string() {
+    std::stringstream sstream;
+    sstream << "Data: " << data.to_string() << "\t";
+    sstream << "Dest: " << dest.to_string(16) << "\t";
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 // TOE interface

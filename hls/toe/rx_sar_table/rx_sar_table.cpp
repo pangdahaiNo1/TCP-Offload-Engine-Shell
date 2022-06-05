@@ -1,7 +1,9 @@
 
 #include "rx_sar_table.hpp"
-
 using namespace hls;
+// logger
+#include "toe/mock/mock_logger.hpp"
+extern MockLogger logger;
 
 /** @ingroup rx_sar_table
  * 	This data structure stores the RX(receiving) sliding window
@@ -30,6 +32,7 @@ void                 rx_sar_table(stream<RxSarAppReqRsp> & rx_app_to_rx_sar_req,
   if (!tx_eng_to_rx_sar_lup_req.empty()) {
     TcpSessionID    session_id = tx_eng_to_rx_sar_lup_req.read();
     RxSarTableEntry entry      = rx_sar_table[session_id];
+    logger.Info(TX_ENG, RX_SAR, "Lup Req", session_id.to_string(16));
 
     // Pre-calculated usedLength, windowSize to improve timing in metaLoader
     // This works even for wrap around
@@ -43,20 +46,26 @@ void                 rx_sar_table(stream<RxSarAppReqRsp> & rx_app_to_rx_sar_req,
     to_tx_eng_rsp.win_size  = session_actual_win_size >> entry.win_shift;
 
     rx_sar_to_tx_eng_lup_rsp.write(to_tx_eng_rsp);
+    logger.Info(RX_SAR, TX_ENG, "Lup Rsp", to_tx_eng_rsp.to_string());
   }
   // Read or Write access from the Rx App I/F to update the application pointer
   else if (!rx_app_to_rx_sar_req.empty()) {
     RxSarAppReqRsp rx_app_req = rx_app_to_rx_sar_req.read();
+    logger.Info(RX_APP_INTF, RX_SAR, "R/W Req", rx_app_req.to_string());
     if (rx_app_req.write) {
       rx_sar_table[rx_app_req.session_id].app_read = rx_app_req.app_read;
     } else {
-      rx_sar_to_rx_app_rsp.write(
-          RxSarAppReqRsp(rx_app_req.session_id, rx_sar_table[rx_app_req.session_id].app_read));
+      RxSarAppReqRsp rx_app_rsp(rx_app_req.session_id,
+                                rx_sar_table[rx_app_req.session_id].app_read);
+      logger.Info(RX_SAR, RX_APP_INTF, "Read Rsp", rx_app_rsp.to_string());
+      rx_sar_to_rx_app_rsp.write(rx_app_rsp);
     }
   }
   // Read or Write access from the Rx Engine
   else if (!rx_eng_to_rx_sar_req.empty()) {
     RxEngToRxSarReq recv_new_seg_req = rx_eng_to_rx_sar_req.read();
+    logger.Info(RX_ENG, RX_SAR, "R/W Req", recv_new_seg_req.to_string());
+
     if (recv_new_seg_req.write) {
       rx_sar_table[recv_new_seg_req.session_id].recvd = recv_new_seg_req.recvd;
       // rx_sar_table[recv_new_seg_req.session_id].head   = recv_new_seg_req.head;
@@ -67,6 +76,10 @@ void                 rx_sar_table(stream<RxSarAppReqRsp> & rx_app_to_rx_sar_req,
         rx_sar_table[recv_new_seg_req.session_id].win_shift = recv_new_seg_req.win_shift;
       }
     } else {
+      logger.Info(RX_SAR,
+                  RX_ENG,
+                  "Read SAR Entry Rsp",
+                  (rx_sar_table[recv_new_seg_req.session_id]).to_string());
       rx_sar_to_rx_eng_rsp.write(rx_sar_table[recv_new_seg_req.session_id]);
     }
   }

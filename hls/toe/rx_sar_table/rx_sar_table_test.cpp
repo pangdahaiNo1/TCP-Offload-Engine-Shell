@@ -1,33 +1,31 @@
 
 #include "rx_sar_table.hpp"
+#include "toe/mock/mock_logger.hpp"
 #include "toe/mock/mock_toe.hpp"
 using namespace hls;
 
-void EmptyFifos(std::ofstream &          out_stream,
+void EmptyFifos(MockLogger &             logger,
                 stream<RxSarAppReqRsp> & rx_sar_to_rx_app_rsp,
                 stream<RxSarTableEntry> &rx_sar_to_rx_eng_rsp,
-                stream<RxSarLookupRsp> & rx_sar_to_tx_eng_lup_rsp,
-                int                      sim_cycle) {
+                stream<RxSarLookupRsp> & rx_sar_to_tx_eng_lup_rsp) {
   RxSarAppReqRsp  to_rx_app_rsp;
   RxSarTableEntry to_rx_eng_rsp;
   RxSarLookupRsp  to_tx_eng_rsp;
   while (!(rx_sar_to_rx_app_rsp.empty())) {
     rx_sar_to_rx_app_rsp.read(to_rx_app_rsp);
-    out_stream << "Cycle " << std::dec << sim_cycle << ": Rx SAR to Rx APP\t";
-    out_stream << to_rx_app_rsp.to_string() << "\n";
+    logger.Info(RX_SAR, RX_APP_INTF, "R/W Rsp", to_rx_app_rsp.to_string());
   }
 
   while (!(rx_sar_to_rx_eng_rsp.empty())) {
     rx_sar_to_rx_eng_rsp.read(to_rx_eng_rsp);
-    out_stream << "Cycle " << std::dec << sim_cycle << ": Rx SAR to Rx Eng\t";
-    out_stream << to_rx_eng_rsp.to_string() << "\n";
+    logger.Info(RX_SAR, RX_ENG, "R/W Rsp", to_rx_eng_rsp.to_string());
   }
   while (!(rx_sar_to_tx_eng_lup_rsp.empty())) {
     rx_sar_to_tx_eng_lup_rsp.read(to_tx_eng_rsp);
-    out_stream << "Cycle " << std::dec << sim_cycle << ": Rx SAR to Tx Eng Lookup Rsp \t";
-    out_stream << to_tx_eng_rsp.to_string() << "\n";
+    logger.Info(RX_SAR, TX_ENG, "Lup Rsp", to_tx_eng_rsp.to_string());
   }
 }
+MockLogger logger("./rx_sar_inner.log", RX_SAR);
 
 int main() {
   stream<RxSarAppReqRsp>  rx_app_to_rx_sar_req;
@@ -37,12 +35,7 @@ int main() {
   stream<TcpSessionID>    tx_eng_to_rx_sar_lup_req;
   stream<RxSarLookupRsp>  rx_sar_to_tx_eng_lup_rsp;
 
-  std::ofstream outputFile;
-
-  outputFile.open("./out.dat");
-  if (!outputFile) {
-    std::cout << "Error: could not open test output file." << std::endl;
-  }
+  MockLogger top_logger("./rx_sar_top.log", RX_SAR);
 
   RxEngToRxSarReq rx_eng_req;
   RxSarAppReqRsp  rx_app_req;
@@ -81,7 +74,7 @@ int main() {
         rx_app_to_rx_sar_req.write(rx_app_req);
         break;
       case 5:
-        // will be (0x4321-0x5678) - 1
+        // will be ((0x4321-0x5678) - 1) >> WinScaleOpt
         tx_eng_req = 0x1;
         tx_eng_to_rx_sar_lup_req.write(tx_eng_req);
         break;
@@ -99,12 +92,10 @@ int main() {
                  rx_sar_to_rx_eng_rsp,
                  tx_eng_to_rx_sar_lup_req,
                  rx_sar_to_tx_eng_lup_rsp);
-    EmptyFifos(outputFile,
-               rx_sar_to_rx_app_rsp,
-               rx_sar_to_rx_eng_rsp,
-               rx_sar_to_tx_eng_lup_rsp,
-               sim_cycle);
+    EmptyFifos(top_logger, rx_sar_to_rx_app_rsp, rx_sar_to_rx_eng_rsp, rx_sar_to_tx_eng_lup_rsp);
     sim_cycle++;
+    top_logger.SetSimCycle(sim_cycle);
+    logger.SetSimCycle(sim_cycle);
   }
 
   return 0;
