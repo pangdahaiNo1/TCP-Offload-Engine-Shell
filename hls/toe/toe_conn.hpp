@@ -162,6 +162,8 @@ struct ListenPortRspNoTDEST {
             << "Already open? " << already_open;
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -216,7 +218,7 @@ struct PtableToRxEngRsp {
 struct OpenConnRspNoTDEST {
   TcpSessionID session_id;
   bool         success;
-  OpenConnRspNoTDEST() {}
+  OpenConnRspNoTDEST() : session_id(0), success(0) {}
   OpenConnRspNoTDEST(TcpSessionID id, bool success) : session_id(id), success(success) {}
 #ifndef __SYNTHESIS__
   INLINE std::string to_string() {
@@ -289,6 +291,8 @@ struct NewClientNotificationNoTDEST {
     sstream << "MaxSegSize: " << max_segment_size.to_string(16) << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -458,7 +462,7 @@ struct StateTableReq {
   TcpSessionID session_id;
   SessionState state;
   ap_uint<1>   write;
-  StateTableReq() {}
+  StateTableReq() : session_id(0), state(CLOSED), write(0) {}
   // Read queset
   StateTableReq(TcpSessionID id) : session_id(id), state(CLOSED), write(0) {}
   // write quest
@@ -628,7 +632,16 @@ struct RxEngToTxSarReq {
   bool                  win_shift_write;
   TcpSessionBuffer      cong_window;
   ap_uint<1>            write;
-  RxEngToTxSarReq() {}
+  RxEngToTxSarReq()
+      : session_id(0)
+      , ackd(0)
+      , recv_window(0)
+      , retrans_count(0)
+      , fast_retrans(0)
+      , win_shift(0)
+      , win_shift_write(0)
+      , cong_window(0)
+      , write(0) {}
   // lookup req
   RxEngToTxSarReq(TcpSessionID id)
       : session_id(id)
@@ -688,14 +701,14 @@ struct RxEngToTxSarReq {
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
-    sstream << "SessionID: " << session_id.to_string(16) << '\n'
-            << "AckNo: " << ackd.to_string(16) << '\n'
-            << "RecvWin: " << recv_window.to_string(16) << '\n'
-            << "RetransCnt: " << retrans_count.to_string() << '\n'
-            << "WinShift: " << win_shift.to_string(16) << '\n'
-            << "WinShiftUpd?: " << win_shift_write << '\n'
-            << "CongWin: " << cong_window.to_string(16) << '\n'
-            << "Upd?: " << write;
+    sstream << "SessionID: " << session_id.to_string(16) << '\t';
+    sstream << "AckNo: " << ackd.to_string(16) << '\t';
+    sstream << "RecvWin: " << recv_window.to_string(16) << '\t';
+    sstream << "RetransCnt: " << retrans_count.to_string() << '\t';
+    sstream << "WinShift: " << win_shift.to_string(16) << '\t';
+    sstream << "WinShiftUpd?: " << win_shift_write << '\t';
+    sstream << "CongWin: " << cong_window.to_string(16) << '\t';
+    sstream << "Upd?: " << write;
     return sstream.str();
   }
 #else
@@ -711,7 +724,14 @@ struct TxSarToRxEngRsp {
   ap_uint<2>            retrans_count;
   bool                  fast_retrans;
   TcpSessionBufferScale win_shift;
-  TxSarToRxEngRsp() {}
+  TxSarToRxEngRsp()
+      : perv_ack(0)
+      , next_byte(0)
+      , cong_window(0)
+      , slowstart_threshold(0)
+      , retrans_count(0)
+      , fast_retrans(0)
+      , win_shift(0) {}
   TxSarToRxEngRsp(ap_uint<32>           ack,
                   ap_uint<32>           next,
                   TcpSessionBuffer      cong_win,
@@ -802,6 +822,20 @@ struct TxEngToTxSarReq {
       , fin_is_ready(fin_is_ready)
       , fin_is_sent(fin_is_sent)
       , retrans_req(isRt) {}
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "SessionID: " << session_id.to_string(16) << "\t";
+    sstream << "NotAcked: " << not_ackd.to_string(16) << "\t";
+    sstream << "Write?: " << write << "\t";
+    sstream << "Init?: " << init << "\t";
+    sstream << "FinReady?: " << fin_is_ready << "\t";
+    sstream << "FinSent?: " << fin_is_sent << "\t";
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 // TODO: unnecessary structure. zelin 22-05-07
@@ -868,6 +902,8 @@ struct TxSarToTxEngRsp {
     sstream << "WinScaleOpt: " << win_shift.to_string(16);
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -877,9 +913,19 @@ struct TxAppToTxSarReq {
   TcpSessionBuffer app_written;
   TxAppToTxSarReq() {}
   TxAppToTxSarReq(TcpSessionID id, TcpSessionBuffer app) : session_id(id), app_written(app) {}
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "SessionID: " << session_id.to_string(16) << "\t";
+    sstream << "App written: " << app_written.to_string(16) << "\t";
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
-// TODO: Need comments here!
+// update Tx App Table
 struct TxSarToTxAppRsp {
   TcpSessionID     session_id;
   TcpSessionBuffer ackd;
@@ -1019,6 +1065,38 @@ struct AppOpenConnReq {
  *
  */
 enum EventType { TX, RT, ACK, SYN, SYN_ACK, FIN, RST, ACK_NODELAY, RT_CONT };
+#ifndef __SYNTHESIS__
+INLINE std::string event_type_to_string(EventType type) {
+  switch (type) {
+    case TX:
+      return "TX";
+    case RT:
+      return "RT";
+    case ACK:
+      return "ACK";
+    case SYN:
+      return "SYN";
+    case SYN_ACK:
+      return "SYN_ACK";
+    case FIN:
+      return "FIN";
+    case RST:
+      return "RST";
+    case ACK_NODELAY:
+      return "ACK_NODELAY";
+    case RT_CONT:
+      return "RT_CONT";
+    default:
+      return "[Unknown Event]";
+  }
+}
+#else
+INLINE char *event_type_to_string(EventType type) {
+  _AP_UNUSED_PARAM(type);
+  return 0;
+}
+#endif
+
 struct Event {
   EventType        type;
   TcpSessionID     session_id;
@@ -1042,7 +1120,7 @@ struct Event {
 #ifndef __SYNTHESIS__
   INLINE std::string to_string() {
     std::stringstream sstream;
-    sstream << "EventType: " << this->type << "\t";
+    sstream << "EventType: " << event_type_to_string(type) << "\t";
     sstream << "SessionID: " << this->session_id << "\t";
     sstream << "BufferAddr: " << this->buf_addr.to_string(16) << "\t";
     sstream << "Length: " << this->length.to_string(16) << "\t";
@@ -1066,7 +1144,7 @@ struct EventWithTuple : public Event {
 #ifndef __SYNTHESIS__
   INLINE std::string to_string() {
     std::stringstream sstream;
-    sstream << "EventType: " << this->type << "\t";
+    sstream << "EventType: " << event_type_to_string(type) << "\t";
     sstream << "SessionID: " << this->session_id << "\t";
     sstream << "BufferAddr: " << this->buf_addr << "\t";
     sstream << "Length: " << this->length << "\t";

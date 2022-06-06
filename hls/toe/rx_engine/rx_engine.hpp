@@ -15,7 +15,7 @@ struct RxEngFsmMetaData {
   // lookup from port table,
   // it will be sent to the target `role`
   NetAXISDest role_id;
-  RxEngFsmMetaData() {}
+  RxEngFsmMetaData() : session_id(0), src_ip(0), dst_port(0), header(), role_id(0) {}
   RxEngFsmMetaData(TcpSessionID  id,
                    IpAddr        src_ip,
                    TcpPortNumber dst_port,
@@ -28,10 +28,12 @@ struct RxEngFsmMetaData {
     sstream << "Rx FSM State: \n" << std::hex;
     sstream << "Session ID: " << this->session_id << "\n";
     sstream << "Source IP: " << this->src_ip << "Dest Port: " << this->dst_port << "\n";
-    sstream << header.to_string();
-    sstream << "Role ID: " << this->role_id << endl;
+    sstream << header.to_string() << endl;
+    sstream << "Role ID: " << this->role_id;
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -48,7 +50,7 @@ void RxEngParseTcpHeaderOptions(stream<TcpPseudoHeaderMeta> &tcp_meta_data_in,
 
 void RxEngVerifyChecksumAndPort(stream<ap_uint<16> > &       tcp_checksum_in,
                                 stream<TcpPseudoHeaderMeta> &tcp_meta_data_in,
-                                stream<bool> &               tcp_payload_should_be_dropped,
+                                stream<bool> &               tcp_payload_dropped_by_checksum,
                                 stream<TcpPseudoHeaderMeta> &tcp_meta_data_out,
                                 stream<TcpPortNumber> &      rx_eng_to_ptable_check_req);
 void RxEngTcpMetaHandler(stream<TcpPseudoHeaderMeta> &tcp_meta_data_in,
@@ -56,14 +58,14 @@ void RxEngTcpMetaHandler(stream<TcpPseudoHeaderMeta> &tcp_meta_data_in,
                          stream<RxEngToSlookupReq> &  rx_eng_to_slookup_req,
                          stream<SessionLookupRsp> &   slookup_to_rx_eng_rsp,
                          stream<RxEngFsmMetaData> &   rx_eng_fsm_meta_data_out,
-                         stream<bool> &               tcp_payload_should_be_dropped,
+                         stream<bool> &               tcp_payload_dropped_by_port_or_session,
                          stream<NetAXISDest> &        tcp_payload_tdest,
                          stream<EventWithTuple> &     rx_eng_meta_to_event_eng_set_event);
 void RxEngTcpPayloadDropper(stream<NetAXISWord> &tcp_payload_in,
-                            stream<bool> &       payload_should_dropped_by_checksum,
-                            stream<bool> &       payload_should_dropped_by_port_or_session,
+                            stream<bool> &       tcp_payload_dropped_by_checksum,
+                            stream<bool> &       tcp_payload_dropped_by_port_or_session,
                             stream<NetAXISDest> &tcp_payload_tdest,
-                            stream<bool> &       payload_should_dropped_by_rx_fsm,
+                            stream<bool> &       tcp_payload_dropped_by_rx_fsm,
                             stream<NetAXISWord> &tcp_payload_out);
 void RxEngTcpFsm(
     // read in rx eng meta data
@@ -93,7 +95,7 @@ void RxEngTcpFsm(
     stream<DataMoverCmd> &rx_buffer_write_cmd,
 #endif
     // to app payload should be dropped?
-    stream<bool> &payload_should_dropped
+    stream<bool> &tcp_payload_dropped_by_rx_fsm
 
 );
 

@@ -1,7 +1,9 @@
 #include "rx_engine.hpp"
 
 #include "toe/toe_utils.hpp"
-
+// logger
+#include "toe/mock/mock_logger.hpp"
+extern MockLogger logger;
 /**
  * @details remove the ipv4 hedaaer, and generate the TCP pseudo header above the tcp packet
  *
@@ -116,10 +118,12 @@ void                 RxEngParseTcpHeader(stream<NetAXISWord> &        tcp_pseudo
   static NetAXISWord prev_word;
   NetAXISWord        cur_word;
   NetAXISWord        send_word;
-
-  static ap_uint<6> tcp_payload_offset_bytes;  // data_offset * 4 + 12
-  ap_uint<4>        tcp_payload_offset_words;  // data_offset in TCP header
-  ap_uint<16>       tcp_payload_length;        // in bytes
+  // data_offset * 4 + 12, 12 is the psesudo header length
+  static ap_uint<6> tcp_payload_offset_bytes;
+  // data_offset in TCP header
+  ap_uint<4> tcp_payload_offset_words;
+  // in bytes
+  ap_uint<16> tcp_payload_length;
 
   TcpPseudoHeaderMeta tcp_seg_meta;
 
@@ -157,14 +161,17 @@ void                 RxEngParseTcpHeader(stream<NetAXISWord> &        tcp_pseudo
         tcp_seg_meta.tcp_options      = cur_word.data(511, 256);
         // record the payload length
         tcp_seg_meta.header.payload_length = tcp_payload_length;
+        logger.Info("Payload Length", tcp_payload_length.to_string(16));
+
         if (cur_word.last) {
           if (tcp_payload_length != 0) {  // one-transaction packet with any data
             send_word.data = cur_word.data(511, tcp_payload_offset_bytes * 8);
             send_word.keep = cur_word.keep(63, tcp_payload_offset_bytes);
             send_word.last = 1;
+
             tcp_payload.write(send_word);
           }
-        } else {
+        } else if (tcp_payload_length != 0) {
           parse_fsm_state = REMAINING_WORDS;  // TODO: if tcp_data_offset > 13 the payload starts in
                                               // the second transaction
         }
@@ -304,7 +311,7 @@ void                 RxEngParseTcpHeaderOptions(stream<TcpPseudoHeaderMeta> &tcp
  */
 void                 RxEngVerifyChecksumAndPort(stream<ap_uint<16> > &       tcp_checksum_in,
                                                 stream<TcpPseudoHeaderMeta> &tcp_meta_data_in,
-                                                stream<bool> &               tcp_payload_should_be_dropped,
+                                                stream<bool> &               tcp_payload_dropped_by_checksum,
                                                 stream<TcpPseudoHeaderMeta> &tcp_meta_data_out,
                                                 stream<TcpPortNumber> &      rx_eng_to_ptable_check_req) {
 #pragma HLS INLINE   off
@@ -326,13 +333,18 @@ void                 RxEngVerifyChecksumAndPort(stream<ap_uint<16> > &       tcp
     case READ_CHECKSUM:
       if (!tcp_checksum_in.empty()) {
         tcp_checksum_in.read(tcp_seg_checksum);
+        logger.Info(TOE_TOP, RX_ENG, "Recv Seg Checksum", tcp_seg_checksum.to_string(16), false);
         tcp_seg_is_valid = (tcp_seg_checksum == 0);
         if (tcp_seg_is_valid) {
           tcp_meta_data_out.write(tcp_meta_reg);
           rx_eng_to_ptable_check_req.write(SwapByte<16>(tcp_meta_reg.header.dest_port));
+          logger.Info(RX_ENG,
+                      PORT_TABLE,
+                      "Check port req",
+                      SwapByte<16>(tcp_meta_reg.header.dest_port).to_string(16));
         }
         if (tcp_meta_reg.header.payload_length) {
-          tcp_payload_should_be_dropped.write(!tcp_seg_is_valid);
+          tcp_payload_dropped_by_checksum.write(!tcp_seg_is_valid);
         }
         fsm_state = READ_META_INFO;
       }
@@ -359,7 +371,7 @@ void                 RxEngTcpMetaHandler(stream<TcpPseudoHeaderMeta> &tcp_meta_d
                                          stream<RxEngToSlookupReq> &  rx_eng_to_slookup_req,
                                          stream<SessionLookupRsp> &   slookup_to_rx_eng_rsp,
                                          stream<RxEngFsmMetaData> &   rx_eng_fsm_meta_data_out,
-                                         stream<bool> &               tcp_payload_should_be_dropped,
+                                         stream<bool> &               tcp_payload_dropped_by_port_or_session,
                                          stream<NetAXISDest> &        tcp_payload_tdest,
                                          stream<EventWithTuple> &     rx_eng_meta_to_event_eng_set_event) {
 #pragma HLS INLINE   off
@@ -380,6 +392,7 @@ void                 RxEngTcpMetaHandler(stream<TcpPseudoHeaderMeta> &tcp_meta_d
       if (!tcp_meta_data_in.empty() && !ptable_to_rx_eng_check_rsp.empty()) {
         tcp_meta_data_in.read(tcp_meta_reg);
         ptable_to_rx_eng_check_rsp.read(ptable_rsp_reg);
+        logger.Info(PORT_TABLE, RX_ENG, "PortChk Rsp", ptable_rsp_reg.to_string());
         // if port is closed
         if (!ptable_rsp_reg.is_open) {
           // when port is closed, send rst
@@ -388,24 +401,29 @@ void                 RxEngTcpMetaHandler(stream<TcpPseudoHeaderMeta> &tcp_meta_d
             four_tuple.dst_ip_addr  = tcp_meta_reg.src_ip;
             four_tuple.src_tcp_port = tcp_meta_reg.header.dest_port;
             four_tuple.dst_tcp_port = tcp_meta_reg.header.src_port;
-            rx_eng_meta_to_event_eng_set_event.write(EventWithTuple(
+            EventWithTuple rst_event(
                 RstEvent(tcp_meta_reg.header.seq_number + tcp_meta_reg.header.get_payload_length()),
-                four_tuple));
+                four_tuple);
+            logger.Info(TOE_TOP, RX_ENG, "RST Event", rst_event.to_string());
+            rx_eng_meta_to_event_eng_set_event.write(rst_event);
           }
           if (tcp_meta_reg.header.payload_length != 0) {
             // Drop payload because port is closed
-            tcp_payload_should_be_dropped.write(true);
+            tcp_payload_dropped_by_port_or_session.write(true);
             tcp_payload_tdest.write(ptable_rsp_reg.role_id);
           }
-        } else {  // port is open
+        } else {
+          // port is open
           // Make session lookup, only allow creation of new entry when SYN or SYN_ACK
-          rx_eng_to_slookup_req.write(RxEngToSlookupReq(
+          RxEngToSlookupReq slookup_req(
               FourTuple(tcp_meta_reg.src_ip,
                         tcp_meta_reg.dest_ip,
-                        SwapByte<32>(tcp_meta_reg.header.src_port),
-                        SwapByte<32>(tcp_meta_reg.header.dest_port)),
+                        (tcp_meta_reg.header.src_port),
+                        (tcp_meta_reg.header.dest_port)),
               (tcp_meta_reg.header.syn && !tcp_meta_reg.header.rst && !tcp_meta_reg.header.fin),
-              ptable_rsp_reg.role_id));
+              ptable_rsp_reg.role_id);
+          rx_eng_to_slookup_req.write(slookup_req);
+          logger.Info(RX_ENG, SLUP_CTRL, "Session Lup or Creaate", slookup_req.to_string());
           fsm_state = LOOKUP;
         }
       }
@@ -414,14 +432,16 @@ void                 RxEngTcpMetaHandler(stream<TcpPseudoHeaderMeta> &tcp_meta_d
       if (!slookup_to_rx_eng_rsp.empty()) {
         slookup_to_rx_eng_rsp.read(slookup_rsp_reg);
         if (slookup_rsp_reg.hit) {
-          rx_eng_fsm_meta_data_out.write(RxEngFsmMetaData(slookup_rsp_reg.session_id,
-                                                          tcp_meta_reg.src_ip,
-                                                          tcp_meta_reg.header.dest_port,
-                                                          tcp_meta_reg.header,
-                                                          ptable_rsp_reg.role_id));
+          RxEngFsmMetaData rx_eng_fsm_meta(slookup_rsp_reg.session_id,
+                                           tcp_meta_reg.src_ip,
+                                           tcp_meta_reg.header.dest_port,
+                                           tcp_meta_reg.header,
+                                           ptable_rsp_reg.role_id);
+          logger.Info(TOE_TOP, RX_ENG, "Rx FSM Meta", rx_eng_fsm_meta.to_string(), true);
+          rx_eng_fsm_meta_data_out.write(rx_eng_fsm_meta);
         }
         if (tcp_meta_reg.header.payload_length != 0) {
-          tcp_payload_should_be_dropped.write(!slookup_rsp_reg.hit);
+          tcp_payload_dropped_by_port_or_session.write(!slookup_rsp_reg.hit);
           tcp_payload_tdest.write(ptable_rsp_reg.role_id);
         }
         fsm_state = META;
@@ -434,10 +454,10 @@ void                 RxEngTcpMetaHandler(stream<TcpPseudoHeaderMeta> &tcp_meta_d
  * the output payload is valid, should be delivery to Memory or App
  */
 void                 RxEngTcpPayloadDropper(stream<NetAXISWord> &tcp_payload_in,
-                                            stream<bool> &       payload_should_dropped_by_checksum,
-                                            stream<bool> &       payload_should_dropped_by_port_or_session,
+                                            stream<bool> &       tcp_payload_dropped_by_checksum,
+                                            stream<bool> &       tcp_payload_dropped_by_port_or_session,
                                             stream<NetAXISDest> &tcp_payload_tdest,
-                                            stream<bool> &       payload_should_dropped_by_rx_fsm,
+                                            stream<bool> &       tcp_payload_dropped_by_rx_fsm,
                                             stream<NetAXISWord> &tcp_payload_out) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
@@ -450,36 +470,40 @@ void                 RxEngTcpPayloadDropper(stream<NetAXISWord> &tcp_payload_in,
 
   switch (fsm_state) {
     case RD_VERIFY_CHECKSUM:
-      if (!payload_should_dropped_by_checksum.empty()) {
-        payload_should_dropped_by_checksum.read(drop);
+      if (!tcp_payload_dropped_by_checksum.empty()) {
+        tcp_payload_dropped_by_checksum.read(drop);
+        logger.Info(TOE_TOP, RX_ENG, "Drop Payload by checksum?", (drop ? "1" : "0"));
         fsm_state = (drop) ? DROP : RD_META_HANDLER;
       }
       break;
     case RD_META_HANDLER:
-      if (!payload_should_dropped_by_port_or_session.empty() && !tcp_payload_tdest.empty()) {
-        payload_should_dropped_by_port_or_session.read(drop);
+      if (!tcp_payload_dropped_by_port_or_session.empty() && !tcp_payload_tdest.empty()) {
+        tcp_payload_dropped_by_port_or_session.read(drop);
         tcp_payload_tdest.read(tcp_payload_role_id);
+        logger.Info(TOE_TOP, RX_ENG, "Drop Payload by port or session?", (drop ? "1" : "0"));
         fsm_state = (drop) ? DROP : RD_FSM_DROP;
       }
       break;
     case RD_FSM_DROP:
-      if (!payload_should_dropped_by_rx_fsm.empty()) {
-        payload_should_dropped_by_rx_fsm.read(drop);
+      if (!tcp_payload_dropped_by_rx_fsm.empty()) {
+        tcp_payload_dropped_by_rx_fsm.read(drop);
+        logger.Info(RX_ENG, NET_APP, "Drop Payload by FSM?: ", (drop ? "1" : "0"));
         fsm_state = (drop) ? DROP : FWD;
       }
       break;
     case FWD:
-      if (!tcp_payload_in.empty() && !tcp_payload_tdest.empty()) {
+      if (!tcp_payload_in.empty()) {
         tcp_payload_in.read(cur_word);
         cur_word.dest = tcp_payload_role_id;
+        logger.Info(RX_ENG, NET_APP, "Recv TCP Payload", cur_word.to_string());
         tcp_payload_out.write(cur_word);
-
         fsm_state = (cur_word.last) ? RD_VERIFY_CHECKSUM : FWD;
       }
       break;
     case DROP:
       if (!tcp_payload_in.empty()) {
         tcp_payload_in.read(cur_word);
+        logger.Info(RX_ENG, NET_APP, "Drop TCP Payload", cur_word.to_string());
         fsm_state = (cur_word.last) ? RD_VERIFY_CHECKSUM : DROP;
       }
       break;
@@ -526,9 +550,10 @@ void RxEngTcpFsm(
     stream<DataMoverCmd> &rx_buffer_write_cmd,
 #endif
     // to app payload should be dropped?
-    stream<bool> &payload_should_dropped
+    stream<bool> &tcp_payload_dropped_by_rx_fsm
 
 ) {
+#pragma HLS LATENCY  max = 2
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -544,29 +569,41 @@ void RxEngTcpFsm(
   static RxSarTableEntry rx_sar_reg;
   static TxSarToRxEngRsp tx_sar_reg;
 
-  ap_uint<32> payload_mem_addr = 0;
-  ap_uint<4>  rx_win_scale;  // used to computed the scale option for RX buffer
-  ap_uint<4>  tx_win_scale;  // used to computed the scale option for TX buffer
+  ap_uint<32>                  payload_mem_addr = 0;
+  ap_uint<4>                   rx_win_scale;  // used to computed the scale option for RX buffer
+  ap_uint<4>                   tx_win_scale;  // used to computed the scale option for TX buffer
+  RxEngToRetransTimerReq       to_rtimer_req;
+  AppNotificationNoTDEST       to_rx_app_notify;
+  Event                        to_event_eng_event;
+  RxEngToTxSarReq              to_tx_sar_req;
+  RxEngToRxSarReq              to_rx_sar_req;
+  StateTableReq                to_sttable_req;
+  OpenConnRspNoTDEST           to_tx_app_open_conn;
+  NewClientNotificationNoTDEST to_tx_app_new_client_notify;
 
   switch (fsm_state) {
     case LOAD:
-      if (rx_eng_fsm_meta_data_in.empty()) {
+      if (!rx_eng_fsm_meta_data_in.empty()) {
         rx_eng_fsm_meta_data_in.read(tcp_rx_meta_reg);
 
         // query request for current session state
         rx_eng_to_sttable_req.write(StateTableReq(tcp_rx_meta_reg.session_id));
+        logger.Info(RX_ENG, STATE_TABLE, "State LupReq", tcp_rx_meta_reg.session_id.to_string(16));
         // query requset for current session RX SAR table
-        rx_eng_to_rx_sar_req.write(RxEngToRxSarReq(tcp_rx_meta_reg.session_id));
+        to_rx_sar_req = RxEngToRxSarReq(tcp_rx_meta_reg.session_id);
+        rx_eng_to_rx_sar_req.write(to_rx_sar_req);
+        logger.Info(RX_ENG, RX_SAR, "RX SAR Req", to_rx_sar_req.to_string());
 
         if (tcp_rx_meta_reg.header.ack) {
           rx_eng_to_tx_sar_req.write(RxEngToTxSarReq(tcp_rx_meta_reg.session_id));
+          logger.Info(RX_ENG, TX_SAR, "TX SAR Req", tcp_rx_meta_reg.session_id.to_string(16));
           rx_eng_sent_tx_sar_req = true;
         }
         rx_eng_ctrl_bits[0] = tcp_rx_meta_reg.header.ack;
         rx_eng_ctrl_bits[1] = tcp_rx_meta_reg.header.syn;
         rx_eng_ctrl_bits[2] = tcp_rx_meta_reg.header.fin;
         rx_eng_ctrl_bits[3] = tcp_rx_meta_reg.header.rst;
-
+        logger.Info("CtrlBits", rx_eng_ctrl_bits.to_string(2));
         fsm_state = TRANSITION;
       }
       break;
@@ -575,8 +612,11 @@ void RxEngTcpFsm(
           !(rx_eng_sent_tx_sar_req && tx_sar_to_rx_eng_rsp.empty())) {
         sttable_to_rx_eng_rsp.read(session_state_reg);
         rx_sar_to_rx_eng_rsp.read(rx_sar_reg);
+        logger.Info(STATE_TABLE, RX_ENG, "State LupRsp", state_to_string(session_state_reg));
+        logger.Info(RX_SAR, RX_ENG, "RX SAR Rsp", rx_sar_reg.to_string());
         if (rx_eng_sent_tx_sar_req) {
           tx_sar_to_rx_eng_rsp.read(tx_sar_reg);
+          logger.Info(TX_SAR, RX_ENG, "TX SAR Rsp", tx_sar_reg.to_string());
         }
         rx_eng_sent_tx_sar_req = false;
 
@@ -585,11 +625,13 @@ void RxEngTcpFsm(
       switch (rx_eng_ctrl_bits) {
         case 1:  // ACK
           if (fsm_state == LOAD) {
-            // cout << " ACK \n" << tcp_rx_meta_reg.to_string();
+            logger.Info("Recv ACK");
             // if ack number is expected, stop the retransmit timer
-            rx_eng_to_timer_clear_rtimer.write(RxEngToRetransTimerReq(
-                tcp_rx_meta_reg.session_id,
-                (tcp_rx_meta_reg.header.ack_number == tx_sar_reg.next_byte)));
+            to_rtimer_req =
+                RxEngToRetransTimerReq(tcp_rx_meta_reg.session_id,
+                                       (tcp_rx_meta_reg.header.ack_number == tx_sar_reg.next_byte));
+            rx_eng_to_timer_clear_rtimer.write(to_rtimer_req);
+            logger.Info(RX_ENG, RETRANS_TIMER, "Clear RTimer?", to_rtimer_req.to_string());
             if (session_state_reg == ESTABLISHED || session_state_reg == SYN_RECEIVED ||
                 session_state_reg == FIN_WAIT_1 || session_state_reg == CLOSING ||
                 session_state_reg == LAST_ACK) {
@@ -597,11 +639,16 @@ void RxEngTcpFsm(
               if (tcp_rx_meta_reg.header.ack_number == tx_sar_reg.perv_ack &&
                   tx_sar_reg.perv_ack != tx_sar_reg.next_byte) {
                 // Old ACK increase counter only if it does not contain data
+                logger.Info("Recv Old ACK");
                 if (tcp_rx_meta_reg.header.payload_length == 0) {
                   tx_sar_reg.retrans_count++;
+                  logger.Info("Payload is empty, increase RT cnt");
                 }
               } else {  // new ACK arrived
                 // clear probe timer for new ACK
+                logger.Info("Recv New ACK");
+                logger.Info(
+                    RX_ENG, PROBE_TIMER, "Clr PTimer", tcp_rx_meta_reg.session_id.to_string(16));
                 rx_eng_to_timer_clear_ptimer.write(tcp_rx_meta_reg.session_id);
                 // Check for SlowStart & Increase Congestion Window
                 if (tx_sar_reg.cong_window <= (tx_sar_reg.slowstart_threshold - TCP_MSS)) {
@@ -620,15 +667,16 @@ void RxEngTcpFsm(
                   ((tx_sar_reg.perv_ack <= tcp_rx_meta_reg.header.ack_number ||
                     tcp_rx_meta_reg.header.ack_number <= tx_sar_reg.next_byte) &&
                    tx_sar_reg.next_byte < tx_sar_reg.perv_ack)) {
-                RxEngToTxSarReq tx_sar_upd(
-                    tcp_rx_meta_reg.session_id,
-                    tcp_rx_meta_reg.header.ack_number,
-                    tcp_rx_meta_reg.header.win_size,
-                    tx_sar_reg.cong_window,
-                    tx_sar_reg.retrans_count,
-                    ((tx_sar_reg.retrans_count == 3) || tx_sar_reg.fast_retrans),
-                    tx_sar_reg.win_shift);
-                rx_eng_to_tx_sar_req.write(tx_sar_upd);
+                to_tx_sar_req =
+                    RxEngToTxSarReq(tcp_rx_meta_reg.session_id,
+                                    tcp_rx_meta_reg.header.ack_number,
+                                    tcp_rx_meta_reg.header.win_size,
+                                    tx_sar_reg.cong_window,
+                                    tx_sar_reg.retrans_count,
+                                    ((tx_sar_reg.retrans_count == 3) || tx_sar_reg.fast_retrans),
+                                    tx_sar_reg.win_shift);
+                logger.Info(RX_ENG, TX_SAR, "Tx SAR Upd", to_tx_sar_req.to_string());
+                rx_eng_to_tx_sar_req.write(to_tx_sar_req);
                 // RX SAR update, when new payload arrived
                 if (tcp_rx_meta_reg.header.payload_length != 0) {
                   ap_uint<32> new_recvd =
@@ -638,8 +686,10 @@ void RxEngTcpFsm(
                   // check if segment is in order and if enough free space is available
                   if ((tcp_rx_meta_reg.header.seq_number == rx_sar_reg.recvd) &&
                       (free_space > tcp_rx_meta_reg.header.payload_length)) {
-                    rx_eng_to_rx_sar_req.write(
-                        RxEngToRxSarReq(tcp_rx_meta_reg.session_id, new_recvd, 1));
+                    to_rx_sar_req = RxEngToRxSarReq(tcp_rx_meta_reg.session_id, new_recvd, 1);
+                    rx_eng_to_rx_sar_req.write(to_rx_sar_req);
+                    logger.Info(
+                        RX_ENG, RX_SAR, "Upd Req, Seg is inorder", to_rx_sar_req.to_string());
 #if (!TCP_RX_DDR_BYPASS)
                     payload_mem_addr(31, 30)          = 0x0;
                     payload_mem_addr(30, WINDOW_BITS) = tcp_rx_meta_reg.session_id(13, 0);
@@ -649,64 +699,82 @@ void RxEngTcpFsm(
                         DataMoverCmd(payload_mem_addr, tcp_rx_meta_reg.header.payload_length));
 #endif
                     // Only notify when new data available
-                    rx_eng_to_rx_app_notification.write(
-                        AppNotificationNoTDEST(tcp_rx_meta_reg.session_id,
-                                               tcp_rx_meta_reg.header.payload_length,
-                                               tcp_rx_meta_reg.src_ip,
-                                               tcp_rx_meta_reg.dst_port));
-                    payload_should_dropped.write(false);
+                    to_rx_app_notify = AppNotificationNoTDEST(tcp_rx_meta_reg.session_id,
+                                                              tcp_rx_meta_reg.header.payload_length,
+                                                              tcp_rx_meta_reg.src_ip,
+                                                              tcp_rx_meta_reg.dst_port);
+                    logger.Info(
+                        RX_ENG, RX_APP_INTF, "New Data Notify", to_rx_app_notify.to_string());
+                    rx_eng_to_rx_app_notification.write(to_rx_app_notify);
+                    tcp_payload_dropped_by_rx_fsm.write(false);
+                  } else {
+                    tcp_payload_dropped_by_rx_fsm.write(true);
                   }
-                } else {
-                  payload_should_dropped.write(true);
                 }
                 // retransmit or ack
                 if ((tx_sar_reg.retrans_count == 3) && !tx_sar_reg.fast_retrans) {
-                  rx_eng_fsm_to_event_eng_set_event.write(Event(RT, tcp_rx_meta_reg.session_id));
+                  to_event_eng_event = Event(RT, tcp_rx_meta_reg.session_id);
                 } else {
-                  rx_eng_fsm_to_event_eng_set_event.write(Event(ACK, tcp_rx_meta_reg.session_id));
+                  to_event_eng_event = Event(ACK, tcp_rx_meta_reg.session_id);
                 }
+                logger.Info(
+                    RX_ENG, EVENT_ENG, "Recv inorder ACK Event", to_event_eng_event.to_string());
+                rx_eng_fsm_to_event_eng_set_event.write(to_event_eng_event);
 
                 if (tcp_rx_meta_reg.header.ack_number == tx_sar_reg.next_byte) {
                   // This is necessary to unlock stateTable
-                  // TODO MAYBE REARRANGE
                   switch (session_state_reg) {
                     case SYN_RECEIVED:
-                      rx_eng_to_sttable_req.write(
-                          StateTableReq(tcp_rx_meta_reg.session_id, ESTABLISHED, 1));
+                      to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, ESTABLISHED, 1);
                       // Notify the tx App about new client
                       // TODO 1460 is the default value, but it could change if options
                       // are presented in the TCP header
-                      rx_eng_to_tx_app_new_client_notification.write(NewClientNotificationNoTDEST(
-                          tcp_rx_meta_reg.session_id, 0, 1460, TCP_NODELAY, true));
+                      to_tx_app_new_client_notify = NewClientNotificationNoTDEST(
+                          tcp_rx_meta_reg.session_id, 0, 1460, TCP_NODELAY, true);
+                      logger.Info(RX_ENG,
+                                  TX_APP_INTF,
+                                  "New Client Notify",
+                                  to_tx_app_new_client_notify.to_string());
+                      rx_eng_to_tx_app_new_client_notification.write(to_tx_app_new_client_notify);
                       break;
                     case CLOSING:
-                      rx_eng_to_sttable_req.write(
-                          StateTableReq(tcp_rx_meta_reg.session_id, TIME_WAIT, 1));
+                      logger.Info(RX_ENG,
+                                  CLOSE_TIMER,
+                                  "Set CTimer",
+                                  tcp_rx_meta_reg.session_id.to_string(16));
+                      to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, TIME_WAIT, 1);
                       rx_eng_to_timer_set_ctimer.write(tcp_rx_meta_reg.session_id);
                       break;
                     case LAST_ACK:
-                      rx_eng_to_sttable_req.write(
-                          StateTableReq(tcp_rx_meta_reg.session_id, CLOSED, 1));
+                      to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, CLOSED, 1);
                       break;
                     default:
-                      rx_eng_to_sttable_req.write(
-                          StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1));
+                      to_sttable_req =
+                          StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1);
                       break;
                   }
+
                 } else {  // we have to release the lock
-                  rx_eng_to_sttable_req.write(StateTableReq(
-                      tcp_rx_meta_reg.session_id, session_state_reg, 1));  // or ESTABLISHED
+                  to_sttable_req = StateTableReq(
+                      tcp_rx_meta_reg.session_id, session_state_reg, 1);  // or ESTABLISHED
                 }
+                logger.Info(
+                    RX_ENG, STATE_TABLE, "Release lock/Upd State", to_sttable_req.to_string());
+                rx_eng_to_sttable_req.write(to_sttable_req);
               }
             } else {  // state = CLOSED || SYN_SENT || CLOSE_WAIT || FIN_WAIT2 || TIME_WAIT
               // SENT RST, RFC 793: fig.11
-              rx_eng_fsm_to_event_eng_set_event.write(RstEvent(
-                  tcp_rx_meta_reg.session_id,
-                  tcp_rx_meta_reg.header.seq_number + tcp_rx_meta_reg.header.payload_length));
+              to_event_eng_event = RstEvent(tcp_rx_meta_reg.session_id,
+                                            tcp_rx_meta_reg.header.seq_number +
+                                                tcp_rx_meta_reg.header.payload_length);
+              logger.Info(RX_ENG, EVENT_ENG, "RST Event", to_event_eng_event.to_string());
+              rx_eng_fsm_to_event_eng_set_event.write(to_event_eng_event);
               // if data is in the pipe it needs to be dropped
               if (tcp_rx_meta_reg.header.payload_length != 0) {
-                payload_should_dropped.write(true);
+                tcp_payload_dropped_by_rx_fsm.write(true);
               }
+              to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1);
+              logger.Info(RX_ENG, STATE_TABLE, "Release lock", to_sttable_req.to_string());
               rx_eng_to_sttable_req.write(
                   StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1));
             }
@@ -716,127 +784,174 @@ void RxEngTcpFsm(
           if (fsm_state == LOAD) {
             // check state is LISTEN || SYN_SENT
             if (session_state_reg == CLOSED || session_state_reg == SYN_SENT) {
-              // cout << " SYN \n" << tcp_rx_meta_reg.to_string();
+              logger.Info("Recv SYN");
+
               //  If the other side announces a WSopt we use WINDOW_SCALE_BITS
-              rx_win_scale = (tcp_rx_meta_reg.header.win_scale == 0) ? 0 : WINDOW_SCALE_BITS;
-              tx_win_scale = tcp_rx_meta_reg.header.win_scale;
-              rx_eng_to_rx_sar_req.write(RxEngToRxSarReq(tcp_rx_meta_reg.session_id,
-                                                         tcp_rx_meta_reg.header.seq_number + 1,
-                                                         1,
-                                                         1,
-                                                         rx_win_scale));
-              rx_eng_to_tx_sar_req.write(RxEngToTxSarReq(tcp_rx_meta_reg.session_id,
-                                                         0,
-                                                         tcp_rx_meta_reg.header.win_size,
-                                                         tx_sar_reg.cong_window,
-                                                         0,
-                                                         0,
-                                                         rx_win_scale));
-              rx_eng_fsm_to_event_eng_set_event.write(Event(SYN_ACK, tcp_rx_meta_reg.session_id));
-              rx_eng_to_sttable_req.write(
-                  StateTableReq(tcp_rx_meta_reg.session_id, SYN_RECEIVED, 1));
+              rx_win_scale  = (tcp_rx_meta_reg.header.win_scale == 0) ? 0 : WINDOW_SCALE_BITS;
+              tx_win_scale  = tcp_rx_meta_reg.header.win_scale;
+              to_rx_sar_req = RxEngToRxSarReq(tcp_rx_meta_reg.session_id,
+                                              tcp_rx_meta_reg.header.seq_number + 1,
+                                              1,
+                                              1,
+                                              rx_win_scale);
+              logger.Info(RX_ENG, RX_SAR, "Upd Req", to_rx_sar_req.to_string());
+              rx_eng_to_rx_sar_req.write(to_rx_sar_req);
+              to_tx_sar_req = RxEngToTxSarReq(tcp_rx_meta_reg.session_id,
+                                              0,
+                                              tcp_rx_meta_reg.header.win_size,
+                                              tx_sar_reg.cong_window,
+                                              0,
+                                              false,
+                                              true,
+                                              rx_win_scale);
+              rx_eng_to_tx_sar_req.write(to_tx_sar_req);
+              logger.Info(RX_ENG, TX_SAR, "Upd Req", to_tx_sar_req.to_string());
+              to_event_eng_event = Event(SYN_ACK, tcp_rx_meta_reg.session_id);
+              logger.Info(RX_ENG, EVENT_ENG, "Recv SYN Event", to_event_eng_event.to_string());
+              to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, SYN_RECEIVED, 1);
+              logger.Info(RX_ENG, STATE_TABLE, "Upd State", to_sttable_req.to_string());
+
             } else if (session_state_reg == SYN_RECEIVED) {
               // If it is the same SYN, we resent SYN-ACK, almost like quick RT, we
               // could also wait for RT timer
               if (tcp_rx_meta_reg.header.seq_number + 1 == rx_sar_reg.recvd) {
                 // Retransmit SYN_ACK
-                rx_eng_fsm_to_event_eng_set_event.write(
-                    Event(SYN_ACK, tcp_rx_meta_reg.session_id, 1));
-                rx_eng_to_sttable_req.write(
-                    StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1));
+
+                to_event_eng_event = Event(SYN_ACK, tcp_rx_meta_reg.session_id, 1);
+                logger.Info(RX_ENG, EVENT_ENG, "RT SYN_ACK Event", to_event_eng_event.to_string());
+
+                to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1);
+                logger.Info(RX_ENG, STATE_TABLE, "Release State", to_sttable_req.to_string());
+
               } else {  // Sent RST, RFC 793: fig.9 (old) duplicate SYN(+ACK)
-                rx_eng_fsm_to_event_eng_set_event.write(
-                    RstEvent(tcp_rx_meta_reg.session_id,
-                             tcp_rx_meta_reg.header.seq_number + 1));  // length == 0
-                rx_eng_to_sttable_req.write(StateTableReq(tcp_rx_meta_reg.session_id, CLOSED, 1));
+                        // length == 0
+                to_event_eng_event =
+                    RstEvent(tcp_rx_meta_reg.session_id, tcp_rx_meta_reg.header.seq_number + 1);
+                logger.Info(RX_ENG, EVENT_ENG, "Recv SYN Event", to_event_eng_event.to_string());
+
+                to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, CLOSED, 1);
+                logger.Info(RX_ENG, STATE_TABLE, "Upd State", to_sttable_req.to_string());
               }
             } else {  // Any synchronized state
               // Unexpected SYN arrived, reply with normal ACK, RFC 793: fig.10
-              rx_eng_fsm_to_event_eng_set_event.write(
-                  Event(ACK_NODELAY, tcp_rx_meta_reg.session_id));
-              rx_eng_to_sttable_req.write(
-                  StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1));
+              to_event_eng_event = Event(ACK_NODELAY, tcp_rx_meta_reg.session_id);
+              logger.Info(RX_ENG, EVENT_ENG, "Recv SYN Event", to_event_eng_event.to_string());
+
+              to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1);
+              logger.Info(RX_ENG, STATE_TABLE, "Release State", to_sttable_req.to_string());
             }
+            rx_eng_to_sttable_req.write(to_sttable_req);
+            rx_eng_fsm_to_event_eng_set_event.write(to_event_eng_event);
           }
 
           break;
         case 3:  // SYN + ACK
           if (fsm_state == LOAD) {
+            logger.Info("Recv SYN+ACK");
             // Clear SYN retransmission time  if ack number is correct
-            rx_eng_to_timer_clear_rtimer.write(RxEngToRetransTimerReq(
-                tcp_rx_meta_reg.session_id,
-                (tcp_rx_meta_reg.header.ack_number == tx_sar_reg.next_byte)));
+            to_rtimer_req =
+                RxEngToRetransTimerReq(tcp_rx_meta_reg.session_id,
+                                       (tcp_rx_meta_reg.header.ack_number == tx_sar_reg.next_byte));
+            logger.Info(RX_ENG, RETRANS_TIMER, "Clear RTimer?", to_rtimer_req.to_string());
+            rx_eng_to_timer_clear_rtimer.write(to_rtimer_req);
             // A SYN was already send, ack number has to be check,  if is correct send ACK is not
             // send a RST
             if (session_state_reg == SYN_SENT) {
               // check ack number is correct
               if (tcp_rx_meta_reg.header.ack_number == tx_sar_reg.next_byte) {
-                rx_eng_fsm_to_event_eng_set_event.write(
-                    Event(ACK_NODELAY, tcp_rx_meta_reg.session_id));
-                // Update TCP FSM to ESTABLISHED now data can be
+                to_event_eng_event = Event(ACK_NODELAY, tcp_rx_meta_reg.session_id);
+                logger.Info(RX_ENG, EVENT_ENG, "ACK Event", to_event_eng_event.to_string());
+                // Update TCP FSM to ESTABLISHED now data can be`
                 // transfer initialize rx_sar, SEQ + phantom byte, last
                 // '1' for appd init + Window scale if enable
-                rx_eng_to_sttable_req.write(
-                    StateTableReq(tcp_rx_meta_reg.session_id, ESTABLISHED, 1));
+                to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, ESTABLISHED, 1);
+                logger.Info(RX_ENG, STATE_TABLE, "Upd State", to_sttable_req.to_string());
 
-                rx_win_scale = (tcp_rx_meta_reg.header.win_scale == 0) ? 0 : WINDOW_SCALE_BITS;
-                tx_win_scale = tcp_rx_meta_reg.header.win_scale;
+                rx_win_scale  = (tcp_rx_meta_reg.header.win_scale == 0) ? 0 : WINDOW_SCALE_BITS;
+                tx_win_scale  = tcp_rx_meta_reg.header.win_scale;
+                to_rx_sar_req = RxEngToRxSarReq(tcp_rx_meta_reg.session_id,
+                                                tcp_rx_meta_reg.header.seq_number + 1,
+                                                1,
+                                                1,
+                                                rx_win_scale);
 
-                rx_eng_to_rx_sar_req.write(RxEngToRxSarReq(tcp_rx_meta_reg.session_id,
-                                                           tcp_rx_meta_reg.header.seq_number + 1,
-                                                           1,
-                                                           1,
-                                                           rx_win_scale));
+                rx_eng_to_rx_sar_req.write(to_rx_sar_req);
+                logger.Info(RX_ENG, RX_SAR, "Upd Req", to_rx_sar_req.to_string());
+
                 // TX Sar table is initialized with the received window scale
-                rx_eng_to_tx_sar_req.write(RxEngToTxSarReq(tcp_rx_meta_reg.session_id,
-                                                           tcp_rx_meta_reg.header.ack_number,
-                                                           tcp_rx_meta_reg.header.win_size,
-                                                           tx_sar_reg.cong_window,
-                                                           0,
-                                                           false,
-                                                           rx_win_scale));
+                to_tx_sar_req = RxEngToTxSarReq(tcp_rx_meta_reg.session_id,
+                                                tcp_rx_meta_reg.header.ack_number,
+                                                tcp_rx_meta_reg.header.win_size,
+                                                tx_sar_reg.cong_window,
+                                                0,
+                                                false,
+                                                true,
+                                                tx_win_scale);
+                rx_eng_to_tx_sar_req.write(to_tx_sar_req);
+                logger.Info(RX_ENG, TX_SAR, "Upd Req", to_tx_sar_req.to_string());
+
                 // to tx app
+                logger.Info(RX_ENG,
+                            TX_APP_INTF,
+                            "Open Conn Success",
+                            tcp_rx_meta_reg.session_id.to_string(16));
                 rx_eng_to_tx_app_notification.write(
                     OpenConnRspNoTDEST(tcp_rx_meta_reg.session_id, true));
               } else {
                 // Sent RST, RFC 793: fig.9 (old) duplicate SYN(+ACK)
-                rx_eng_fsm_to_event_eng_set_event.write(RstEvent(
-                    tcp_rx_meta_reg.session_id,
-                    tcp_rx_meta_reg.header.seq_number + tcp_rx_meta_reg.header.payload_length + 1));
-                rx_eng_to_sttable_req.write(StateTableReq(tcp_rx_meta_reg.session_id, CLOSED, 1));
+                to_event_eng_event = RstEvent(tcp_rx_meta_reg.session_id,
+                                              tcp_rx_meta_reg.header.seq_number +
+                                                  tcp_rx_meta_reg.header.payload_length + 1);
+                logger.Info(RX_ENG, EVENT_ENG, "RST Event", to_event_eng_event.to_string());
+
+                to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, CLOSED, 1);
+                logger.Info(RX_ENG, STATE_TABLE, "Upd State", to_sttable_req.to_string());
               }
             } else {
               // Unexpected SYN arrived, reply with normal ACK, RFC 793: fig.10
-              rx_eng_fsm_to_event_eng_set_event.write(
-                  Event(ACK_NODELAY, tcp_rx_meta_reg.session_id));
-              rx_eng_to_sttable_req.write(
-                  StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1));
+              to_event_eng_event = Event(ACK_NODELAY, tcp_rx_meta_reg.session_id);
+              to_sttable_req     = StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1);
+              logger.Info(RX_ENG, EVENT_ENG, "ACK Event", to_event_eng_event.to_string());
+              logger.Info(RX_ENG, STATE_TABLE, "Release State", to_sttable_req.to_string());
             }
+            rx_eng_to_sttable_req.write(to_sttable_req);
+            rx_eng_fsm_to_event_eng_set_event.write(to_event_eng_event);
           }
           break;
         case 5:  // FIN + ACK
           if (fsm_state == LOAD) {
-            rx_eng_to_timer_clear_rtimer.write(RxEngToRetransTimerReq(
-                tcp_rx_meta_reg.session_id,
-                (tcp_rx_meta_reg.header.ack_number == tx_sar_reg.next_byte)));
+            logger.Info("Recv FIN+ACK");
+            to_rtimer_req =
+                RxEngToRetransTimerReq(tcp_rx_meta_reg.session_id,
+                                       (tcp_rx_meta_reg.header.ack_number == tx_sar_reg.next_byte));
+            rx_eng_to_timer_clear_rtimer.write(to_rtimer_req);
+            logger.Info(RX_ENG, RETRANS_TIMER, "Clear RTimer?", to_rtimer_req.to_string());
+
             if ((session_state_reg == ESTABLISHED || session_state_reg == FIN_WAIT_1 ||
                  session_state_reg == FIN_WAIT_2) &&
                 (rx_sar_reg.recvd == tcp_rx_meta_reg.header.seq_number)) {
-              rx_eng_to_tx_sar_req.write((RxEngToTxSarReq(tcp_rx_meta_reg.session_id,
-                                                          tcp_rx_meta_reg.header.ack_number,
-                                                          tcp_rx_meta_reg.header.win_size,
-                                                          tx_sar_reg.cong_window,
-                                                          tx_sar_reg.retrans_count,
-                                                          tx_sar_reg.fast_retrans,
-                                                          tx_win_scale)));
+              to_tx_sar_req = RxEngToTxSarReq(tcp_rx_meta_reg.session_id,
+                                              tcp_rx_meta_reg.header.ack_number,
+                                              tcp_rx_meta_reg.header.win_size,
+                                              tx_sar_reg.cong_window,
+                                              tx_sar_reg.retrans_count,
+                                              tx_sar_reg.fast_retrans,
+                                              tx_win_scale);
+              rx_eng_to_tx_sar_req.write(to_tx_sar_req);
+              logger.Info(RX_ENG, TX_SAR, "Upd Req", to_tx_sar_req.to_string());
+
               // +1 for phantom byte, there might be data too
-              rx_eng_to_rx_sar_req.write(RxEngToRxSarReq(
-                  tcp_rx_meta_reg.session_id,
-                  tcp_rx_meta_reg.header.seq_number + tcp_rx_meta_reg.header.payload_length + 1,
-                  1));
+              to_rx_sar_req = RxEngToRxSarReq(tcp_rx_meta_reg.session_id,
+                                              tcp_rx_meta_reg.header.seq_number +
+                                                  tcp_rx_meta_reg.header.payload_length + 1,
+                                              1);
+              rx_eng_to_rx_sar_req.write(to_rx_sar_req);
+              logger.Info(RX_ENG, RX_SAR, "Upd Req", to_rx_sar_req.to_string());
 
               // Clear the probe timer
               rx_eng_to_timer_clear_ptimer.write(tcp_rx_meta_reg.session_id);
+              logger.Info(
+                  RX_ENG, PROBE_TIMER, "Clear PTimer", tcp_rx_meta_reg.session_id.to_string(16));
 
               // Check if there is payload
               if (tcp_rx_meta_reg.header.payload_length != 0) {
@@ -849,48 +964,59 @@ void RxEngTcpFsm(
                     DataMoverCmd(payload_mem_addr, tcp_rx_meta_reg.header.payload_length));
 #endif
                 // Tell Application new data is available and connection got closed
-                rx_eng_to_rx_app_notification.write(
-                    AppNotificationNoTDEST(tcp_rx_meta_reg.session_id,
-                                           tcp_rx_meta_reg.header.payload_length,
-                                           tcp_rx_meta_reg.src_ip,
-                                           tcp_rx_meta_reg.dst_port,
-                                           true));
-                payload_should_dropped.write(false);
+                to_rx_app_notify = AppNotificationNoTDEST(tcp_rx_meta_reg.session_id,
+                                                          tcp_rx_meta_reg.header.payload_length,
+                                                          tcp_rx_meta_reg.src_ip,
+                                                          tcp_rx_meta_reg.dst_port,
+                                                          true);
+                rx_eng_to_rx_app_notification.write(to_rx_app_notify);
+                logger.Info(RX_ENG,
+                            RX_APP_INTF,
+                            "New Data Notify& Conn Close",
+                            to_rx_app_notify.to_string());
+                tcp_payload_dropped_by_rx_fsm.write(false);
               } else if (session_state_reg == ESTABLISHED) {
                 // Tell Application connection got closed
-                rx_eng_to_rx_app_notification.write(
-                    AppNotificationNoTDEST(tcp_rx_meta_reg.session_id,
-                                           tcp_rx_meta_reg.src_ip,
-                                           tcp_rx_meta_reg.dst_port,
-                                           true));
+                to_rx_app_notify = AppNotificationNoTDEST(tcp_rx_meta_reg.session_id,
+                                                          tcp_rx_meta_reg.src_ip,
+                                                          tcp_rx_meta_reg.dst_port,
+                                                          true);
+                rx_eng_to_rx_app_notification.write(to_rx_app_notify);
+                logger.Info(RX_ENG, RX_APP_INTF, "Conn Close", to_rx_app_notify.to_string());
               }
               // update state
               if (session_state_reg == ESTABLISHED) {
-                rx_eng_fsm_to_event_eng_set_event.write(Event(FIN, tcp_rx_meta_reg.session_id));
-                rx_eng_to_sttable_req.write(StateTableReq(tcp_rx_meta_reg.session_id, LAST_ACK, 1));
+                to_event_eng_event = Event(FIN, tcp_rx_meta_reg.session_id);
+                to_sttable_req     = StateTableReq(tcp_rx_meta_reg.session_id, LAST_ACK, 1);
+
               } else {  // FIN_WAIT_1 || FIN_WAIT_2
                         // check if final FIN is ACK'd -> LAST_ACK
                 if (tcp_rx_meta_reg.header.ack_number == tx_sar_reg.next_byte) {
-                  // std::cout << std::endl << "TCP FSM going to TIME_WAIT state "
-                  // << std::endl << std::endl;
-                  rx_eng_to_sttable_req.write(
-                      StateTableReq(tcp_rx_meta_reg.session_id, TIME_WAIT, 1));
+                  to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, TIME_WAIT, 1);
+                  logger.Info(
+                      RX_ENG, CLOSE_TIMER, "Set CTimer", tcp_rx_meta_reg.session_id.to_string(16));
                   rx_eng_to_timer_set_ctimer.write(tcp_rx_meta_reg.session_id);
                 } else {
-                  rx_eng_to_sttable_req.write(
-                      StateTableReq(tcp_rx_meta_reg.session_id, CLOSING, 1));
+                  to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, CLOSING, 1);
                 }
-                rx_eng_fsm_to_event_eng_set_event.write(Event(ACK, tcp_rx_meta_reg.session_id));
+                to_event_eng_event = Event(ACK, tcp_rx_meta_reg.session_id);
               }
+              logger.Info(RX_ENG, STATE_TABLE, "Upd State", to_sttable_req.to_string());
+              logger.Info(RX_ENG, EVENT_ENG, "Event", to_event_eng_event.to_string());
+
             } else {  // NOT (ESTABLISHED || FIN_WAIT_1 || FIN_WAIT_2)
-              rx_eng_fsm_to_event_eng_set_event.write(Event(ACK, tcp_rx_meta_reg.session_id));
-              rx_eng_to_sttable_req.write(
-                  StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1));
+              to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1);
+              logger.Info(RX_ENG, STATE_TABLE, "Release State", to_sttable_req.to_string());
+              to_event_eng_event = Event(ACK, tcp_rx_meta_reg.session_id);
+              logger.Info(RX_ENG, EVENT_ENG, "Event", to_event_eng_event.to_string());
+
               // If there is payload we need to drop it
               if (tcp_rx_meta_reg.header.payload_length != 0) {
-                payload_should_dropped.write(true);
+                tcp_payload_dropped_by_rx_fsm.write(true);
               }
             }
+            rx_eng_to_sttable_req.write(to_sttable_req);
+            rx_eng_fsm_to_event_eng_set_event.write(to_event_eng_event);
           }
           break;
         default:  // TODO MAYBE load everything all the time
@@ -904,31 +1030,35 @@ void RxEngTcpFsm(
                   // tell application, could not open connection
                   rx_eng_to_tx_app_notification.write(
                       OpenConnRspNoTDEST(tcp_rx_meta_reg.session_id, false));
-                  rx_eng_to_sttable_req.write(StateTableReq(tcp_rx_meta_reg.session_id, CLOSED, 1));
-                  rx_eng_to_timer_clear_rtimer.write(
-                      RxEngToRetransTimerReq(tcp_rx_meta_reg.session_id, true));
+                  to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, CLOSED, 1);
+                  to_rtimer_req  = RxEngToRetransTimerReq(tcp_rx_meta_reg.session_id, true);
+                  rx_eng_to_timer_clear_rtimer.write(to_rtimer_req);
+                  logger.Info(RX_ENG, RETRANS_TIMER, "Set RTimer", to_rtimer_req.to_string());
+
                 } else {
                   // Ignore since not matching
-                  rx_eng_to_sttable_req.write(
-                      StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1));
+                  to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1);
                 }
               } else {
                 // Check if in window
                 if (tcp_rx_meta_reg.header.seq_number == rx_sar_reg.recvd) {
                   // tell application, RST occurred, abort
-                  rx_eng_to_rx_app_notification.write(
-                      AppNotificationNoTDEST(tcp_rx_meta_reg.session_id,
-                                             tcp_rx_meta_reg.src_ip,
-                                             tcp_rx_meta_reg.dst_port,
-                                             true));  // RESET
-                                                      // TODO maybe some TIME_WAIT state
-                  rx_eng_to_sttable_req.write(StateTableReq(tcp_rx_meta_reg.session_id, CLOSED, 1));
-                  rx_eng_to_timer_clear_rtimer.write(
-                      RxEngToRetransTimerReq(tcp_rx_meta_reg.session_id, true));
+                  to_rx_app_notify = AppNotificationNoTDEST(tcp_rx_meta_reg.session_id,
+                                                            tcp_rx_meta_reg.src_ip,
+                                                            tcp_rx_meta_reg.dst_port,
+                                                            true);
+                  rx_eng_to_rx_app_notification.write(to_rx_app_notify);
+                  logger.Info(RX_ENG, RX_APP_INTF, "Conn RST", to_rx_app_notify.to_string());
+
+                  // TODO maybe some TIME_WAIT state
+                  to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, CLOSED, 1);
+                  to_rtimer_req  = RxEngToRetransTimerReq(tcp_rx_meta_reg.session_id, true);
+                  rx_eng_to_timer_clear_rtimer.write(to_rtimer_req);
+                  logger.Info(RX_ENG, RETRANS_TIMER, "Set RTimer", to_rtimer_req.to_string());
+
                 } else {
                   // Ingore since not matching window
-                  rx_eng_to_sttable_req.write(
-                      StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1));
+                  to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1);
                 }
               }
             } else {  // Handle non RST bogus packages
@@ -936,9 +1066,11 @@ void RxEngTcpFsm(
               // TODO maybe sent RST ourselves, or simply ignore
               // For now ignore, sent ACK??
               // eventsOut.write(rstEvent(mh_meta.seqNumb, 0, true));
-              rx_eng_to_sttable_req.write(
-                  StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1));
+              to_sttable_req = StateTableReq(tcp_rx_meta_reg.session_id, session_state_reg, 1);
             }
+            logger.Info(RX_ENG, STATE_TABLE, "Release State/Close", to_sttable_req.to_string());
+
+            rx_eng_to_sttable_req.write(to_sttable_req);
           }
           break;
       }
@@ -995,6 +1127,10 @@ void rx_engine(
     stream<NetAXISWord> &rx_eng_to_rx_app_data
 
 ) {
+#pragma HLS DATAFLOW
+#pragma HLS INLINE
+
+#pragma HLS INTERFACE ap_ctrl_none       port = return
 #pragma HLS INTERFACE axis register both port = rx_ip_pkt_in
 
   static stream<NetAXISWord> tcp_pseudo_packet_for_checksum_fifo(
