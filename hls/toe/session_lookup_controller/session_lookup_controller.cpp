@@ -81,7 +81,7 @@ void CamLookupRspHandler(
         req_internal.role_id              = tx_app_req.role_id;
         cam_lup_req = RtlSLookupToCamLupReq(req_internal.tuple, req_internal.source);
         slookup_to_cam_lup_req.write(cam_lup_req);
-        logger.Info(SLUP_CTRL, CUKOO_CAM, "Lup Req from TxApp", cam_lup_req.to_string(), false);
+        logger.Info(SLUP_CTRL, CUKOO_CAM, "Lup Req from TxApp", cam_lup_req.to_string());
         slookup_to_cam_req_cache_fifo.write(req_internal);
         slc_fsm_state = LUP_RSP;
       } else if (!rx_eng_to_slookup_req.empty()) {
@@ -94,7 +94,7 @@ void CamLookupRspHandler(
         req_internal.role_id              = rx_eng_req.role_id;
         cam_lup_req = RtlSLookupToCamLupReq(req_internal.tuple, req_internal.source);
         slookup_to_cam_lup_req.write(cam_lup_req);
-        logger.Info(SLUP_CTRL, CUKOO_CAM, "Lup Req from RxEng", cam_lup_req.to_string(), false);
+        logger.Info(SLUP_CTRL, CUKOO_CAM, "Lup Req from RxEng", cam_lup_req.to_string());
         slookup_to_cam_req_cache_fifo.write(req_internal);
         slc_fsm_state = LUP_RSP;
       }
@@ -107,16 +107,17 @@ void CamLookupRspHandler(
           slookup_available_id_in.read(available_session_id);
           slookup_to_cam_insert_req.write(RtlSlookupToCamUpdReq(
               req_internal.tuple, available_session_id, INSERT, cam_rsp.source));
+          // Only when it allow create, the role-id insert to the reverse table
           slookup_rev_table_req_cache_fifo.write(
               RevTableEntry(req_internal.tuple, req_internal.role_id));
           slc_fsm_state = UPD_RSP;
         } else {
           slookup_rsp = SessionLookupRsp(cam_rsp.session_id, cam_rsp.hit, req_internal.role_id);
           if (cam_rsp.source == RX) {
-            logger.Info(SLUP_CTRL, RX_ENGINE, "Lup Rsp", slookup_rsp.to_string(), false);
+            logger.Info(SLUP_CTRL, RX_ENGINE, "Lup Rsp", slookup_rsp.to_string());
             slookup_to_rx_eng_rsp.write(slookup_rsp);
           } else {
-            logger.Info(SLUP_CTRL, TX_APP_IF, "Lup Rsp", slookup_rsp.to_string(), false);
+            logger.Info(SLUP_CTRL, TX_APP_IF, "Lup Rsp", slookup_rsp.to_string());
             slookup_to_tx_app_rsp.write(slookup_rsp);
           }
           slc_fsm_state = LUP_REQ;
@@ -168,7 +169,7 @@ void                 CamUpdateReqSender(stream<RtlSlookupToCamUpdReq> &slookup_t
     rtl_slookup_to_cam_update_req.write(cam_upd_req);
     used_session_id_cnt++;
     reg_session_cnt = used_session_id_cnt;
-    logger.Info("Slookup Current Session count", reg_session_cnt.to_string(16), false);
+    logger.Info("Current Session count", reg_session_cnt.to_string(16));
   } else if (!slookup_to_cam_delete_req.empty()) {
     slookup_to_cam_delete_req.read(cam_upd_req);
     logger.Info(SLUP_CTRL, CUKOO_CAM, "Delete Req", cam_upd_req.to_string());
@@ -176,8 +177,8 @@ void                 CamUpdateReqSender(stream<RtlSlookupToCamUpdReq> &slookup_t
     slookup_released_id.write(cam_upd_req.value(13, 0));
     used_session_id_cnt--;
     reg_session_cnt = used_session_id_cnt;
-    logger.Info("Slookup Current Released Seesion ", cam_upd_req.value(13, 0).to_string(16), false);
-    logger.Info("Slookup Current Session count", reg_session_cnt.to_string(16), false);
+    logger.Info("Current Released Seesion ", cam_upd_req.value(13, 0).to_string(16));
+    logger.Info("Current Session count", reg_session_cnt.to_string(16));
   }
 }
 
@@ -247,7 +248,7 @@ void SlookupReverseTableInterface(
 
   if (!reverse_table_insert_req.empty()) {
     reverse_table_insert_req.read(insert_req);
-    logger.Info("Slookup Insert Reverse table", insert_req.to_string(), false);
+    logger.Info(MISC_MDLE, SLUP_CTRL, "Insert Rev Table", insert_req.to_string());
     slookup_rev_table[insert_req.key] =
         RevTableEntry(insert_req.tuple_value, insert_req.role_value);
     valid_tuple[insert_req.key] = true;
@@ -259,7 +260,7 @@ void SlookupReverseTableInterface(
     tx_eng_rsp.four_tuple.src_tcp_port = slookup_rev_table[session_id].three_tuple.here_tcp_port;
     tx_eng_rsp.four_tuple.dst_tcp_port = slookup_rev_table[session_id].three_tuple.there_tcp_port;
     tx_eng_rsp.role_id                 = slookup_rev_table[session_id].role_id;
-    logger.Info("Slookup Rev Table to Tx eng rsp", tx_eng_rsp.to_string(), false);
+    logger.Info(SLUP_CTRL, TX_ENGINE, "Rev Table Rsp", tx_eng_rsp.to_string());
     slookup_rev_table_to_tx_eng_rsp.write(tx_eng_rsp);
   } else if (!rx_app_to_slookup_tdest_lookup_req.empty()) {
     rx_app_to_slookup_tdest_lookup_req.read(session_id);
@@ -269,7 +270,7 @@ void SlookupReverseTableInterface(
     } else {
       ret_role_id = INVALID_TDEST;
     }
-    logger.Info("Slookup Rev Table to Rx App TDEST rsp", ret_role_id.to_string(16), false);
+    logger.Info(SLUP_CTRL, RX_APP_IF, "Rev Table TDEST Rsp", ret_role_id.to_string(16));
     slookup_to_rx_app_tdest_lookup_rsp.write(ret_role_id);
   } else if (!tx_app_to_slookup_check_tdest_req.empty()) {
     tx_app_to_slookup_check_tdest_req.read(session_id);
@@ -278,11 +279,11 @@ void SlookupReverseTableInterface(
     } else {
       ret_role_id = INVALID_TDEST;
     }
-    logger.Info("Slookup Rev Table to Tx App TDEST rsp", ret_role_id.to_string(16), false);
+    logger.Info(SLUP_CTRL, TX_APP_IF, "Rev Table TDEST Rsp", ret_role_id.to_string(16));
     slookup_to_tx_app_check_tdest_rsp.write(ret_role_id);
   } else if (!sttable_to_slookup_release_req.empty()) {
     sttable_to_slookup_release_req.read(session_id);
-    logger.Info("Slookup Rev Table release Session", session_id.to_string(16), false);
+    logger.Info("Rev Table release Session", session_id.to_string(16));
     cur_tuple_to_release = slookup_rev_table[session_id].three_tuple;
     if (valid_tuple[session_id])  // if valid
     {
@@ -290,8 +291,7 @@ void SlookupReverseTableInterface(
       slookup_to_ptable_release_port_req.write(release_port);
       slookup_to_cam_delete_req.write(
           RtlSlookupToCamUpdReq(cur_tuple_to_release, session_id, DELETE, RX));
-      logger.Info(
-          "Slookup Rev Table to Port table release port LE ", release_port.to_string(16), false);
+      logger.Info(SLUP_CTRL, PORT_TBLE, "Rev Table release port LE ", release_port.to_string(16));
     }
     valid_tuple[session_id] = false;
   }
