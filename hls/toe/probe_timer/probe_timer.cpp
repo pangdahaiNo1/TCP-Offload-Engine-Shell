@@ -41,7 +41,7 @@ void                  probe_timer(stream<TcpSessionID> &rx_eng_to_timer_clear_pt
     ptimer_prev_session_id--;
   } else if (!tx_eng_to_timer_set_ptimer.empty()) {
     tx_eng_to_timer_set_ptimer.read(ptimer_set_session_id);
-    logger.Info(TX_ENG, PROBE_TIMER, "Set PTimer", ptimer_set_session_id.to_string(16));
+    logger.Info(TX_ENGINE, PROBE_TMR, "Set PTimer", ptimer_set_session_id.to_string(16));
     ptimer_wait_for_write = true;
   } else {
     ptimer_cur_session_id  = ptimer_cur_check_session_id;
@@ -49,7 +49,7 @@ void                  probe_timer(stream<TcpSessionID> &rx_eng_to_timer_clear_pt
 
     if (!rx_eng_to_timer_clear_ptimer.empty()) {
       rx_eng_to_timer_clear_ptimer.read(ptimer_cur_session_id);
-      logger.Info(RX_ENG, PROBE_TIMER, "Clear PTimer", ptimer_set_session_id.to_string(16));
+      logger.Info(RX_ENGINE, PROBE_TMR, "Clear PTimer", ptimer_set_session_id.to_string(16));
 
       ptimer_cur_id_to_be_clear = true;
     } else {
@@ -71,7 +71,7 @@ void                  probe_timer(stream<TcpSessionID> &rx_eng_to_timer_clear_pt
         to_event_eng = Event(RT, ptimer_cur_session_id);
 
 #endif
-        logger.Info(PROBE_TIMER, EVENT_ENG, "Tx/Rt Event", to_event_eng.to_string());
+        logger.Info(PROBE_TMR, EVENT_ENG, "Tx/Rt Event", to_event_eng.to_string());
         ptimer_to_event_eng_set_event.write(to_event_eng);
 
         ptimer_cur_id_to_be_clear = false;

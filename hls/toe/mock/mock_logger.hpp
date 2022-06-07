@@ -4,22 +4,22 @@
 enum ToeModule {
   NET_APP,
   ACK_DELAY,
-  CLOSE_TIMER,
+  CLOSE_TMR,
   EVENT_ENG,
-  PORT_TABLE,
-  PROBE_TIMER,
-  RETRANS_TIMER,
-  RX_APP_INTF,
-  RX_ENG,
-  RX_SAR,
+  PORT_TBLE,
+  PROBE_TMR,
+  RTRMT_TMR,
+  RX_APP_IF,
+  RX_ENGINE,
+  RX_SAR_TB,
   SLUP_CTRL,
-  CUCKOO_CAM,
-  STATE_TABLE,
-  TX_APP_INTF,
-  TX_ENG,
-  TX_SAR,
+  CUKOO_CAM,
+  STAT_TBLE,
+  TX_APP_IF,
+  TX_ENGINE,
+  TX_SAR_TB,
   TOE_TOP,
-  MISC_MODULE  // could be some of modules
+  MISC_MDLE  // could be some of modules
 };
 
 #ifndef __SYNTHESIS__
@@ -36,22 +36,22 @@ private:
   // all modules in 10 chars, including `\0`
   unordered_map<ToeModule, string> module_name = {{NET_APP, "NET_APP  "},
                                                   {ACK_DELAY, "ACK_DELAY"},
-                                                  {CLOSE_TIMER, "CLS_TIMER"},
+                                                  {CLOSE_TMR, "CLOSE_TMR"},
                                                   {EVENT_ENG, "EVENT_ENG"},
-                                                  {PORT_TABLE, "PORT_TBLE"},
-                                                  {PROBE_TIMER, "PRO_TIMER"},
-                                                  {RETRANS_TIMER, "RET_TIMER"},
-                                                  {RX_APP_INTF, "RX_INTF  "},
-                                                  {RX_ENG, "RX_ENGINE"},
-                                                  {RX_SAR, "RX_SAR_TB"},
+                                                  {PORT_TBLE, "PORT_TBLE"},
+                                                  {PROBE_TMR, "PROBE_TMR"},
+                                                  {RTRMT_TMR, "RTRMT_TMR"},
+                                                  {RX_APP_IF, "RX_APP_IF"},
+                                                  {RX_ENGINE, "RX_ENGINE"},
+                                                  {RX_SAR_TB, "RX_SAR_TB"},
                                                   {SLUP_CTRL, "SLUP_CTRL"},
-                                                  {CUCKOO_CAM, "CUKOO_CAM"},
-                                                  {STATE_TABLE, "STAT_TBLE"},
-                                                  {TX_APP_INTF, "TX_INTF  "},
-                                                  {TX_ENG, "TX_ENGINE"},
-                                                  {TX_SAR, "TX_SAR_TB"},
+                                                  {CUKOO_CAM, "CUKOO_CAM"},
+                                                  {STAT_TBLE, "STAT_TBLE"},
+                                                  {TX_APP_IF, "TX_APP_IF"},
+                                                  {TX_ENGINE, "TX_ENGINE"},
+                                                  {TX_SAR_TB, "TX_SAR_TB"},
                                                   {TOE_TOP, "TOE_TOP  "},
-                                                  {MISC_MODULE, "MISC_MDLE"}};
+                                                  {MISC_MDLE, "MISC_MDLE"}};
 
 public:
   uint64_t  sim_cycle;
@@ -70,6 +70,13 @@ public:
     enable_recv_log = true;
     log_module      = cur_log_module;
   }
+
+  std::string replace(std::string str, const std::string &substr1, const std::string &substr2) {
+    for (size_t index = str.find(substr1, 0); index != std::string::npos && substr1.length();
+         index        = str.find(substr1, index + substr2.length()))
+      str.replace(index, substr1.length(), substr2);
+    return str;
+  }
   // signal recv/send
   INLINE void Info(ToeModule     from_module,
                    ToeModule     to_module,
@@ -78,25 +85,38 @@ public:
                    bool          state_in_new_line = false) {
     string delimiter = state_in_new_line ? ("\n\t\t\t") : ("\t");
     if (enable_recv_log || enable_send_log) {
-      string from_module_str = "[" + module_name[from_module] + "]";
-      string to_module_str   = "[" + module_name[to_module] + "]\t";
+      string from_module_str  = "[" + module_name[from_module] + "]";
+      string to_module_str    = "[" + module_name[to_module] + "]\t";
+      string signal_state_str = signal_state;
+      if (state_in_new_line) {
+        signal_state_str = replace(signal_state_str, "\n", delimiter);
+      }
       if ((enable_recv_log && to_module == log_module) ||
           (enable_send_log && from_module == log_module) || (log_module == TOE_TOP)) {
         output_stream << "Cycle " << sim_cycle << ":\t";
         output_stream << from_module_str << "->" << to_module_str << "{" << signal_name << "}"
-                      << delimiter << signal_state << endl;
+                      << delimiter << signal_state_str << endl;
       }
     }
   }
   // inner state
-  INLINE void Info(const string &description, const string &state, bool state_in_new_line = false) {
+  INLINE void Info(const string &description,
+                   const string &state             = "",
+                   bool          state_in_new_line = false) {
     string delimiter      = state_in_new_line ? ("\n\t\t") : ("\t");
     string log_module_str = "[" + module_name[log_module] + "]";
     output_stream << "Cycle " << sim_cycle << ":\t";
-    output_stream << log_module_str << description << delimiter << state << endl;
+    output_stream << log_module_str << "\t\t\t\t\t"
+                  << "{" << description << "}" << delimiter << state << endl;
   }
+  // // inner state
+  // INLINE void Info(const string &description) {
+  //   string log_module_str = "[" + module_name[log_module] + "]";
+  //   output_stream << "Cycle " << sim_cycle << ":\t";
+  //   output_stream << log_module_str << "\t\t\t\t\t" << description << endl;
+  // }
 
-  INLINE void Info(string description) {
+  INLINE void NewLine(const string &description) {
     output_stream << "---------" << description << "---------\n";
   }
 

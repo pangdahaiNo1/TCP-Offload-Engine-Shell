@@ -6,8 +6,9 @@
 #include <hls_stream.h>
 #include <iostream>
 
-using namespace std;
 using hls::stream;
+using std::setw;
+using std::string;
 
 int LoadNetAXISFromFile(stream<NetAXIS> &net_axis_stream, const string &file_name) {
   std::ifstream axis_infile(file_name);

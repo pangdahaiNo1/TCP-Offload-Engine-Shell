@@ -58,7 +58,7 @@ void state_table(
   // TX App connection handler, write or write
   if (!tx_app_to_sttable_req.empty() && !tx_app_rw_locked) {
     tx_app_to_sttable_req.read(tx_app_rw_req);
-    logger.Info(TX_APP_INTF, STATE_TABLE, "R/W Session Req", tx_app_rw_req.to_string());
+    logger.Info(TX_APP_IF, STAT_TBLE, "R/W Session Req", tx_app_rw_req.to_string());
     if ((tx_app_rw_req.session_id == rx_eng_rw_req_session_id) && rx_eng_rw_req_session_id_locked) {
       tx_app_rw_locked = true;
     } else {
@@ -66,8 +66,8 @@ void state_table(
         state_table[tx_app_rw_req.session_id] = tx_app_rw_req.state;
         tx_app_rw_req_session_id_locked       = false;
       } else {
-        logger.Info(STATE_TABLE,
-                    TX_APP_INTF,
+        logger.Info(STAT_TBLE,
+                    TX_APP_IF,
                     "Read Sesion Rsp",
                     state_to_string(state_table[tx_app_rw_req.session_id]));
         sttable_to_tx_app_rsp.write(state_table[tx_app_rw_req.session_id]);
@@ -80,15 +80,14 @@ void state_table(
   // TX App Stream If, read only
   else if (!tx_app_to_sttable_lup_req.empty()) {
     tx_app_to_sttable_lup_req.read(session_id);
-    logger.Info(TX_APP_INTF, STATE_TABLE, "Lup Session Req", tx_app_rw_req.to_string());
-    logger.Info(
-        STATE_TABLE, TX_APP_INTF, "Lup Session Rsp", state_to_string(state_table[session_id]));
+    logger.Info(TX_APP_IF, STAT_TBLE, "Lup Session Req", tx_app_rw_req.to_string());
+    logger.Info(STAT_TBLE, TX_APP_IF, "Lup Session Rsp", state_to_string(state_table[session_id]));
     sttable_to_tx_app_lup_rsp.write(state_table[session_id]);
   }
   // RX Engine, read or write
   else if (!rx_eng_to_sttable_req.empty() && !rx_eng_rw_locked) {
     rx_eng_to_sttable_req.read(rx_eng_rw_req);
-    logger.Info(RX_ENG, STATE_TABLE, "R/W Session Req", rx_eng_rw_req.to_string(), false);
+    logger.Info(RX_ENGINE, STAT_TBLE, "R/W Session Req", rx_eng_rw_req.to_string(), false);
 
     if ((rx_eng_rw_req.session_id == tx_app_rw_req_session_id) && tx_app_rw_req_session_id_locked) {
       rx_eng_rw_locked = true;
@@ -96,10 +95,8 @@ void state_table(
       if (rx_eng_rw_req.write) {
         // We check if it was not closed before, not sure if necessary
         if (rx_eng_rw_req.state == CLOSED) {
-          logger.Info(STATE_TABLE,
-                      SLUP_CTRL,
-                      "Release Session Req",
-                      rx_eng_rw_req.session_id.to_string(16));
+          logger.Info(
+              STAT_TBLE, SLUP_CTRL, "Release Session Req", rx_eng_rw_req.session_id.to_string(16));
           sttable_to_slookup_release_req.write(rx_eng_rw_req.session_id);
         }
         state_table[rx_eng_rw_req.session_id] = rx_eng_rw_req.state;
@@ -108,8 +105,8 @@ void state_table(
         sttable_to_rx_eng_rsp.write(state_table[rx_eng_rw_req.session_id]);
         rx_eng_rw_req_session_id        = rx_eng_rw_req.session_id;
         rx_eng_rw_req_session_id_locked = true;
-        logger.Info(STATE_TABLE,
-                    RX_ENG,
+        logger.Info(STAT_TBLE,
+                    RX_ENGINE,
                     "Read Sesion Rsp",
                     state_to_string(state_table[rx_eng_rw_req.session_id]));
       }
@@ -126,10 +123,8 @@ void state_table(
       timer_release_locked = true;
     } else {
       state_table[timer_release_req_session_id] = CLOSED;
-      logger.Info(STATE_TABLE,
-                  SLUP_CTRL,
-                  "Release Session Req",
-                  timer_release_req_session_id.to_string(16));
+      logger.Info(
+          STAT_TBLE, SLUP_CTRL, "Release Session Req", timer_release_req_session_id.to_string(16));
       sttable_to_slookup_release_req.write(timer_release_req_session_id);
     }
   } else if (tx_app_rw_locked) {
@@ -139,8 +134,8 @@ void state_table(
         state_table[tx_app_rw_req.session_id] = tx_app_rw_req.state;
         tx_app_rw_req_session_id_locked       = false;
       } else {
-        logger.Info(STATE_TABLE,
-                    TX_APP_INTF,
+        logger.Info(STAT_TBLE,
+                    TX_APP_IF,
                     "Read Session Rsp",
                     state_to_string(state_table[tx_app_rw_req.session_id]),
                     false);
@@ -163,8 +158,8 @@ void state_table(
         state_table[rx_eng_rw_req.session_id] = rx_eng_rw_req.state;
         rx_eng_rw_req_session_id_locked       = false;
       } else {
-        logger.Info(STATE_TABLE,
-                    RX_ENG,
+        logger.Info(STAT_TBLE,
+                    RX_ENGINE,
                     "Read Sesion Rsp",
                     state_to_string(state_table[rx_eng_rw_req.session_id]),
                     false);
@@ -180,10 +175,8 @@ void state_table(
         ((timer_release_req_session_id != tx_app_rw_req_session_id) ||
          !tx_app_rw_req_session_id_locked)) {
       state_table[timer_release_req_session_id] = CLOSED;
-      logger.Info(STATE_TABLE,
-                  SLUP_CTRL,
-                  "Release Session Req",
-                  timer_release_req_session_id.to_string(16));
+      logger.Info(
+          STAT_TBLE, SLUP_CTRL, "Release Session Req", timer_release_req_session_id.to_string(16));
       sttable_to_slookup_release_req.write(timer_release_req_session_id);
       timer_release_locked = false;
     }

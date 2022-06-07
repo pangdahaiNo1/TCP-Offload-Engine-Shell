@@ -4,13 +4,13 @@
 #include "utils/axi_utils_test.hpp"
 #include "utils/pcap/pcap_to_stream.hpp"
 
-MockLogger logger("./rx_eng_inner.log", RX_ENG);
+MockLogger logger("./rx_eng_inner.log", RX_ENGINE);
 
 void EmptyTcpPayloadFifos(MockLogger &logger, stream<NetAXISWord> &tcp_payload_fifo) {
   NetAXISWord tcp_payload;
   while (!tcp_payload_fifo.empty()) {
     tcp_payload_fifo.read(tcp_payload);
-    logger.Info(RX_ENG, NET_APP, "Recv Payload", tcp_payload.to_string(), false);
+    logger.Info(RX_ENGINE, NET_APP, "Recv Payload", tcp_payload.to_string(), false);
   }
 }
 
@@ -22,11 +22,11 @@ void EmptyTcpRxPseudoHeaderFifos(MockLogger &                 logger,
   ap_uint<16> tcp_checksum;
   while (!tcp_pseudo_header_meta_parsed.empty()) {
     tcp_pseudo_header_meta_parsed.read(meta_header);
-    logger.Info(TOE_TOP, RX_ENG, "Recv Seg", meta_header.to_string(), true);
+    logger.Info(TOE_TOP, RX_ENGINE, "Recv Seg", meta_header.to_string(), true);
   }
   while (!tcp_pseudo_packet_checksum.empty()) {
     tcp_pseudo_packet_checksum.read(tcp_checksum);
-    logger.Info(TOE_TOP, RX_ENG, "Recv Seg Checksum", tcp_checksum.to_string(16), false);
+    logger.Info(TOE_TOP, RX_ENGINE, "Recv Seg Checksum", tcp_checksum.to_string(16), false);
   }
 }
 
@@ -36,7 +36,7 @@ void EmptyTcpRxEngCheckPortFifo(MockLogger &logger,
   TcpPortNumber port_number;
   while (!rx_eng_to_ptable_check_req.empty()) {
     rx_eng_to_ptable_check_req.read(port_number);
-    logger.Info(RX_ENG, PORT_TABLE, "CheckPort Req", port_number.to_string(16));
+    logger.Info(RX_ENGINE, PORT_TBLE, "CheckPort Req", port_number.to_string(16));
   }
 }
 
@@ -76,52 +76,52 @@ void EmptyTcpRxEngFSMFifo(
 
   while (!rx_eng_to_slookup_req.empty()) {
     rx_eng_to_slookup_req.read(to_slup_req);
-    logger.Info(RX_ENG, SLUP_CTRL, "Session Lup or Creaate", to_slup_req.to_string());
+    logger.Info(RX_ENGINE, SLUP_CTRL, "Session Lup or Creaate", to_slup_req.to_string());
   }
   while (!rx_eng_to_rx_sar_req.empty()) {
     rx_eng_to_rx_sar_req.read(to_rx_sar_req);
-    logger.Info(RX_ENG, RX_SAR, "R/W Req", to_rx_sar_req.to_string());
+    logger.Info(RX_ENGINE, RX_SAR_TB, "R/W Req", to_rx_sar_req.to_string());
   }
   while (!rx_eng_to_tx_sar_req.empty()) {
     rx_eng_to_tx_sar_req.read(to_tx_sar_req);
-    logger.Info(RX_ENG, TX_SAR, "R/W Req", to_tx_sar_req.to_string());
+    logger.Info(RX_ENGINE, TX_SAR_TB, "R/W Req", to_tx_sar_req.to_string());
   }
   while (!rx_eng_to_sttable_req.empty()) {
     rx_eng_to_sttable_req.read(to_sttable_req);
-    logger.Info(RX_ENG, STATE_TABLE, "R/W Req", to_slup_req.to_string());
+    logger.Info(RX_ENGINE, STAT_TBLE, "R/W Req", to_slup_req.to_string());
   }
   while (!rx_eng_to_timer_set_ctimer.empty()) {
     rx_eng_to_timer_set_ctimer.read(session_id);
-    logger.Info(RX_ENG, CLOSE_TIMER, "Set CTimer", session_id.to_string(16));
+    logger.Info(RX_ENGINE, CLOSE_TMR, "Set CTimer", session_id.to_string(16));
   }
   while (!rx_eng_to_timer_clear_rtimer.empty()) {
     rx_eng_to_timer_clear_rtimer.read(to_rtimer);
-    logger.Info(RX_ENG, RETRANS_TIMER, "Clear RTimer?: ", to_rtimer.to_string());
+    logger.Info(RX_ENGINE, RTRMT_TMR, "Clear RTimer?: ", to_rtimer.to_string());
   }
   while (!rx_eng_to_timer_clear_ptimer.empty()) {
     rx_eng_to_timer_clear_ptimer.read(session_id);
-    logger.Info(RX_ENG, PROBE_TIMER, "Clear PTimer", session_id.to_string(16));
+    logger.Info(RX_ENGINE, PROBE_TMR, "Clear PTimer", session_id.to_string(16));
   }
   while (!rx_eng_to_tx_app_notification.empty()) {
     rx_eng_to_tx_app_notification.read(to_tx_app_open_conn_notify);
-    logger.Info(RX_ENG, TX_APP_INTF, "OpenConn Notify", to_tx_app_open_conn_notify.to_string());
+    logger.Info(RX_ENGINE, TX_APP_IF, "OpenConn Notify", to_tx_app_open_conn_notify.to_string());
   }
   while (!rx_eng_to_tx_app_new_client_notification.empty()) {
     rx_eng_to_tx_app_new_client_notification.read(to_tx_app_new_client_notify);
-    logger.Info(RX_ENG, TX_APP_INTF, "NewClient Notify", to_tx_app_new_client_notify.to_string());
+    logger.Info(RX_ENGINE, TX_APP_IF, "NewClient Notify", to_tx_app_new_client_notify.to_string());
   }
   while (!rx_eng_to_rx_app_notification.empty()) {
     rx_eng_to_rx_app_notification.read(to_rx_app_notify);
-    logger.Info(RX_ENG, RX_APP_INTF, "App Notify", to_rx_app_notify.to_string());
+    logger.Info(RX_ENGINE, RX_APP_IF, "App Notify", to_rx_app_notify.to_string());
   }
   while (!rx_eng_to_event_eng_set_event.empty()) {
     rx_eng_to_event_eng_set_event.read(to_event_eng_event);
-    logger.Info(RX_ENG, EVENT_ENG, "Event", to_event_eng_event.to_string());
+    logger.Info(RX_ENGINE, EVENT_ENG, "Event", to_event_eng_event.to_string());
   }
 }
 
 void TestTcpPseudoHeaderParser(stream<NetAXIS> &input_tcp_packet) {
-  MockLogger top_logger("rx_eng_pseduo_header.log", RX_ENG);
+  MockLogger top_logger("rx_eng_pseduo_header.log", RX_ENGINE);
 
   // some fifos
   stream<NetAXISWord>  tcp_pseudo_packet_for_checksum_fifo("tcp_pseudo_packet_for_checksum_fifo");
@@ -194,7 +194,7 @@ void TestRxEngine(stream<NetAXIS> &input_tcp_packet, int input_tcp_packet_cnt) {
   // tcp payload to rx app
   stream<NetAXISWord> rx_eng_to_rx_app_data("rx_eng_to_rx_app_data");
 
-  MockLogger       top_logger("rx_eng.log", RX_ENG);
+  MockLogger       top_logger("rx_eng.log", RX_ENGINE);
   int              sim_cycle       = 0;
   int              total_sim_cycle = 2000;
   PtableToRxEngRsp ptable_rsp;

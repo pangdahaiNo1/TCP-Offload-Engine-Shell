@@ -50,6 +50,21 @@ struct NetAXISWord {
     new_axis.last = last;
     return new_axis;
   }
+#ifndef __SYNTHESIS__
+  INLINE std::string to_string() {
+    unsigned bytes = 0;
+    for (int i = 0; i < NET_TDATA_BYTES && keep.bit(i); i++) {
+      bytes++;
+    }
+    std::stringstream sstream;
+    sstream << "Bytes: " << bytes << "\t"
+            << "Dest: " << dest.to_string(16) << "\t"
+            << "Last: " << last.to_string(16);
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 #endif  // _AXI_INTF_HPP_

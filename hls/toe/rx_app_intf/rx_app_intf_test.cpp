@@ -6,7 +6,7 @@
 
 using namespace hls;
 using std::to_string;
-MockLogger logger("./rx_app_intf_inner.log", RX_APP_INTF);
+MockLogger logger("./rx_app_intf_inner.log", RX_APP_IF);
 
 void EmptyPortHandlerFifos(MockLogger &                  logger,
                            stream<NetAXISListenPortRsp> &rx_app_to_net_app_listen_port_rsp,
@@ -18,11 +18,11 @@ void EmptyPortHandlerFifos(MockLogger &                  logger,
   while (!rx_app_to_net_app_listen_port_rsp.empty()) {
     rx_app_to_net_app_listen_port_rsp.read(to_net_app_rsp);
     to_net_app_rsp_inner = to_net_app_rsp;
-    logger.Info(RX_APP_INTF, NET_APP, "ListenPort Rsp", to_net_app_rsp_inner.to_string());
+    logger.Info(RX_APP_IF, NET_APP, "ListenPort Rsp", to_net_app_rsp_inner.to_string());
   }
   while (!rx_app_to_ptable_listen_port_req.empty()) {
     rx_app_to_ptable_listen_port_req.read(to_ptable_req);
-    logger.Info(RX_APP_INTF, PORT_TABLE, "ListenPort Req", to_ptable_req.to_string());
+    logger.Info(RX_APP_IF, PORT_TBLE, "ListenPort Req", to_ptable_req.to_string());
   }
 }
 
@@ -34,7 +34,7 @@ int TestPortHandler() {
 
   EventWithTuple ev;
 
-  MockLogger port_logger("rx_app_port.log", RX_APP_INTF);
+  MockLogger port_logger("rx_app_port.log", RX_APP_IF);
 
   NetAXISListenPortReq net_app_req;
   ListenPortRsp        ptable_rsp;
@@ -90,16 +90,16 @@ void EmptyDataHandlerFifos(MockLogger &               logger,
 
   while (!rx_app_to_rx_sar_req.empty()) {
     rx_app_to_rx_sar_req.read(to_rx_sar_req);
-    logger.Info("Rx App to rx sar req", to_rx_sar_req.to_string(), false);
+    logger.Info(RX_APP_IF, RX_SAR_TB, "SAR Req", to_rx_sar_req.to_string(), false);
   }
   while (!net_app_read_data_rsp.empty()) {
     net_app_read_data_rsp.read(to_net_app_read_rsp);
     to_net_app_read_rsp_inner = to_net_app_read_rsp;
-    logger.Info("Rx App to Net App read data rsp", to_net_app_read_rsp_inner.to_string(), false);
+    logger.Info(RX_APP_IF, NET_APP, "ReadData Rsp", to_net_app_read_rsp_inner.to_string(), false);
   }
   while (!rx_app_to_net_app_data.empty()) {
     to_net_app_data = rx_app_to_net_app_data.read();
-    logger.Info("Rx App to Net APP data", to_net_app_data.to_string(), false);
+    logger.Info(RX_APP_IF, NET_APP, "Data", to_net_app_data.to_string(), false);
   }
 }
 
@@ -112,7 +112,7 @@ int TestDataHandler(stream<NetAXIS> &input_tcp_packets) {
   stream<NetAXISWord> rx_eng_to_rx_app_data("rx_eng_to_rx_app_data");
   stream<NetAXIS>     rx_app_to_net_app_data("rx_app_to_net_app_data");
 
-  MockLogger        data_logger("rx_app_data.log", RX_APP_INTF);
+  MockLogger        data_logger("rx_app_data.log", RX_APP_IF);
   NetAXISAppReadReq net_app_req;
   RxSarAppReqRsp    rx_sar_rsp;
 
@@ -199,7 +199,7 @@ void TestRxAppIntf(stream<NetAXIS> &input_tcp_packets) {
   // appnotifacation to net app with TDEST
   stream<NetAXISAppNotification> net_app_notification;
 
-  MockLogger top_logger("rx_app_intf.log", RX_APP_INTF);
+  MockLogger top_logger("rx_app_intf.log", RX_APP_IF);
   logger.Info("Test Rx App Intf");
 
   NetAXISListenPortReq   net_app_port_req;

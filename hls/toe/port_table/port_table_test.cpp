@@ -13,18 +13,18 @@ void EmptyFifos(MockLogger &              logger,
 
   while (!ptable_to_rx_eng_check_rsp.empty()) {
     ptable_to_rx_eng_check_rsp.read(to_rx_eng_rsp);
-    logger.Info("Porttable to Rx Engine rsp ", to_rx_eng_rsp.to_string(), false);
+    logger.Info(PORT_TBLE, RX_ENGINE, "CheckPort Rsp", to_rx_eng_rsp.to_string());
   }
   while (!ptable_to_rx_app_listen_port_rsp.empty()) {
     ptable_to_rx_app_listen_port_rsp.read(to_rx_app_rsp);
-    logger.Info("Porttable to Rx App rsp ", to_rx_app_rsp.to_string(), false);
+    logger.Info(PORT_TBLE, RX_APP_IF, "ListenPort Rsp", to_rx_app_rsp.to_string());
   }
   while (!ptable_to_tx_app_rsp.empty()) {
     ptable_to_tx_app_rsp.read(to_tx_app_free_port);
-    logger.Info("Porttable to Tx App free port ", to_tx_app_free_port.to_string(16), false);
+    logger.Info(PORT_TBLE, RX_APP_IF, "FreePort Rsp", to_tx_app_free_port.to_string(16));
   }
 }
-MockLogger logger("./ptable_inner.log", PORT_TABLE);
+MockLogger logger("./ptable_inner.log", PORT_TBLE);
 
 int main() {
   stream<TcpPortNumber>    rx_eng_to_ptable_check_req;
@@ -36,7 +36,7 @@ int main() {
   stream<TcpPortNumber>    ptable_to_tx_app_rsp;
 
   // open output file
-  MockLogger top_logger("ptable_top.log", PORT_TABLE);
+  MockLogger top_logger("ptable_top.log", PORT_TBLE);
 
   // check net app listen req/rsp and check
   ListenPortReq app_req;

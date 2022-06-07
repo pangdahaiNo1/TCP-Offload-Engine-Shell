@@ -10,17 +10,17 @@ void EmptyFifos(MockLogger &logger, stream<Event> &ptimer_to_event_eng_set_event
 
   while (!ptimer_to_event_eng_set_event.empty()) {
     ptimer_to_event_eng_set_event.read(ev);
-    logger.Info(PROBE_TIMER, EVENT_ENG, "Event", ev.to_string(), false);
+    logger.Info(PROBE_TMR, EVENT_ENG, "Event", ev.to_string(), false);
   }
 }
-MockLogger logger("./ptimer_inner.log", PROBE_TIMER);
+MockLogger logger("./ptimer_inner.log", PROBE_TMR);
 
 int main() {
   stream<TcpSessionID> rx_eng_to_timer_clear_ptimer;
   stream<TcpSessionID> tx_eng_to_timer_set_ptimer;
   stream<Event>        ptimer_to_event_eng_set_event;
 
-  MockLogger top_logger("./ptimer_top.log", PROBE_TIMER);
+  MockLogger top_logger("./ptimer_top.log", PROBE_TMR);
 
   int          sim_cycle   = 0;
   TcpSessionID to_timer_id = 0;

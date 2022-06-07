@@ -43,7 +43,7 @@ void tx_sar_table(
   // TX Engine read or write
   if (!tx_eng_to_tx_sar_req.empty()) {
     tx_eng_to_tx_sar_req.read(tx_eng_req);
-    logger.Info(TX_ENG, TX_SAR, "R/W Req", tx_eng_req.to_string());
+    logger.Info(TX_ENGINE, TX_SAR_TB, "R/W Req", tx_eng_req.to_string());
     if (tx_eng_req.write) {
       if (!tx_eng_req.retrans_req) {
         tx_sar_table[tx_eng_req.session_id].not_ackd = tx_eng_req.not_ackd;
@@ -62,7 +62,7 @@ void tx_sar_table(
               TxSarToTxAppRsp(tx_eng_req.session_id, tx_eng_req.not_ackd, TCP_MSS_TEN_TIMES, 1);
 
 #endif
-          logger.Info(TX_SAR, TX_APP_INTF, "Upd TxAppTable", to_tx_app_rsp.to_string());
+          logger.Info(TX_SAR_TB, TX_APP_IF, "Upd TxAppTable", to_tx_app_rsp.to_string());
           tx_sar_to_tx_app_rsp.write(to_tx_app_rsp);
         }
         if (tx_eng_req.fin_is_ready) {
@@ -112,21 +112,21 @@ void tx_sar_table(
       }
       to_tx_eng_rsp.min_window     = tx_sar_min_win;
       to_tx_eng_rsp.not_ackd_short = tmp_entry.not_ackd + to_tx_eng_rsp.curr_length;
-      logger.Info(TX_SAR, TX_ENG, "Lup rsp", to_tx_eng_rsp.to_string());
+      logger.Info(TX_SAR_TB, TX_ENGINE, "Lup rsp", to_tx_eng_rsp.to_string());
       tx_sar_to_tx_eng_rsp.write(to_tx_eng_rsp);
     }
   }
   // TX App update app written only
   else if (!tx_app_to_tx_sar_req.empty()) {
     tx_app_to_tx_sar_req.read(tx_app_req);
-    logger.Info(TX_APP_INTF, TX_SAR, "Upd AppRead Req", tx_app_req.to_string());
+    logger.Info(TX_APP_IF, TX_SAR_TB, "Upd AppRead Req", tx_app_req.to_string());
 
     tx_sar_table[tx_app_req.session_id].app_written = tx_app_req.app_written;
   }
   // RX Engine read or write
   else if (!rx_eng_to_tx_sar_req.empty()) {
     rx_eng_to_tx_sar_req.read(rx_eng_req);
-    logger.Info(RX_ENG, TX_SAR, "R/W Req", rx_eng_req.to_string());
+    logger.Info(RX_ENGINE, TX_SAR_TB, "R/W Req", rx_eng_req.to_string());
 
     if (rx_eng_req.write) {
       if (rx_eng_req.win_shift_write) {
@@ -150,7 +150,7 @@ void tx_sar_table(
       }
       to_tx_app_rsp = TxSarToTxAppRsp(rx_eng_req.session_id, rx_eng_req.ackd, tx_sar_min_win);
 #endif
-      logger.Info(TX_SAR, TX_APP_INTF, "Upd TxAppTable", to_tx_app_rsp.to_string());
+      logger.Info(TX_SAR_TB, TX_APP_IF, "Upd TxAppTable", to_tx_app_rsp.to_string());
       tx_sar_to_tx_app_rsp.write(to_tx_app_rsp);
     } else {
       to_rx_eng_rsp = TxSarToRxEngRsp(tx_sar_table[rx_eng_req.session_id].ackd,
@@ -160,7 +160,7 @@ void tx_sar_table(
                                       tx_sar_table[rx_eng_req.session_id].retrans_count,
                                       tx_sar_table[rx_eng_req.session_id].fast_retrans,
                                       tx_sar_table[rx_eng_req.session_id].win_shift);
-      logger.Info(TX_SAR, RX_ENG, "Lup Rsp", to_rx_eng_rsp.to_string());
+      logger.Info(TX_SAR_TB, RX_ENGINE, "Lup Rsp", to_rx_eng_rsp.to_string());
       tx_sar_to_rx_eng_rsp.write(to_rx_eng_rsp);
     }
   }

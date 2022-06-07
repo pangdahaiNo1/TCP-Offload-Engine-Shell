@@ -15,22 +15,22 @@ void EmptyFifos(MockLogger &          logger,
 
   while (!sttable_to_rx_eng_rsp.empty()) {
     sttable_to_rx_eng_rsp.read(cur_session_state);
-    logger.Info(STATE_TABLE, RX_ENG, "Session State", state_to_string(cur_session_state));
+    logger.Info(STAT_TBLE, RX_ENGINE, "Session State", state_to_string(cur_session_state));
   }
   while (!sttable_to_tx_app_lup_rsp.empty()) {
     sttable_to_tx_app_lup_rsp.read(cur_session_state);
-    logger.Info(STATE_TABLE, TX_APP_INTF, "Lup Session State", state_to_string(cur_session_state));
+    logger.Info(STAT_TBLE, TX_APP_IF, "Lup Session State", state_to_string(cur_session_state));
   }
   while (!sttable_to_tx_app_rsp.empty()) {
     sttable_to_tx_app_rsp.read(cur_session_state);
-    logger.Info(STATE_TABLE, TX_APP_INTF, "Session State", state_to_string(cur_session_state));
+    logger.Info(STAT_TBLE, TX_APP_IF, "Session State", state_to_string(cur_session_state));
   }
   while (!sttable_to_slookup_release_req.empty()) {
     sttable_to_slookup_release_req.read(to_slookup_req);
-    logger.Info(STATE_TABLE, SLUP_CTRL, "Release Session Req", to_slookup_req.to_string(16));
+    logger.Info(STAT_TBLE, SLUP_CTRL, "Release Session Req", to_slookup_req.to_string(16));
   }
 }
-MockLogger logger("./inner_state_table.log", STATE_TABLE);
+MockLogger logger("./inner_state_table.log", STAT_TBLE);
 
 int main() {
   stream<TcpSessionID>  timer_to_sttable_release_state;
@@ -42,7 +42,7 @@ int main() {
   stream<SessionState>  sttable_to_tx_app_rsp;
   stream<TcpSessionID>  sttable_to_slookup_release_req;
 
-  MockLogger top_logger("./state_table.log", STATE_TABLE);
+  MockLogger top_logger("./state_table.log", STAT_TBLE);
   int        sim_cycle = 0;
 
   TcpSessionID session_id;
