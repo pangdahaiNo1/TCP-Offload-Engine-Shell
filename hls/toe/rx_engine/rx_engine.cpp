@@ -431,6 +431,7 @@ void                 RxEngTcpMetaHandler(stream<TcpPseudoHeaderMeta> &tcp_meta_d
     case LOOKUP:  // wait for slookup response
       if (!slookup_to_rx_eng_rsp.empty()) {
         slookup_to_rx_eng_rsp.read(slookup_rsp_reg);
+        logger.Info(SLUP_CTRL, RX_ENG, "Session Lup Rsp", slookup_rsp_reg.to_string());
         if (slookup_rsp_reg.hit) {
           RxEngFsmMetaData rx_eng_fsm_meta(slookup_rsp_reg.session_id,
                                            tcp_meta_reg.src_ip,
@@ -1130,7 +1131,7 @@ void rx_engine(
 #pragma HLS DATAFLOW
 #pragma HLS INLINE
 
-#pragma HLS INTERFACE ap_ctrl_none       port = return
+//#pragma HLS INTERFACE ap_ctrl_none       port = return
 #pragma HLS INTERFACE axis register both port = rx_ip_pkt_in
 
   static stream<NetAXISWord> tcp_pseudo_packet_for_checksum_fifo(

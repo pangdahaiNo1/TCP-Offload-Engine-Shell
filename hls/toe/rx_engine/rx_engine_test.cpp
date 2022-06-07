@@ -224,6 +224,7 @@ void TestRxEngine(stream<NetAXIS> &input_tcp_packet, int input_tcp_packet_cnt) {
         rx_sar_rsp.recvd     = 0;
         rx_sar_rsp.win_shift = 0;
         rx_sar_to_rx_eng_rsp.write(rx_sar_rsp);
+        break;
       case 4:
         // 2nd packet - ACK, no data
         ptable_rsp.is_open = true;
@@ -254,7 +255,7 @@ void TestRxEngine(stream<NetAXIS> &input_tcp_packet, int input_tcp_packet_cnt) {
         tx_sar_to_rx_eng_rsp.write(tx_sar_rsp);
         break;
       case 7:
-        // 3rd packet
+        // 3rd packet ACK + data
         ptable_rsp.is_open = true;
         ptable_rsp.role_id = 0x1;
         ptable_to_rx_eng_check_rsp.write(ptable_rsp);
@@ -274,14 +275,88 @@ void TestRxEngine(stream<NetAXIS> &input_tcp_packet, int input_tcp_packet_cnt) {
         rx_sar_rsp.recvd     = 0xa135f3ce;
         rx_sar_rsp.win_shift = 2;
         rx_sar_to_rx_eng_rsp.write(rx_sar_rsp);
-        // 2nd packet
+        // 3rd packet
         tx_sar_rsp.perv_ack  = 0x0;
         tx_sar_rsp.next_byte = 0xff73ce99;  // ! import
         tx_sar_rsp.win_shift = 2;
         tx_sar_to_rx_eng_rsp.write(tx_sar_rsp);
         break;
       case 10:
-
+        // 4th packet - ACK  + no data
+        ptable_rsp.is_open = true;
+        ptable_rsp.role_id = 0x1;
+        ptable_to_rx_eng_check_rsp.write(ptable_rsp);
+        // 4th packet
+        slup_rsp.hit        = true;
+        slup_rsp.session_id = 0x1;
+        slup_rsp.role_id    = INVALID_TDEST;
+        slookup_to_rx_eng_rsp.write(slup_rsp);
+        break;
+      case 11:
+        // 4th packet -
+        sttable_to_rx_eng_rsp.write(ESTABLISHED);
+        // the 1st packet sequence + 1
+        rx_sar_rsp.app_read  = 0xa135f3ce + 0x2b4;
+        rx_sar_rsp.recvd     = 0xa135f3ce + 0x2b4;
+        rx_sar_rsp.win_shift = 2;
+        rx_sar_to_rx_eng_rsp.write(rx_sar_rsp);
+        // 3rd packet
+        tx_sar_rsp.perv_ack  = 0x0;
+        tx_sar_rsp.next_byte = 0xff73ce99 + 0x2b4;  // ! import
+        tx_sar_rsp.win_shift = 2;
+        tx_sar_to_rx_eng_rsp.write(tx_sar_rsp);
+        break;
+      case 30:
+        // 5th packet - FIN + ACK no data
+        ptable_rsp.is_open = true;
+        ptable_rsp.role_id = 0x1;
+        ptable_to_rx_eng_check_rsp.write(ptable_rsp);
+        // 5th packet
+        slup_rsp.hit        = true;
+        slup_rsp.session_id = 0x1;
+        slup_rsp.role_id    = INVALID_TDEST;
+        slookup_to_rx_eng_rsp.write(slup_rsp);
+        break;
+      case 31:
+        // 5th packet - FIN + ACK
+        sttable_to_rx_eng_rsp.write(ESTABLISHED);
+        // the 1st packet sequence + data length
+        rx_sar_rsp.app_read  = 0xa135f3ce + 0x2b4;
+        rx_sar_rsp.recvd     = 0xa135f3ce + 0x2b4;
+        rx_sar_rsp.win_shift = 2;
+        rx_sar_to_rx_eng_rsp.write(rx_sar_rsp);
+        // 5th packet
+        tx_sar_rsp.perv_ack  = 0x0;
+        tx_sar_rsp.next_byte = 0xff73ce99 + 0x2b4;  // ! import
+        tx_sar_rsp.win_shift = 2;
+        tx_sar_to_rx_eng_rsp.write(tx_sar_rsp);
+        break;
+      case 40:
+        // 6th packet - FIN + ACK no data
+        ptable_rsp.is_open = true;
+        ptable_rsp.role_id = 0x1;
+        ptable_to_rx_eng_check_rsp.write(ptable_rsp);
+        // 5th packet
+        slup_rsp.hit        = true;
+        slup_rsp.session_id = 0x1;
+        slup_rsp.role_id    = INVALID_TDEST;
+        slookup_to_rx_eng_rsp.write(slup_rsp);
+        break;
+      case 41:
+        // 6th packet - ACK
+        // the session will be close
+        sttable_to_rx_eng_rsp.write(LAST_ACK);
+        // 6th packet - the 1st packet sequence + data length + FIN
+        rx_sar_rsp.app_read  = 0xa135f3ce + 0x2b4;
+        rx_sar_rsp.recvd     = 0xa135f3ce + 0x2b4 + 1;
+        rx_sar_rsp.win_shift = 2;
+        rx_sar_to_rx_eng_rsp.write(rx_sar_rsp);
+        // 6th packet
+        tx_sar_rsp.perv_ack  = 0x0;
+        tx_sar_rsp.next_byte = 0xff73ce99 + 0x2b4 + 1;  // ! import
+        tx_sar_rsp.win_shift = 2;
+        tx_sar_to_rx_eng_rsp.write(tx_sar_rsp);
+        break;
       default:
         break;
     }
@@ -329,11 +404,11 @@ int main(int argc, char **argv) {
     std::cerr << "[ERROR] missing arguments " __FILE__ << " <INPUT_PCAP_FILE>" << endl;
     return -1;
   }
-  char *          golden_input_file_tcp = argv[1];
-  stream<NetAXIS> input_golden_tcp_packets("input_golden_tcp_packets");
+  char *golden_input_file_tcp = argv[1];
+  // stream<NetAXIS> input_golden_tcp_packets("input_golden_tcp_packets");
   stream<NetAXIS> input_golden_tcp_packets2("input_golden_tcp_packets2");
 
-  int packet_cnt  = PcapToStream(golden_input_file_tcp, true, input_golden_tcp_packets);
+  // int packet_cnt  = PcapToStream(golden_input_file_tcp, true, input_golden_tcp_packets);
   int packet2_cnt = PcapToStream(golden_input_file_tcp, true, input_golden_tcp_packets2);
 
   // TestTcpPseudoHeaderParser(input_golden_tcp_packets);
