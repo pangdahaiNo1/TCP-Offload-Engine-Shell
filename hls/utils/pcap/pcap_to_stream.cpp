@@ -167,20 +167,24 @@ int OpenFile(char *file_to_load, bool remove_file_ethernet_header) {
   return 0;
 }
 
-void PcapToStream(char *file_to_load,                 // pcapfilename
-                  bool  remove_file_ethernet_header,  // 0: No ethernet in the packet, 1:
-                                                      // ethernet include
-                  stream<NetAXIS> &output_data        // output data
+int PcapToStream(char *file_to_load,                 // pcapfilename
+                 bool  remove_file_ethernet_header,  // 0: No ethernet in the packet, 1:
+                                                     // ethernet include
+                 stream<NetAXIS> &output_data        // output data
 ) {
   NetAXIS curr_word;
   cout << "Read TCP Packets from " << file_to_load << endl;
-
+  int packet_cnt = 0;
   if (OpenFile(file_to_load, remove_file_ethernet_header) == 0) {
     while (!input_data.empty()) {
       input_data.read(curr_word);
+      if (curr_word.last) {
+        packet_cnt++;
+      }
       output_data.write(curr_word);
     }
   }
+  return packet_cnt;
 }
 
 /* It returns one complete packet each time is called

@@ -12,10 +12,10 @@
 
 using hls::stream;
 
-void PcapToStream(char *file2load,                    // pcapfilename
-                  bool  remove_file_ethernet_header,  // 0: No ethernet in the packet, 1:
-                                                      // ethernet include
-                  stream<NetAXIS> &output_data        // output data
+int PcapToStream(char *file2load,                    // pcapfilename
+                 bool  remove_file_ethernet_header,  // 0: No ethernet in the packet, 1:
+                                                     // ethernet include
+                 stream<NetAXIS> &output_data        // output data
 );
 
 void PcapToStreamStep(char *file2load,               // pcapfilename
