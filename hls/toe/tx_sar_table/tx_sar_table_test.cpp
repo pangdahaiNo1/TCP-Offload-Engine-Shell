@@ -8,10 +8,10 @@ using namespace hls;
 void EmptyFifos(MockLogger &             logger,
                 stream<TxSarToRxEngRsp> &tx_sar_to_rx_eng_rsp,
                 stream<TxSarToTxEngRsp> &tx_sar_to_tx_eng_rsp,
-                stream<TxSarToTxAppRsp> &tx_sar_to_tx_app_rsp) {
+                stream<TxSarToTxAppReq> &tx_sar_to_tx_app_upd_req) {
   TxSarToRxEngRsp to_rx_eng_rsp;
   TxSarToTxEngRsp to_tx_eng_rsp;
-  TxSarToTxAppRsp to_tx_app_rsp;
+  TxSarToTxAppReq to_tx_app_rsp;
 
   while (!tx_sar_to_rx_eng_rsp.empty()) {
     tx_sar_to_rx_eng_rsp.read(to_rx_eng_rsp);
@@ -23,8 +23,8 @@ void EmptyFifos(MockLogger &             logger,
     logger.Info(TX_SAR_TB, TX_ENGINE, "R/W Rsp", to_rx_eng_rsp.to_string());
   }
 
-  while (!tx_sar_to_tx_app_rsp.empty()) {
-    tx_sar_to_tx_app_rsp.read(to_tx_app_rsp);
+  while (!tx_sar_to_tx_app_upd_req.empty()) {
+    tx_sar_to_tx_app_upd_req.read(to_tx_app_rsp);
     logger.Info(TX_SAR_TB, TX_APP_IF, "Lup Rsp", to_rx_eng_rsp.to_string());
   }
 }
@@ -36,8 +36,8 @@ int main() {
   stream<TxSarToRxEngRsp> tx_sar_to_rx_eng_rsp;
   stream<TxEngToTxSarReq> tx_eng_to_tx_sar_req;
   stream<TxSarToTxEngRsp> tx_sar_to_tx_eng_rsp;
-  stream<TxAppToTxSarReq> tx_app_to_tx_sar_req;
-  stream<TxSarToTxAppRsp> tx_sar_to_tx_app_rsp;
+  stream<TxAppToTxSarReq> tx_app_to_tx_sar_upd_req;
+  stream<TxSarToTxAppReq> tx_sar_to_tx_app_upd_req;
 
   MockLogger top_logger("./tx_sar_top.log", TX_SAR_TB);
   int        sim_cycle = 0;
@@ -67,7 +67,7 @@ int main() {
       case 3:
         tx_app_req.app_written = 0x4321;
         tx_app_req.session_id  = 0x1;
-        tx_app_to_tx_sar_req.write(tx_app_req);
+        tx_app_to_tx_sar_upd_req.write(tx_app_req);
         break;
       case 4:
         // read tx sar table
@@ -81,13 +81,13 @@ int main() {
       default:
         break;
     }
-    tx_sar_table(rx_eng_to_tx_sar_req,
+    tx_sar_table(tx_app_to_tx_sar_upd_req,
+                 rx_eng_to_tx_sar_req,
                  tx_sar_to_rx_eng_rsp,
                  tx_eng_to_tx_sar_req,
                  tx_sar_to_tx_eng_rsp,
-                 tx_app_to_tx_sar_req,
-                 tx_sar_to_tx_app_rsp);
-    EmptyFifos(top_logger, tx_sar_to_rx_eng_rsp, tx_sar_to_tx_eng_rsp, tx_sar_to_tx_app_rsp);
+                 tx_sar_to_tx_app_upd_req);
+    EmptyFifos(top_logger, tx_sar_to_rx_eng_rsp, tx_sar_to_tx_eng_rsp, tx_sar_to_tx_app_upd_req);
     sim_cycle++;
     top_logger.SetSimCycle(sim_cycle);
     logger.SetSimCycle(sim_cycle);

@@ -10,17 +10,16 @@ extern MockLogger logger;
  *  and @ref tx_engine
  */
 void tx_sar_table(
+    // tx app update tx sar app_written
+    stream<TxAppToTxSarReq> &tx_app_to_tx_sar_upd_req,
     // rx eng r/w req/rsp
     stream<RxEngToTxSarReq> &rx_eng_to_tx_sar_req,
     stream<TxSarToRxEngRsp> &tx_sar_to_rx_eng_rsp,
     // tx eng r/w req/rsp
     stream<TxEngToTxSarReq> &tx_eng_to_tx_sar_req,
     stream<TxSarToTxEngRsp> &tx_sar_to_tx_eng_rsp,
-    // tx app update tx sar app_written
-    stream<TxAppToTxSarReq> &tx_app_to_tx_sar_req,
     // tx sar update tx app table
-    // TODO: this is not a response to tx app, should be rename here
-    stream<TxSarToTxAppRsp> &tx_sar_to_tx_app_rsp) {
+    stream<TxSarToTxAppReq> &tx_sar_to_tx_app_upd_req) {
 #pragma HLS LATENCY  max = 3
 #pragma HLS PIPELINE II  = 1
 
@@ -38,7 +37,7 @@ void tx_sar_table(
   TxSarToTxEngRsp  to_tx_eng_rsp;
   TcpSessionBuffer tx_sar_min_win;
   TcpSessionBuffer scaled_recv_window = 0;
-  TxSarToTxAppRsp  to_tx_app_rsp;
+  TxSarToTxAppReq  to_tx_app_rsp;
   TxSarToRxEngRsp  to_rx_eng_rsp;
   // TX Engine read or write
   if (!tx_eng_to_tx_sar_req.empty()) {
@@ -56,14 +55,14 @@ void tx_sar_table(
           tx_sar_table[tx_eng_req.session_id].fin_is_sent         = tx_eng_req.fin_is_sent;
           // Init ACK to tx app table
 #if !(TCP_NODELAY)
-          to_tx_app_rsp = TxSarToTxAppRsp(tx_eng_req.session_id, tx_eng_req.not_ackd, 1);
+          to_tx_app_rsp = TxSarToTxAppReq(tx_eng_req.session_id, tx_eng_req.not_ackd, 1);
 #else
           to_tx_app_rsp =
-              TxSarToTxAppRsp(tx_eng_req.session_id, tx_eng_req.not_ackd, TCP_MSS_TEN_TIMES, 1);
+              TxSarToTxAppReq(tx_eng_req.session_id, tx_eng_req.not_ackd, TCP_MSS_TEN_TIMES, 1);
 
 #endif
           logger.Info(TX_SAR_TB, TX_APP_IF, "Upd TxAppTable", to_tx_app_rsp.to_string());
-          tx_sar_to_tx_app_rsp.write(to_tx_app_rsp);
+          tx_sar_to_tx_app_upd_req.write(to_tx_app_rsp);
         }
         if (tx_eng_req.fin_is_ready) {
           tx_sar_table[tx_eng_req.session_id].fin_is_ready = tx_eng_req.fin_is_ready;
@@ -116,9 +115,9 @@ void tx_sar_table(
       tx_sar_to_tx_eng_rsp.write(to_tx_eng_rsp);
     }
   }
-  // TX App update app written only
-  else if (!tx_app_to_tx_sar_req.empty()) {
-    tx_app_to_tx_sar_req.read(tx_app_req);
+  // TX App update app written ideal to app written in real
+  else if (!tx_app_to_tx_sar_upd_req.empty()) {
+    tx_app_to_tx_sar_upd_req.read(tx_app_req);
     logger.Info(TX_APP_IF, TX_SAR_TB, "Upd AppRead Req", tx_app_req.to_string());
 
     tx_sar_table[tx_app_req.session_id].app_written = tx_app_req.app_written;
@@ -140,7 +139,7 @@ void tx_sar_table(
       tx_sar_table[rx_eng_req.session_id].fast_retrans  = rx_eng_req.fast_retrans;
 
 #if (!TCP_NODELAY)
-      to_tx_app_rsp = TxSarToTxAppRsp(rx_eng_req.session_id, rx_eng_req.ackd);
+      to_tx_app_rsp = TxSarToTxAppReq(rx_eng_req.session_id, rx_eng_req.ackd);
 #else
       scaled_recv_window(rx_eng_req.win_shift + 15, rx_eng_req.win_shift) = rx_eng_req.recv_window;
       if (rx_eng_req.cong_window < scaled_recv_window) {
@@ -148,10 +147,10 @@ void tx_sar_table(
       } else {
         tx_sar_min_win = scaled_recv_window;
       }
-      to_tx_app_rsp = TxSarToTxAppRsp(rx_eng_req.session_id, rx_eng_req.ackd, tx_sar_min_win);
+      to_tx_app_rsp = TxSarToTxAppReq(rx_eng_req.session_id, rx_eng_req.ackd, tx_sar_min_win);
 #endif
       logger.Info(TX_SAR_TB, TX_APP_IF, "Upd TxAppTable", to_tx_app_rsp.to_string());
-      tx_sar_to_tx_app_rsp.write(to_tx_app_rsp);
+      tx_sar_to_tx_app_upd_req.write(to_tx_app_rsp);
     } else {
       to_rx_eng_rsp = TxSarToRxEngRsp(tx_sar_table[rx_eng_req.session_id].ackd,
                                       tx_sar_table[rx_eng_req.session_id].not_ackd,

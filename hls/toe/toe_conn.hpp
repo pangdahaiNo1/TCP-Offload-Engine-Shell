@@ -238,7 +238,7 @@ typedef hls::axis<OpenConnRspNoTDEST, 0, 0, NET_TDEST_WIDTH> NetAXISAppOpenConnR
 struct AppOpenConnRsp {
   OpenConnRspNoTDEST data;
   NetAXISDest        dest;
-  AppOpenConnRsp() {}
+  AppOpenConnRsp() : data(), dest(0) {}
   AppOpenConnRsp(OpenConnRspNoTDEST rsp, NetAXISDest dest) : data(rsp), dest(dest) {}
   AppOpenConnRsp(const NetAXISAppOpenConnRsp &net_axis) {
 #pragma HLS INLINE
@@ -277,7 +277,8 @@ struct NewClientNotificationNoTDEST {
   bool tcp_nodelay;
   bool tcp_buffer_is_empty;  // Tells when the Tx buffer is empty. It is also used as a
                              // way to indicate that a new connection was opened.
-  NewClientNotificationNoTDEST() {}
+  NewClientNotificationNoTDEST()
+      : session_id(0), max_segment_size(0), tcp_nodelay(0), tcp_buffer_is_empty(0) {}
   NewClientNotificationNoTDEST(
       TcpSessionID id, ap_uint<8> buffersize, ap_uint<11> mss, bool tcp_nodelay, bool buf_empty)
       : session_id(id)
@@ -289,6 +290,8 @@ struct NewClientNotificationNoTDEST {
     std::stringstream sstream;
     sstream << "Session ID: " << session_id.to_string(16) << "\t";
     sstream << "MaxSegSize: " << max_segment_size.to_string(16) << "\t";
+    sstream << "TcpNoDelay?: " << tcp_nodelay << "\t";
+    sstream << "TcpBufferEmpty?: " << tcp_buffer_is_empty;
     return sstream.str();
   }
 #else
@@ -333,7 +336,8 @@ typedef hls::axis<TcpSessionID, 0, 0, NET_TDEST_WIDTH> NetAXISAppCloseConnReq;
 struct AppCloseConnReq {
   TcpSessionID data;
   NetAXISDest  dest;
-  AppCloseConnReq() {}
+  AppCloseConnReq() : data(0), dest(0) {}
+  AppCloseConnReq(TcpSessionID id, NetAXISDest dest) : data(id), dest(dest) {}
   AppCloseConnReq(const NetAXISAppCloseConnReq &net_axis) {
 #pragma HLS INLINE
     data = net_axis.data;
@@ -346,6 +350,16 @@ struct AppCloseConnReq {
     new_axis.dest = dest;
     return new_axis;
   }
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "SessionID: " << data.to_string(16) << "\t";
+    sstream << "TDEST: " << dest.to_string(16);
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 // net app want to sending data, notify the tx app intf the data length and session id
@@ -374,6 +388,17 @@ struct AppTransDataReq {
     new_axis.dest = dest;
     return new_axis;
   }
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "Length: " << data.to_string(16) << "\t";
+    sstream << "SessionID: " << id.to_string(16) << "\t";
+    sstream << "TDEST: " << dest.to_string(16);
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 enum TxAppTransDataError { NO_ERROR, ERROR_NOCONNECTION, ERROR_NOSPACE, ERROR_WINDOW };
@@ -390,6 +415,8 @@ struct AppTransDataRspNoTDEST {
     sstream << "TransLength: " << length.to_string(16) << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -420,9 +447,11 @@ struct AppTransDataRsp {
     sstream << "Dest: " << dest.to_string(16) << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
-
+// ip + port are all in big endian
 struct FourTuple {
   // big endian
   IpAddr src_ip_addr;
@@ -448,14 +477,29 @@ struct FourTuple {
             << SwapByte(dst_tcp_port).to_string(16) << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
+// ip + port are all in big endian
 struct IpPortTuple {
-  IpAddr        ip_addr;
+  // big endian
+  IpAddr ip_addr;
+  // big endian
   TcpPortNumber tcp_port;
   IpPortTuple() {}
   IpPortTuple(IpAddr ip, TcpPortNumber port) : ip_addr(ip), tcp_port(port) {}
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "IP:Port " << SwapByte(ip_addr).to_string(16) << ":"
+            << SwapByte(tcp_port).to_string(16) << "\t";
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 struct StateTableReq {
@@ -926,22 +970,22 @@ struct TxAppToTxSarReq {
 };
 
 // update Tx App Table
-struct TxSarToTxAppRsp {
+struct TxSarToTxAppReq {
   TcpSessionID     session_id;
   TcpSessionBuffer ackd;
 #if (TCP_NODELAY)
   TcpSessionBuffer min_window;
 #endif
   ap_uint<1> init;
-  TxSarToTxAppRsp() {}
+  TxSarToTxAppReq() {}
 #if !(TCP_NODELAY)
-  TxSarToTxAppRsp(TcpSessionID id, TcpSessionBuffer ackd) : session_id(id), ackd(ackd), init(0) {}
-  TxSarToTxAppRsp(TcpSessionID id, TcpSessionBuffer ackd, ap_uint<1> init)
+  TxSarToTxAppReq(TcpSessionID id, TcpSessionBuffer ackd) : session_id(id), ackd(ackd), init(0) {}
+  TxSarToTxAppReq(TcpSessionID id, TcpSessionBuffer ackd, ap_uint<1> init)
       : session_id(id), ackd(ackd), init(init) {}
 #else
-  TxSarToTxAppRsp(TcpSessionID id, TcpSessionBuffer ackd, TcpSessionBuffer min_window)
+  TxSarToTxAppReq(TcpSessionID id, TcpSessionBuffer ackd, TcpSessionBuffer min_window)
       : session_id(id), ackd(ackd), min_window(min_window), init(0) {}
-  TxSarToTxAppRsp(TcpSessionID     id,
+  TxSarToTxAppReq(TcpSessionID     id,
                   TcpSessionBuffer ackd,
                   TcpSessionBuffer min_window,
                   ap_uint<1>       init)
@@ -1046,6 +1090,16 @@ struct AppOpenConnReq {
     new_axis.dest = dest;
     return new_axis;
   }
+#ifndef __SYNTHESIS__
+  INLINE std::string to_string() {
+    std::stringstream sstream;
+    sstream << "OpenConn: " << data.to_string() << "\t";
+    sstream << "Dest: " << dest.to_string(16) << "\t";
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 /***
@@ -1234,7 +1288,7 @@ struct RxEngToSlookupReq {
 struct TxAppToSlookupReq {
   FourTuple   four_tuple;
   NetAXISDest role_id;
-  TxAppToSlookupReq() {}
+  TxAppToSlookupReq() : four_tuple(), role_id(0) {}
   TxAppToSlookupReq(FourTuple tuple, NetAXISDest role_id) : four_tuple(tuple), role_id(role_id) {}
 #ifndef __SYNTHESIS__
   INLINE std::string to_string() {
@@ -1462,6 +1516,8 @@ struct DataMoverCmd {
     sstream << "Addr: " << saddr.to_string(16) << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -1471,6 +1527,17 @@ struct DataMoverStatus {
   ap_uint<1> decerr;
   ap_uint<1> slverr;
   ap_uint<1> okay;
+  DataMoverStatus() : tag(0), interr(0), decerr(0), slverr(0), okay(0) {}
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "Tag: " << tag.to_string(16) << "\t";
+    sstream << "Okay: " << okay.to_string(16) << "\t";
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 /** @ingroup session_lookup_controller
