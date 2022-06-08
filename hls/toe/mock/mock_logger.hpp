@@ -19,7 +19,9 @@ enum ToeModule {
   TX_ENGINE,
   TX_SAR_TB,
   TOE_TOP,
-  MISC_MDLE  // could be some of modules
+  MISC_MDLE,  // could be some of modules
+  DATA_MVER,
+  MOCK_MEMY  // mock memory
 };
 
 #ifndef __SYNTHESIS__
@@ -34,24 +36,14 @@ using std::unordered_map;
 class MockLogger {
 private:
   // all modules in 10 chars, including `\0`
-  unordered_map<ToeModule, string> module_name = {{NET_APP, "NET_APP  "},
-                                                  {ACK_DELAY, "ACK_DELAY"},
-                                                  {CLOSE_TMR, "CLOSE_TMR"},
-                                                  {EVENT_ENG, "EVENT_ENG"},
-                                                  {PORT_TBLE, "PORT_TBLE"},
-                                                  {PROBE_TMR, "PROBE_TMR"},
-                                                  {RTRMT_TMR, "RTRMT_TMR"},
-                                                  {RX_APP_IF, "RX_APP_IF"},
-                                                  {RX_ENGINE, "RX_ENGINE"},
-                                                  {RX_SAR_TB, "RX_SAR_TB"},
-                                                  {SLUP_CTRL, "SLUP_CTRL"},
-                                                  {CUKOO_CAM, "CUKOO_CAM"},
-                                                  {STAT_TBLE, "STAT_TBLE"},
-                                                  {TX_APP_IF, "TX_APP_IF"},
-                                                  {TX_ENGINE, "TX_ENGINE"},
-                                                  {TX_SAR_TB, "TX_SAR_TB"},
-                                                  {TOE_TOP, "TOE_TOP  "},
-                                                  {MISC_MDLE, "MISC_MDLE"}};
+  unordered_map<ToeModule, string> module_name = {
+      {NET_APP, "NET_APP  "},   {ACK_DELAY, "ACK_DELAY"}, {CLOSE_TMR, "CLOSE_TMR"},
+      {EVENT_ENG, "EVENT_ENG"}, {PORT_TBLE, "PORT_TBLE"}, {PROBE_TMR, "PROBE_TMR"},
+      {RTRMT_TMR, "RTRMT_TMR"}, {RX_APP_IF, "RX_APP_IF"}, {RX_ENGINE, "RX_ENGINE"},
+      {RX_SAR_TB, "RX_SAR_TB"}, {SLUP_CTRL, "SLUP_CTRL"}, {CUKOO_CAM, "CUKOO_CAM"},
+      {STAT_TBLE, "STAT_TBLE"}, {TX_APP_IF, "TX_APP_IF"}, {TX_ENGINE, "TX_ENGINE"},
+      {TX_SAR_TB, "TX_SAR_TB"}, {TOE_TOP, "TOE_TOP  "},   {MISC_MDLE, "MISC_MDLE"},
+      {DATA_MVER, "DATA_MVER"}, {MOCK_MEMY, "MOCK_MEMY"}};
 
 public:
   uint64_t  sim_cycle;
