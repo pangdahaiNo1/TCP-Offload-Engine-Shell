@@ -259,6 +259,8 @@ struct AppOpenConnRsp {
     sstream << "Dest: " << dest.to_string(16) << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -327,6 +329,8 @@ struct NewClientNotification {
     sstream << "Dest: " << dest.to_string(16) << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 

@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
     std::cerr << "[ERROR] missing arguments " __FILE__ << " <INPUT_PCAP_FILE>" << endl;
     return -1;
   }
-  char *input_tcp_pcap_file = argv[1];
+  char *              input_tcp_pcap_file = argv[1];
   stream<NetAXIS>     input_tcp_ip_pkt_read_in("input_tcp_ip_pkt_read_in");
   stream<NetAXISWord> input_tcp_ip_pkt("input_tcp_ip_pkt");
   PcapToStream(input_tcp_pcap_file, true, input_tcp_ip_pkt_read_in);

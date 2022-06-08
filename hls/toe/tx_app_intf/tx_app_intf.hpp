@@ -5,60 +5,65 @@
 #include "toe/toe_conn.hpp"
 
 struct TxAppTableEntry {
-  ap_uint<WINDOW_BITS> ackd;
+  TcpSessionBuffer ackd;
   // the tx buffer memory write pointer, should equals to app_written
   // but app_written will update by DATAMOVER STATS
-  ap_uint<WINDOW_BITS> mempt;
+  TcpSessionBuffer app_written_ideal;
 #if (TCP_NODELAY)
-  ap_uint<WINDOW_BITS> min_window;
+  TcpSessionBuffer min_window;
 #endif
 };
 
 struct TxAppToTxAppTableReq {
-  ap_uint<16> session_id;
-  // ap_uint<16> ackd;
-  ap_uint<WINDOW_BITS> mempt;
-  bool                 write;
-  TxAppToTxAppTableReq() {}
-  TxAppToTxAppTableReq(ap_uint<16> id) : session_id(id), mempt(0), write(false) {}
-  TxAppToTxAppTableReq(ap_uint<16> id, ap_uint<WINDOW_BITS> pt)
-      : session_id(id), mempt(pt), write(true) {}
+  ap_uint<16>      session_id;
+  TcpSessionBuffer app_written_ideal;
+  bool             write;
+  TxAppToTxAppTableReq() : session_id(0), app_written_ideal(0), write(0) {}
+  // read req
+  TxAppToTxAppTableReq(ap_uint<16> id) : session_id(id), app_written_ideal(0), write(false) {}
+  // write req
+  TxAppToTxAppTableReq(ap_uint<16> id, TcpSessionBuffer app_written_ideal)
+      : session_id(id), app_written_ideal(app_written_ideal), write(true) {}
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
     sstream << "SessionID: " << session_id.to_string(16) << "\t";
-    sstream << "Mempt: " << mempt.to_string(16) << "\t";
+    sstream << "AppWriteIdeal: " << app_written_ideal.to_string(16) << "\t";
     sstream << "Write?: " << write << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
 struct TxAppTableToTxAppRsp {
-  ap_uint<16>          session_id;
-  ap_uint<WINDOW_BITS> ackd;
-  ap_uint<WINDOW_BITS> mempt;
+  ap_uint<16>      session_id;
+  TcpSessionBuffer ackd;
+  TcpSessionBuffer app_written_ideal;
 #if (TCP_NODELAY)
-  ap_uint<WINDOW_BITS> min_window;
+  TcpSessionBuffer min_window;
 #endif
-  TxAppTableToTxAppRsp() {}
-  TxAppTableToTxAppRsp(ap_uint<16> id, ap_uint<WINDOW_BITS> ackd, ap_uint<WINDOW_BITS> pt)
-      : session_id(id), ackd(ackd), mempt(pt) {}
+  TxAppTableToTxAppRsp() : session_id(0), ackd(0), app_written_ideal(0) {}
+  TxAppTableToTxAppRsp(ap_uint<16> id, TcpSessionBuffer ackd, TcpSessionBuffer app_written_ideal)
+      : session_id(id), ackd(ackd), app_written_ideal(app_written_ideal) {}
 #if (TCP_NODELAY)
-  TxAppTableToTxAppRsp(ap_uint<16>          id,
-                       ap_uint<WINDOW_BITS> ackd,
-                       ap_uint<WINDOW_BITS> pt,
-                       ap_uint<WINDOW_BITS> min_window)
-      : session_id(id), ackd(ackd), mempt(pt), min_window(min_window) {}
+  TxAppTableToTxAppRsp(ap_uint<16>      id,
+                       TcpSessionBuffer ackd,
+                       TcpSessionBuffer app_written_ideal,
+                       TcpSessionBuffer min_window)
+      : session_id(id), ackd(ackd), app_written_ideal(app_written_ideal), min_window(min_window) {}
 #endif
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
     sstream << "SessionID: " << session_id.to_string(16) << "\t";
     sstream << "Ackd: " << ackd.to_string(16) << "\t";
-    sstream << "Mempt: " << mempt.to_string(16) << "\t";
+    sstream << "AppWriteIdeal: " << app_written_ideal.to_string(16) << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -88,6 +93,7 @@ void TxAppConnectionHandler(
     // event engine
     stream<Event> &tx_app_conn_handler_to_event_engine,
     IpAddr &       my_ip_addr);
+
 void TxAppDataHandler(
     // net app
     stream<NetAXISAppTransDataReq> &net_app_to_tx_app_trans_data_req,
@@ -106,15 +112,15 @@ void TxAppDataHandler(
     stream<NetAXISWord> & tx_app_to_mem_write_data);
 
 void TxAppRspHandler(stream<DataMoverStatus> &mover_to_tx_app_sts,
-                     stream<Event> &          tx_app_to_event_eng_set_event_fifo,
-#if (!TCP_NODELAY)
-                     stream<Event> &tx_app_to_event_eng_set_event,
-#endif
-                     stream<TxAppToTxSarReq> &tx_app_to_tx_sar_req);
+                     stream<Event> &          tx_app_to_event_eng_cache,
+                     stream<Event> &          tx_app_to_event_eng_set_event,
+                     stream<TxAppToTxSarReq> &tx_app_to_tx_sar_upd_req);
 
-void TxAppTableInterface(stream<TxSarToTxAppRsp> &     tx_sar_to_tx_app_rsp,
-                         stream<TxAppToTxAppTableReq> &tx_app_to_tx_app_table_req,
-                         stream<TxAppTableToTxAppRsp> &tx_app_table_to_tx_app_rsp);
+void TxAppTableInterface(
+    // tx sar update tx app table
+    stream<TxSarToTxAppReq> &     tx_sar_to_tx_app_upd_req,
+    stream<TxAppToTxAppTableReq> &tx_app_to_tx_app_table_req,
+    stream<TxAppTableToTxAppRsp> &tx_app_table_to_tx_app_rsp);
 
 void tx_app_intf(
     // net app connection request
@@ -144,9 +150,9 @@ void tx_app_intf(
     stream<NetAXISAppTransDataReq> &net_app_to_tx_app_trans_data_req,
     stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_tans_data_rsp,
     stream<NetAXIS> &               net_app_trans_data,
-    // tx sar req/rsp
-    stream<TxAppToTxSarReq> &tx_app_to_tx_sar_req,
-    stream<TxSarToTxAppRsp> &tx_sar_to_tx_app_rsp,
+    // to/from tx sar upd req
+    stream<TxAppToTxSarReq> &tx_app_to_tx_sar_upd_req,
+    stream<TxSarToTxAppReq> &tx_sar_to_tx_app_upd_req,
     // to event eng
     stream<Event> &tx_app_to_event_eng_set_event,
     // state table
