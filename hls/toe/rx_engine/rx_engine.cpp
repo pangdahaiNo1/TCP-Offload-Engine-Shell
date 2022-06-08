@@ -957,11 +957,11 @@ void RxEngTcpFsm(
 
               // Check if there is payload
               if (tcp_rx_meta_reg.header.payload_length != 0) {
+#if (!TCP_RX_DDR_BYPASS)
                 payload_mem_addr(31, 30)          = 0x0;
                 payload_mem_addr(30, WINDOW_BITS) = tcp_rx_meta_reg.session_id(13, 0);
                 payload_mem_addr(WINDOW_BITS - 1, 0) =
                     tcp_rx_meta_reg.header.seq_number(WINDOW_BITS - 1, 0);
-#if (!TCP_RX_DDR_BYPASS)
                 rx_buffer_write_cmd.write(
                     DataMoverCmd(payload_mem_addr, tcp_rx_meta_reg.header.payload_length));
 #endif
