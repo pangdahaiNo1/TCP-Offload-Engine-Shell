@@ -20,4 +20,10 @@ void TxAppWriteDataToMem(stream<NetAXISWord> & tx_app_to_mem_data_in,
                          stream<DataMoverCmd> &tx_app_to_mem_cmd_in,
                          stream<NetAXIS> &     mover_write_mem_data_out,
                          stream<DataMoverCmd> &mover_write_mem_cmd_out);
+
+void GetSessionMemAddr(const TcpSessionID &    id,
+                       const TcpSessionBuffer &app_rw,
+                       // true = rx, false = tx
+                       bool         is_rx_or_tx,
+                       ap_uint<32> &session_mem_addr);
 #endif

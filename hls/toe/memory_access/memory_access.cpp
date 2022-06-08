@@ -377,3 +377,15 @@ void                 TxAppWriteDataToMem(stream<NetAXISWord> & tx_app_to_mem_dat
       break;
   }
 }
+
+void        GetSessionMemAddr(const TcpSessionID &    id,
+                              const TcpSessionBuffer &app_rw,
+                              // true = rx, false = tx
+                              bool         is_rx_or_tx,
+                              ap_uint<32> &session_mem_addr) {
+#pragma HLS INLINE
+  session_mem_addr[31] = is_rx_or_tx ? 0 : (!TCP_RX_DDR_BYPASS);
+  // only use the least significant bits in session id
+  session_mem_addr(30, WINDOW_BITS)    = id((30 - WINDOW_BITS), 0);
+  session_mem_addr(WINDOW_BITS - 1, 0) = app_rw(WINDOW_BITS - 1, 0);
+}
