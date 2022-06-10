@@ -85,7 +85,7 @@ public:
       }
       if ((enable_recv_log && to_module == log_module) ||
           (enable_send_log && from_module == log_module) || (log_module == TOE_TOP)) {
-        output_stream << "Cycle " << sim_cycle << ":\t";
+        output_stream << "C/" << sim_cycle << ":  ";
         output_stream << from_module_str << "->" << to_module_str << "{" << signal_name << "}"
                       << delimiter << signal_state_str << endl;
       }
@@ -97,8 +97,9 @@ public:
                    bool          state_in_new_line = false) {
     string delimiter      = state_in_new_line ? ("\n\t\t") : ("\t");
     string log_module_str = "[" + module_name[log_module] + "]";
-    output_stream << "Cycle " << sim_cycle << ":\t";
-    output_stream << log_module_str << "\t\t\t\t\t"
+    output_stream << "C/" << sim_cycle << ":  ";
+
+    output_stream << log_module_str << "\t\t\t\t"
                   << "{" << description << "}" << delimiter << state << endl;
   }
   // // inner state
