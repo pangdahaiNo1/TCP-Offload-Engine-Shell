@@ -1205,7 +1205,7 @@ void rx_engine(
   RxEngTcpPseudoHeaderInsert(
       rx_ip_pkt_in, tcp_pseudo_packet_for_checksum_fifo, tcp_pseudo_packet_for_rx_eng_fifo);
 
-  ComputeSubChecksum(tcp_pseudo_packet_for_checksum_fifo, tcp_pseudo_packet_subchecksum_fifo);
+  ComputeRxSubChecksum(tcp_pseudo_packet_for_checksum_fifo, tcp_pseudo_packet_subchecksum_fifo);
 
   CheckChecksum(tcp_pseudo_packet_subchecksum_fifo, tcp_pseudo_packet_checksum_fifo);
 

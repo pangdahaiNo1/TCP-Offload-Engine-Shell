@@ -1,6 +1,38 @@
 #include "axi_utils.hpp"
 
-void ComputeSubChecksum(stream<NetAXISWord> &pkt_in, stream<SubChecksum> &sub_checksum) {
+void ComputeRxSubChecksum(stream<NetAXISWord> &pkt_in, stream<SubChecksum> &sub_checksum) {
+#pragma HLS PIPELINE II = 1
+#pragma HLS INLINE   off
+  static SubChecksum tcp_checksums;
+  if (!pkt_in.empty()) {
+    NetAXISWord cur_word = pkt_in.read();
+    for (int i = 0; i < NET_TDATA_WIDTH / 16; i++) {
+#pragma HLS UNROLL
+      ap_uint<16> temp;
+      if (cur_word.keep(i * 2 + 1, i * 2) == 0x3) {
+        temp(7, 0)  = cur_word.data(i * 16 + 15, i * 16 + 8);
+        temp(15, 8) = cur_word.data(i * 16 + 7, i * 16);
+        tcp_checksums.sum[i] += temp;
+        tcp_checksums.sum[i] = (tcp_checksums.sum[i] + (tcp_checksums.sum[i] >> 16)) & 0xFFFF;
+      } else if (cur_word.keep[i * 2] == 0x1) {
+        temp(7, 0)  = 0;
+        temp(15, 8) = cur_word.data(i * 16 + 7, i * 16);
+        tcp_checksums.sum[i] += temp;
+        tcp_checksums.sum[i] = (tcp_checksums.sum[i] + (tcp_checksums.sum[i] >> 16)) & 0xFFFF;
+      }
+    }
+    if (cur_word.last == 1) {
+      sub_checksum.write(tcp_checksums);
+      for (int i = 0; i < NET_TDATA_WIDTH / 16; i++) {
+#pragma HLS UNROLL
+        tcp_checksums.sum[i] = 0;
+      }
+    }
+  }
+}
+
+// it is same as @ref ComputeRxSubChecksum, just for avoiding multi-write regs `static SubChecksum`
+void ComputeTxSubChecksum(stream<NetAXISWord> &pkt_in, stream<SubChecksum> &sub_checksum) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
   static SubChecksum tcp_checksums;
@@ -98,6 +130,7 @@ ap_uint<64> DataLengthToAxisKeep(ap_uint<6> length) {
 
 /**
  * Concat two word into one word, prev_word tail + cur_word head = send word
+ * NOTE: ignore the last/dest in @p cur_word or in @p prev_word
  *
  *   512                              k                               0
  *   ------------------------------------------------------------------
@@ -374,7 +407,7 @@ void        ConcatTwoWords(const NetAXISWord &cur_word,
 /**
  * Merge two words head part, prev_word head + cur_word head = send word
  *
- *   512                              k                               0
+ *   511                              k                               0
  *   ------------------------------------------------------------------
  *   |           cur_word(511-k,0)     |      prev_word(k,0)          |
  *   ------------------------------------------------------------------

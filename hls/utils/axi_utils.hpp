@@ -56,7 +56,8 @@ struct SubChecksum {
 
 NetAXIS NewNetAXIS(NetAXISData data, NetAXISDest dest, NetAXISKeep keep, ap_uint<1> last);
 
-void ComputeSubChecksum(stream<NetAXISWord> &pkt_in, stream<SubChecksum> &sub_checksum);
+void ComputeTxSubChecksum(stream<NetAXISWord> &pkt_in, stream<SubChecksum> &sub_checksum);
+void ComputeRxSubChecksum(stream<NetAXISWord> &pkt_in, stream<SubChecksum> &sub_checksum);
 
 void CheckChecksum(stream<SubChecksum> &sub_checksum, stream<ap_uint<16> > &valid_pkt_out);
 
