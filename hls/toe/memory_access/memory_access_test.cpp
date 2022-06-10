@@ -10,16 +10,15 @@ void EmptyTxWriteDataFifos(MockLogger &          logger,
                            stream<NetAXIS> &     mover_mem_data_out,
                            stream<DataMoverCmd> &mover_mem_cmd_out) {
   DataMoverCmd cmd_out;
-  NetAXIS      data_out;
+  NetAXISWord  data_out;
 
   while (!mover_mem_cmd_out.empty()) {
     mover_mem_cmd_out.read(cmd_out);
-    logger.Info("Tx App write cmd ", cmd_out.to_string(), false);
+    logger.Info(TX_APP_IF, DATA_MVER, "WriteMEM CMD", cmd_out.to_string());
   }
   while (!mover_mem_data_out.empty()) {
-    mover_mem_data_out.read(data_out);
-    logger.Info(
-        "Tx App write ", to_string(KeepToLength(data_out.keep)) + " Bytes word to mem", false);
+    data_out = mover_mem_data_out.read();
+    logger.Info(DATA_MVER, MOCK_MEMY, "WriteMEM Data", data_out.to_string());
   }
 }
 
@@ -31,26 +30,25 @@ void EmptyTxReadCmdFifos(MockLogger &                        logger,
 
   while (!mover_mem_cmd_out.empty()) {
     mover_mem_cmd_out.read(cmd_out);
-    logger.Info("Tx eng read mem cmd", cmd_out.to_string(), false);
+    logger.Info(TX_ENGINE, DATA_MVER, "ReadMem Cmd", cmd_out.to_string());
   }
   while (!mem_buffer_double_access.empty()) {
     mem_buffer_double_access.read(double_access);
-    logger.Info("Tx eng read mem double access check", double_access.to_string(), false);
+    logger.Info(TX_ENGINE, TX_ENGINE, "ReadMem Double?", double_access.to_string());
   }
 }
 
 void EmptyTxReadDataFifos(MockLogger &logger, stream<NetAXIS> &to_tx_eng_read_data) {
-  NetAXIS data_out;
+  NetAXISWord data_out;
 
   while (!to_tx_eng_read_data.empty()) {
-    to_tx_eng_read_data.read(data_out);
-    logger.Info(
-        "Tx eng read ", to_string(KeepToLength(data_out.keep)) + " Bytes word from mem", false);
+    data_out = to_tx_eng_read_data.read();
+    logger.Info(DATA_MVER, TX_ENGINE, "PayloadData", data_out.to_string());
   }
 }
 
 void TestTxWriteToMem(stream<NetAXIS> &input_tcp_packets) {
-  MockLogger logger("out_write_data.dat");
+  MockLogger logger("tx_app_write_data.log", TX_APP_IF);
 
   stream<NetAXISWord>  tx_app_to_mem_data_in;
   stream<DataMoverCmd> tx_app_to_mem_cmd_in;
@@ -60,7 +58,7 @@ void TestTxWriteToMem(stream<NetAXIS> &input_tcp_packets) {
   NetAXIS cur_word{};
   // ip packet length, because it remove the eth header
   TcpSessionBuffer cur_word_length = 0;
-  DataMoverCmd     cur_cmd         = DataMoverCmd{};
+  DataMoverCmd     cur_cmd;
 
   int sim_cycle = 0;
   while (sim_cycle < 200) {
@@ -116,7 +114,7 @@ void TestTxWriteToMem(stream<NetAXIS> &input_tcp_packets) {
 }
 
 void TestTxEngReadCmd() {
-  MockLogger logger("out_read_cmd.dat");
+  MockLogger logger("tx_eng_read_data.log", TX_ENGINE);
 
   stream<MemBufferRWCmd>             tx_eng_to_mem_cmd_in;
   stream<DataMoverCmd>               mover_read_mem_cmd_out;
@@ -130,7 +128,6 @@ void TestTxEngReadCmd() {
         break;
       case 2:
         tx_eng_to_mem_cmd_in.write(MemBufferRWCmd(0x1233FFFF, 0xFF));
-
         break;
       case 3:
         tx_eng_to_mem_cmd_in.write(MemBufferRWCmd(0x1237FFFE, 0x10));
