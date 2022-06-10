@@ -131,4 +131,36 @@ void NetAXIStreamWordToNetAXIStream(stream<NetAXISWord> &net_axis_word_stream_in
   }
 }
 
+// a ugly util func, need to be refactored
+void GenRandStream(uint64_t bytes_cnt, stream<NetAXIS> &rand_stream) {
+  uint64_t last_beat_byte = bytes_cnt % NET_TDATA_BYTES;
+  uint64_t beat_cnt       = bytes_cnt >> NET_TDATA_BYTES_LOG2;
+  uint64_t cnt            = 0;
+  NetAXIS  cur_beat;
+  while (cnt < beat_cnt) {
+    for (int i = 0; i < 64; i++) {
+      cur_beat.data((i + 1) * 8 - 1, i * 8) = 0xA0 + i;
+    }
+    cur_beat.keep = -1;
+    cur_beat.last = 0;
+
+    cnt++;
+    if (cnt == beat_cnt && last_beat_byte == 0) {
+      cur_beat.last = 1;
+      rand_stream.write(cur_beat);
+      return;
+    }
+    rand_stream.write(cur_beat);
+  }
+
+  cur_beat.data = 0;
+
+  for (int i = 0; i < last_beat_byte; i++) {
+    cur_beat.data((i + 1) * 8 - 1, i * 8) = 0xA0 + i;
+  }
+  cur_beat.keep = (1UL << last_beat_byte) - 1;
+  cur_beat.last = 1;
+  rand_stream.write(cur_beat);
+}
+
 #endif

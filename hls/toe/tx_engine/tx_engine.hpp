@@ -1,9 +1,7 @@
 #ifndef _TX_ENGINE_HPP_
 #define _TX_ENGINE_HPP_
 
-#include "ipv4/ipv4.hpp"
 #include "toe/memory_access/memory_access.hpp"
-#include "toe/tcp_header.hpp"
 #include "toe/toe_config.hpp"
 #include "toe/toe_conn.hpp"
 
@@ -12,6 +10,7 @@ struct TxEngFsmMetaData {
   ap_uint<32> ack_number;
   ap_uint<16> win_size;
   ap_uint<4>  win_scale;
+  // length = tcp payload length + tcp header options length
   ap_uint<16> length;
   ap_uint<1>  ack;
   ap_uint<1>  rst;
@@ -20,7 +19,17 @@ struct TxEngFsmMetaData {
   // lookup from port table,
   // it will be sent to the target `role`
   NetAXISDest role_id;
-  TxEngFsmMetaData() {}
+  TxEngFsmMetaData()
+      : seq_number(0)
+      , ack_number(0)
+      , win_size(0)
+      , win_scale(0)
+      , length(0)
+      , ack(0)
+      , rst(0)
+      , syn(0)
+      , fin(0)
+      , role_id(0) {}
   TxEngFsmMetaData(ap_uint<1> ack, ap_uint<1> rst, ap_uint<1> syn, ap_uint<1> fin)
       : seq_number(0)
       , ack_number(0)
@@ -48,28 +57,49 @@ struct TxEngFsmMetaData {
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
-    sstream << "Tx FSM State: \n" << std::hex;
-    sstream << "Flag: " << (this->ack == 1 ? "A/" : "") << (this->rst == 1 ? "R/" : "")
-            << (this->syn == 1 ? "S/" : "") << (this->fin == 1 ? "F" : "") << endl;
-    sstream << "Seqence Number: " << this->seq_number << endl;
-    sstream << "Acknowlegnement Number: " << this->ack_number << endl;
-    sstream << "Window Size: " << this->win_size << endl;
-    sstream << "Window Scale: " << this->win_scale << endl;
-    sstream << "Role ID: " << this->role_id << endl;
+    sstream << "Flag: " << (ack == 1 ? "A/" : "") << (rst == 1 ? "R/" : "")
+            << (syn == 1 ? "S/" : "") << (fin == 1 ? "F" : "") << "\n";
+    sstream << "Seqence Number: " << seq_number.to_string(16) << "\n";
+    sstream << "Acknowlegnement Number: " << ack_number.to_string(16) << "\n";
+    sstream << "Window Size: " << win_size.to_string(16) << "\n";
+    sstream << "Window Scale: " << win_scale << "\n";
+    sstream << "Payload+Options Length: " << length.to_string(16) << "\n";
+    sstream << "Role ID: " << role_id;
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
-/** @ingroup tx_engine
- *
- */
+INLINE ap_uint<32> RandomVal() {
+#ifndef __SYNTHESIS__
+  return 0xABCDABCD;  // just for simulation
+#else
+  // init value
+  static ap_uint<32> ramdom_val = 0x562301af;
+  ramdom_val                    = (ramdom_val * 8) xor ramdom_val;
+  return ramdom_val;
+#endif
+}
+
+// in big endian
 struct IpAddrPair {
   // big endian
   IpAddr src_ip_addr;
   IpAddr dst_ip_addr;
-  IpAddrPair() {}
+  IpAddrPair() : src_ip_addr(0), dst_ip_addr(0) {}
   IpAddrPair(IpAddr src_ip, IpAddr dst_ip) : src_ip_addr(src_ip), dst_ip_addr(dst_ip) {}
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "SrcIP: " << SwapByte(src_ip_addr).to_string(16) << "\t"
+            << "DstIP: " << SwapByte(dst_ip_addr).to_string(16) << "\t";
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 void TxEngTcpFsm(

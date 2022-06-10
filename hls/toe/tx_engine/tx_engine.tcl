@@ -37,7 +37,7 @@ if {$hls_act == "csim"} {
 }
 csynth_design
 if {$hls_act == "cosim"} {
-   cosim_design -rtl verilog -argv  "${pcap_input_dir}/echo_client_golden.pcap "
+   cosim_design -rtl verilog -argv  "${pcap_input_dir}/echo_server_golden.pcap "
 }
 
 exit
