@@ -270,7 +270,7 @@ struct NewClientNotificationNoTDEST {
    * not used for the time being, tells to the app the negotiated buffer size.
    * 65536 * (buffersize+1)
    */
-  // ap_uint<8>  buffersize;
+  ap_uint<8>  buffersize;
   ap_uint<11> max_segment_size;  // max 2048
   /*
    * Tells the application that the design uses TCP_NODELAY which means that the
@@ -284,6 +284,7 @@ struct NewClientNotificationNoTDEST {
   NewClientNotificationNoTDEST(
       TcpSessionID id, ap_uint<8> buffersize, ap_uint<11> mss, bool tcp_nodelay, bool buf_empty)
       : session_id(id)
+      , buffersize(buffersize)
       , max_segment_size(mss)
       , tcp_nodelay(tcp_nodelay)
       , tcp_buffer_is_empty(buf_empty) {}
@@ -886,7 +887,6 @@ struct TxEngToTxSarReq {
 #endif
 };
 
-// TODO: unnecessary structure. zelin 22-05-07
 struct TxEngToTxSarRetransReq : public TxEngToTxSarReq {
   TxEngToTxSarRetransReq() {}
   TxEngToTxSarRetransReq(const TxEngToTxSarReq &req)
@@ -921,7 +921,22 @@ struct TxSarToTxEngRsp {
   ap_uint<4>  win_shift;
 
   // ap_uint<16> Send_Window;
-  TxSarToTxEngRsp() {}
+  TxSarToTxEngRsp()
+      : ackd(0)
+      , not_ackd(0)
+      , min_window(0)
+      , app_written(0)
+      , fin_is_ready(0)
+      , fin_is_sent(0)
+      , curr_length(0)
+      , used_length(0)
+      , used_length_rst(0)
+      , usable_window(0)
+      , ackd_eq_not_ackd(0)
+      , not_ackd_short(0)
+      , usablewindow_b_mss(0)
+      , not_ackd_plus_mss(0)
+      , win_shift(0) {}
   TxSarToTxEngRsp(ap_uint<32>      ack,
                   ap_uint<32>      nack,
                   TcpSessionBuffer min_window,
@@ -933,7 +948,16 @@ struct TxSarToTxEngRsp {
       , min_window(min_window)
       , app_written(app)
       , fin_is_ready(fin_is_ready)
-      , fin_is_sent(fin_is_sent) {}
+      , fin_is_sent(fin_is_sent)
+      , curr_length(0)
+      , used_length(0)
+      , used_length_rst(0)
+      , usable_window(0)
+      , ackd_eq_not_ackd(0)
+      , not_ackd_short(0)
+      , usablewindow_b_mss(0)
+      , not_ackd_plus_mss(0)
+      , win_shift(0) {}
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
@@ -1224,7 +1248,7 @@ struct RstEvent : public Event {
   RstEvent(TcpSessionID id, ap_uint<32> seq) : Event(RST, id, seq(31, 16), seq(15, 0), 1) {}
   RstEvent(TcpSessionID id, ap_uint<32> seq, bool has_session_id)
       : Event(RST, id, seq(31, 16), seq(15, 0), has_session_id) {}
-  ap_uint<32> getAckNumb() {
+  ap_uint<32> get_ack_number() {
     ap_uint<32> seq;  // TODO FIXME REVIEW
     seq(31, 16) = buf_addr;
     seq(15, 0)  = length;
@@ -1254,14 +1278,14 @@ struct RxEngToRetransTimerReq {
 struct TxEngToRetransTimerReq {
   TcpSessionID session_id;
   EventType    type;
-  TxEngToRetransTimerReq() {}
+  TxEngToRetransTimerReq() : session_id(0), type(RT) {}
   TxEngToRetransTimerReq(TcpSessionID id) : session_id(id), type(RT) {}
   TxEngToRetransTimerReq(TcpSessionID id, EventType type) : session_id(id), type(type) {}
 #ifndef __SYNTHESIS__
   INLINE std::string to_string() {
     std::stringstream sstream;
     sstream << "SessionID: " << session_id.to_string(16) << "\t"
-            << "Event Type: " << type;
+            << "Event Type: " << event_type_to_string(type);
     return sstream.str();
   }
 #else
@@ -1420,6 +1444,8 @@ struct AppReadRsp {
     sstream << "Dest: " << dest.to_string(16) << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -1430,16 +1456,26 @@ struct MemBufferRWCmd {
   // next_addr(WINDOW_BITS) == 1 means the buffer is overflow, the cmd need to breakdown
   ap_uint<WINDOW_BITS + 1> next_addr;
 
-  MemBufferRWCmd() {}
+  MemBufferRWCmd() : addr(0), length(0), next_addr(0) {}
   MemBufferRWCmd(ap_uint<32> addr, ap_uint<16> length)
       : addr(addr), length(length), next_addr(addr(WINDOW_BITS - 1, 0) + length) {}
+#ifndef __SYNTHESIS__
+  std::string to_string() {
+    std::stringstream sstream;
+    sstream << "Addr: " << addr.to_string(16) << "\t";
+    sstream << "Len: " << length.to_string(16) << "\t";
+    return sstream.str();
+  }
+#else
+  INLINE char *to_string() { return 0; }
+#endif
 };
 
 //
 struct MemBufferRWCmdDoubleAccess {
   bool       double_access;
   ap_uint<6> byte_offset;
-  MemBufferRWCmdDoubleAccess() {}
+  MemBufferRWCmdDoubleAccess() : double_access(false), byte_offset(0) {}
   MemBufferRWCmdDoubleAccess(bool double_access, ap_uint<6> offset)
       : double_access(double_access), byte_offset(offset) {}
 #ifndef __SYNTHESIS__
@@ -1449,6 +1485,8 @@ struct MemBufferRWCmdDoubleAccess {
     sstream << "ByteOffset: " << byte_offset.to_string(16);
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -1490,6 +1528,8 @@ struct ThreeTuple {
             << SwapByte(there_tcp_port).to_string(16) << "\t";
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
@@ -1508,7 +1548,7 @@ struct DataMoverCmd {
   ap_uint<40> saddr;  /// Start Address
   ap_uint<4>  tag;
   ap_uint<4>  rsvd;
-  DataMoverCmd() {}
+  DataMoverCmd() : bbt(0), type(0), dsa(0), eof(0), drr(0), saddr(0), tag(0), rsvd(0) {}
   DataMoverCmd(ap_uint<32> addr, ap_uint<23> len)
       : bbt(len), type(1), dsa(0), eof(1), drr(1), tag(0), rsvd(0) {
     saddr = addr(31, 0) + TCP_DDR_BASE_ADDR;
