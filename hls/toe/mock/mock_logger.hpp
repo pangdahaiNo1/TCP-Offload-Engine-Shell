@@ -25,7 +25,7 @@ enum ToeModule {
 };
 
 #ifndef __SYNTHESIS__
-#include <ap_common.h>
+#include <ap_int.h>
 #include <fstream>
 #include <string>
 #include <unordered_map>
