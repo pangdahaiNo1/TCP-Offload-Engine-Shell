@@ -48,7 +48,7 @@ void toe_top(
     ap_uint<16> &reg_session_cnt,
     // in big endian
     IpAddr &my_ip_addr) {
-  //   #pragma HLS                        DATAFLOW
+#pragma HLS                        DATAFLOW
 #pragma HLS INTERFACE ap_ctrl_none port = return
 // interfaces
 // rx engine
@@ -103,139 +103,142 @@ void toe_top(
   // event engine
   static stream<Event, 4> tx_app_to_event_eng_set_event_fifo("tx_app_to_event_eng_set_event_fifo");
 #pragma HLS aggregate variable = tx_app_to_event_eng_set_event_fifo compact = bit
-  stream<EventWithTuple, 512> rx_eng_to_event_eng_set_event_fifo(
+  static stream<EventWithTuple, 512> rx_eng_to_event_eng_set_event_fifo(
       "rx_eng_to_event_eng_set_event_fifo");
 #pragma HLS aggregate variable = rx_eng_to_event_eng_set_event_fifo compact = bit
-  stream<Event, 4> timer_to_event_eng_set_event_fifo("timer_to_event_eng_set_event_fifo");
+  static stream<Event, 4> timer_to_event_eng_set_event_fifo("timer_to_event_eng_set_event_fifo");
 #pragma HLS aggregate variable = timer_to_event_eng_set_event_fifo compact = bit
-  stream<ap_uint<1>, 8> tx_eng_read_count_fifo("tx_eng_read_count_fifo");
+  static stream<ap_uint<1>, 8> tx_eng_read_count_fifo("tx_eng_read_count_fifo");
 
   // port table
-  stream<TcpPortNumber, 8> rx_eng_to_ptable_check_req_fifo("rx_eng_to_ptable_check_req_fifo");
-  stream<ListenPortReq, 8> rx_app_to_ptable_listen_port_req_fifo(
+  static stream<TcpPortNumber, 8> rx_eng_to_ptable_check_req_fifo(
+      "rx_eng_to_ptable_check_req_fifo");
+  static stream<ListenPortReq, 8> rx_app_to_ptable_listen_port_req_fifo(
       "rx_app_to_ptable_listen_port_req_fifo");
 #pragma HLS aggregate variable = rx_app_to_ptable_listen_port_req_fifo compact = bit
-  stream<TcpPortNumber, 8> slookup_to_ptable_release_port_req_fifo(
+  static stream<TcpPortNumber, 8> slookup_to_ptable_release_port_req_fifo(
       "slookup_to_ptable_release_port_req_fifo");
-  stream<NetAXISDest, 8>      tx_app_to_ptable_req_fifo("tx_app_to_ptable_req_fifo");
-  stream<PtableToRxEngRsp, 8> ptable_to_rx_eng_check_rsp_fifo("ptable_to_rx_eng_check_rsp_fifo");
+  static stream<NetAXISDest, 8>      tx_app_to_ptable_req_fifo("tx_app_to_ptable_req_fifo");
+  static stream<PtableToRxEngRsp, 8> ptable_to_rx_eng_check_rsp_fifo(
+      "ptable_to_rx_eng_check_rsp_fifo");
 #pragma HLS aggregate variable = ptable_to_rx_eng_check_rsp_fifo compact = bit
-  stream<ListenPortRsp, 8> ptable_to_rx_app_listen_port_rsp_fifo(
+  static stream<ListenPortRsp, 8> ptable_to_rx_app_listen_port_rsp_fifo(
       "ptable_to_rx_app_listen_port_rsp_fifo");
 #pragma HLS aggregate variable = ptable_to_rx_app_listen_port_rsp_fifo compact = bit
-  stream<TcpPortNumber, 8> ptable_to_tx_app_rsp_fifo("ptable_to_tx_app_rsp_fifo");
+  static stream<TcpPortNumber, 8> ptable_to_tx_app_rsp_fifo("ptable_to_tx_app_rsp_fifo");
 
   // rx app
-  stream<RxSarAppReqRsp, 4> rx_app_to_rx_sar_req_fifo("rx_app_to_rx_sar_req_fifo");
+  static stream<RxSarAppReqRsp, 4> rx_app_to_rx_sar_req_fifo("rx_app_to_rx_sar_req_fifo");
 #pragma HLS aggregate variable = rx_app_to_rx_sar_req_fifo compact = bit
-  stream<RxSarAppReqRsp, 4> rx_sar_to_rx_app_rsp_fifo("rx_sar_to_rx_app_rsp_fifo");
+  static stream<RxSarAppReqRsp, 4> rx_sar_to_rx_app_rsp_fifo("rx_sar_to_rx_app_rsp_fifo");
 #pragma HLS aggregate variable = rx_sar_to_rx_app_rsp_fifo compact = bit
 
-  stream<NetAXISWord, 512> rx_eng_to_rx_app_data_fifo("rx_eng_to_rx_app_data_fifo");
+  static stream<NetAXISWord, 512> rx_eng_to_rx_app_data_fifo("rx_eng_to_rx_app_data_fifo");
 #pragma HLS aggregate variable = rx_eng_to_rx_app_data_fifo compact = bit
 
-  stream<AppNotificationNoTDEST, 4> rx_eng_to_rx_app_notification_fifo(
+  static stream<AppNotificationNoTDEST, 4> rx_eng_to_rx_app_notification_fifo(
       "rx_eng_to_rx_app_notification_fifo");
 #pragma HLS aggregate variable = rx_eng_to_rx_app_notification_fifo compact = bit
 
-  stream<AppNotificationNoTDEST, 4> rtimer_to_rx_app_notification_fifo(
+  static stream<AppNotificationNoTDEST, 4> rtimer_to_rx_app_notification_fifo(
       "rtimer_to_rx_app_notification_fifo");
 #pragma HLS aggregate variable = rtimer_to_rx_app_notification_fifo compact = bit
 
-  stream<TcpSessionID, 4> rx_app_to_slookup_tdest_lookup_req_fifo(
+  static stream<TcpSessionID, 4> rx_app_to_slookup_tdest_lookup_req_fifo(
       "rx_app_to_slookup_tdest_lookup_req_fifo");
 
-  stream<NetAXISDest, 4> slookup_to_rx_app_tdest_lookup_rsp_fifo(
+  static stream<NetAXISDest, 4> slookup_to_rx_app_tdest_lookup_rsp_fifo(
       "slookup_to_rx_app_tdest_lookup_rsp_fifo");
 
   // rx engine
-  stream<RxEngToSlookupReq, 4> rx_eng_to_slookup_req_fifo("rx_eng_to_slookup_req_fifo");
+  static stream<RxEngToSlookupReq, 4> rx_eng_to_slookup_req_fifo("rx_eng_to_slookup_req_fifo");
 #pragma HLS aggregate variable = rx_eng_to_slookup_req_fifo compact = bit
 
-  stream<SessionLookupRsp, 4> slookup_to_rx_eng_rsp_fifo("slookup_to_rx_eng_rsp_fifo");
+  static stream<SessionLookupRsp, 4> slookup_to_rx_eng_rsp_fifo("slookup_to_rx_eng_rsp_fifo");
 #pragma HLS aggregate variable = slookup_to_rx_eng_rsp_fifo compact = bit
 
-  stream<RxEngToRxSarReq, 4> rx_eng_to_rx_sar_req_fifo("rx_eng_to_rx_sar_req_fifo");
+  static stream<RxEngToRxSarReq, 4> rx_eng_to_rx_sar_req_fifo("rx_eng_to_rx_sar_req_fifo");
 #pragma HLS aggregate variable = rx_eng_to_rx_sar_req_fifo compact = bit
 
-  stream<RxSarTableEntry, 4> rx_sar_to_rx_eng_rsp_fifo("rx_sar_to_rx_eng_rsp_fifo");
+  static stream<RxSarTableEntry, 4> rx_sar_to_rx_eng_rsp_fifo("rx_sar_to_rx_eng_rsp_fifo");
 #pragma HLS aggregate variable = rx_sar_to_rx_eng_rsp_fifo compact = bit
-  stream<RxEngToTxSarReq, 4> rx_eng_to_tx_sar_req_fifo("rx_eng_to_tx_sar_req_fifo");
+  static stream<RxEngToTxSarReq, 4> rx_eng_to_tx_sar_req_fifo("rx_eng_to_tx_sar_req_fifo");
 #pragma HLS aggregate variable = rx_eng_to_tx_sar_req_fifo compact = bit
-  stream<TxSarToRxEngRsp, 4> tx_sar_to_rx_eng_rsp_fifo("tx_sar_to_rx_eng_rsp_fifo");
+  static stream<TxSarToRxEngRsp, 4> tx_sar_to_rx_eng_rsp_fifo("tx_sar_to_rx_eng_rsp_fifo");
 #pragma HLS aggregate variable = tx_sar_to_rx_eng_rsp_fifo compact = bit
-  stream<StateTableReq, 4> rx_eng_to_sttable_req_fifo("rx_eng_to_sttable_req_fifo");
+  static stream<StateTableReq, 4> rx_eng_to_sttable_req_fifo("rx_eng_to_sttable_req_fifo");
 #pragma HLS aggregate variable = rx_eng_to_sttable_req_fifo compact = bit
-  stream<SessionState, 4> sttable_to_rx_eng_rsp_fifo("sttable_to_rx_eng_rsp_fifo");
+  static stream<SessionState, 4> sttable_to_rx_eng_rsp_fifo("sttable_to_rx_eng_rsp_fifo");
 #pragma HLS aggregate variable = sttable_to_rx_eng_rsp_fifo compact = bit
-  stream<OpenConnRspNoTDEST, 4> rx_eng_to_tx_app_notification_fifo(
+  static stream<OpenConnRspNoTDEST, 4> rx_eng_to_tx_app_notification_fifo(
       "rx_eng_to_tx_app_notification_fifo");
 #pragma HLS aggregate variable = rx_eng_to_tx_app_notification_fifo compact = bit
-  stream<NewClientNotificationNoTDEST, 4> rx_eng_to_tx_app_new_client_notification_fifo(
+  static stream<NewClientNotificationNoTDEST, 4> rx_eng_to_tx_app_new_client_notification_fifo(
       "rx_eng_to_tx_app_new_client_notification_fifo");
 #pragma HLS aggregate variable = rx_eng_to_tx_app_new_client_notification_fifo compact = bit
 
   // rx sar table
-  stream<TcpSessionID, 4>   tx_eng_to_rx_sar_lup_req_fifo("tx_eng_to_rx_sar_lup_req_fifo");
-  stream<RxSarLookupRsp, 4> rx_sar_to_tx_eng_lup_rsp_fifo("rx_sar_to_tx_eng_lup_rsp_fifo");
+  static stream<TcpSessionID, 4>   tx_eng_to_rx_sar_lup_req_fifo("tx_eng_to_rx_sar_lup_req_fifo");
+  static stream<RxSarLookupRsp, 4> rx_sar_to_tx_eng_lup_rsp_fifo("rx_sar_to_tx_eng_lup_rsp_fifo");
 #pragma HLS aggregate variable = rx_sar_to_tx_eng_lup_rsp_fifo compact = bit
 
   // session lookup
-  stream<TcpSessionID, 4> sttable_to_slookup_release_req_fifo(
+  static stream<TcpSessionID, 4> sttable_to_slookup_release_req_fifo(
       "sttable_to_slookup_release_req_fifo");
-  stream<TxAppToSlookupReq, 4> tx_app_to_slookup_req_fifo("tx_app_to_slookup_req_fifo");
+  static stream<TxAppToSlookupReq, 4> tx_app_to_slookup_req_fifo("tx_app_to_slookup_req_fifo");
 #pragma HLS aggregate variable = tx_app_to_slookup_req_fifo compact = bit
 
-  stream<SessionLookupRsp, 4> slookup_to_tx_app_rsp_fifo("slookup_to_tx_app_rsp_fifo");
+  static stream<SessionLookupRsp, 4> slookup_to_tx_app_rsp_fifo("slookup_to_tx_app_rsp_fifo");
 #pragma HLS aggregate variable = slookup_to_tx_app_rsp_fifo compact = bit
 
-  stream<TcpSessionID, 4> tx_app_to_slookup_check_tdest_req_fifo(
+  static stream<TcpSessionID, 4> tx_app_to_slookup_check_tdest_req_fifo(
       "tx_app_to_slookup_check_tdest_req_fifo");
-  stream<NetAXISDest, 4> slookup_to_tx_app_check_tdest_rsp_fifo(
+  static stream<NetAXISDest, 4> slookup_to_tx_app_check_tdest_rsp_fifo(
       "slookup_to_tx_app_check_tdest_rsp_fifo");
-  stream<ap_uint<16>, 4> tx_eng_to_slookup_rev_table_req_fifo(
+  static stream<ap_uint<16>, 4> tx_eng_to_slookup_rev_table_req_fifo(
       "tx_eng_to_slookup_rev_table_req_fifo");
-  stream<ReverseTableToTxEngRsp, 4> slookup_rev_table_to_tx_eng_rsp_fifo(
+  static stream<ReverseTableToTxEngRsp, 4> slookup_rev_table_to_tx_eng_rsp_fifo(
       "slookup_rev_table_to_tx_eng_rsp_fifo");
 #pragma HLS aggregate variable = slookup_rev_table_to_tx_eng_rsp_fifo compact = bit
 
   // state table
-  stream<StateTableReq, 4> tx_app_to_sttable_req_fifo("tx_app_to_sttable_req_fifo");
+  static stream<StateTableReq, 4> tx_app_to_sttable_req_fifo("tx_app_to_sttable_req_fifo");
 #pragma HLS aggregate variable = tx_app_to_sttable_req_fifo compact = bit
-  stream<TcpSessionID, 4> tx_app_to_sttable_lup_req_fifo("tx_app_to_sttable_lup_req_fifo");
-  stream<TcpSessionID, 4> timer_to_sttable_release_state_fifo(
+  static stream<TcpSessionID, 4> tx_app_to_sttable_lup_req_fifo("tx_app_to_sttable_lup_req_fifo");
+  static stream<TcpSessionID, 4> timer_to_sttable_release_state_fifo(
       "timer_to_sttable_release_state_fifo");
-  stream<SessionState, 4> sttable_to_tx_app_rsp_fifo("sttable_to_tx_app_rsp_fifo");
+  static stream<SessionState, 4> sttable_to_tx_app_rsp_fifo("sttable_to_tx_app_rsp_fifo");
 #pragma HLS aggregate variable = sttable_to_tx_app_rsp_fifo compact = bit
-  stream<SessionState, 4> sttable_to_tx_app_lup_rsp_fifo("sttable_to_tx_app_lup_rsp_fifo");
+  static stream<SessionState, 4> sttable_to_tx_app_lup_rsp_fifo("sttable_to_tx_app_lup_rsp_fifo");
 #pragma HLS aggregate variable = sttable_to_tx_app_lup_rsp_fifo compact = bit
 
   // timer wrapper
-  stream<TcpSessionID, 4> rx_eng_to_timer_set_ctimer_fifo("rx_eng_to_timer_set_ctimer_fifo");
+  static stream<TcpSessionID, 4> rx_eng_to_timer_set_ctimer_fifo("rx_eng_to_timer_set_ctimer_fifo");
 
-  stream<RxEngToRetransTimerReq, 4> rx_eng_to_timer_clear_rtimer_fifo(
+  static stream<RxEngToRetransTimerReq, 4> rx_eng_to_timer_clear_rtimer_fifo(
       "rx_eng_to_timer_clear_rtimer_fifo");
 #pragma HLS aggregate variable = rx_eng_to_timer_clear_rtimer_fifo compact = bit
-  stream<TxEngToRetransTimerReq, 4> tx_eng_to_timer_set_rtimer_fifo(
+  static stream<TxEngToRetransTimerReq, 4> tx_eng_to_timer_set_rtimer_fifo(
       "tx_eng_to_timer_set_rtimer_fifo");
 #pragma HLS aggregate variable = tx_eng_to_timer_set_rtimer_fifo compact = bit
 
-  stream<OpenConnRspNoTDEST, 4> rtimer_to_tx_app_notification_fifo(
+  static stream<OpenConnRspNoTDEST, 4> rtimer_to_tx_app_notification_fifo(
       "rtimer_to_tx_app_notification_fifo");
 #pragma HLS aggregate variable = rtimer_to_tx_app_notification_fifo compact = bit
 
-  stream<TcpSessionID, 4> rx_eng_to_timer_clear_ptimer_fifo("rx_eng_to_timer_clear_ptimer_fifo");
-  stream<TcpSessionID, 4> tx_eng_to_timer_set_ptimer_fifo("tx_eng_to_timer_set_ptimer_fifo");
+  static stream<TcpSessionID, 4> rx_eng_to_timer_clear_ptimer_fifo(
+      "rx_eng_to_timer_clear_ptimer_fifo");
+  static stream<TcpSessionID, 4> tx_eng_to_timer_set_ptimer_fifo("tx_eng_to_timer_set_ptimer_fifo");
 
   // tx app intf
-  stream<TxAppToTxSarReq, 4> tx_app_to_tx_sar_req_fifo("tx_app_to_tx_sar_req_fifo");
-#pragma HLS aggregate variable = tx_app_to_tx_sar_req_fifo compact = bit
-  stream<TxSarToTxAppRsp, 4> tx_sar_to_tx_app_rsp_fifo("tx_sar_to_tx_app_rsp_fifo");
-#pragma HLS aggregate variable = tx_sar_to_tx_app_rsp_fifo compact = bit
+  static stream<TxAppToTxSarReq, 4> tx_app_to_tx_sar_upd_req_fifo("tx_app_to_tx_sar_upd_req_fifo");
+#pragma HLS aggregate variable = tx_app_to_tx_sar_upd_req_fifo compact = bit
+  static stream<TxSarToTxAppReq, 4> tx_sar_to_tx_app_upd_req_fifo("tx_sar_to_tx_app_upd_req_fifo");
+#pragma HLS aggregate variable = tx_sar_to_tx_app_upd_req_fifo compact = bit
   // tx engine
-  stream<TxEngToTxSarReq, 4> tx_eng_to_tx_sar_req_fifo("tx_eng_to_tx_sar_req_fifo");
+  static stream<TxEngToTxSarReq, 4> tx_eng_to_tx_sar_req_fifo("tx_eng_to_tx_sar_req_fifo");
 #pragma HLS aggregate variable = tx_eng_to_tx_sar_req_fifo compact = bit
-  stream<TxSarToTxEngRsp, 4> tx_sar_to_tx_eng_rsp_fifo("tx_sar_to_tx_eng_rsp_fifo");
+  static stream<TxSarToTxEngRsp, 4> tx_sar_to_tx_eng_rsp_fifo("tx_sar_to_tx_eng_rsp_fifo");
 #pragma HLS aggregate variable = tx_sar_to_tx_eng_rsp_fifo compact = bit
 
   // instance
@@ -250,12 +253,12 @@ void toe_top(
                ack_delay_read_cnt_fifo,
                ack_delay_write_cnt_fifo,
                tx_eng_read_count_fifo);
-  port_table(rx_eng_to_ptable_check_req_fifo,
+  port_table(slookup_to_ptable_release_port_req_fifo,
              rx_app_to_ptable_listen_port_req_fifo,
-             slookup_to_ptable_release_port_req_fifo,
-             tx_app_to_ptable_req_fifo,
-             ptable_to_rx_eng_check_rsp_fifo,
              ptable_to_rx_app_listen_port_rsp_fifo,
+             rx_eng_to_ptable_check_req_fifo,
+             ptable_to_rx_eng_check_rsp_fifo,
+             tx_app_to_ptable_req_fifo,
              ptable_to_tx_app_rsp_fifo);
   // rx app intf
   rx_app_intf(net_app_to_rx_app_listen_port_req,
@@ -329,13 +332,13 @@ void toe_top(
       reg_session_cnt,
       my_ip_addr);
 
-  state_table(rx_eng_to_sttable_req_fifo,
-              tx_app_to_sttable_req_fifo,
-              tx_app_to_sttable_lup_req_fifo,
-              timer_to_sttable_release_state_fifo,
+  state_table(timer_to_sttable_release_state_fifo,
+              rx_eng_to_sttable_req_fifo,
               sttable_to_rx_eng_rsp_fifo,
-              sttable_to_tx_app_rsp_fifo,
+              tx_app_to_sttable_lup_req_fifo,
               sttable_to_tx_app_lup_rsp_fifo,
+              tx_app_to_sttable_req_fifo,
+              sttable_to_tx_app_rsp_fifo,
               sttable_to_slookup_release_req_fifo);
 
   timer_wrapper(rx_eng_to_timer_set_ctimer_fifo,
@@ -377,8 +380,8 @@ void toe_top(
       tx_app_to_net_app_tans_data_rsp,
       net_app_trans_data,
       // tx sar req/rsp
-      tx_app_to_tx_sar_req_fifo,
-      tx_sar_to_tx_app_rsp_fifo,
+      tx_app_to_tx_sar_upd_req_fifo,
+      tx_sar_to_tx_app_upd_req_fifo,
       // to event eng
       tx_app_to_event_eng_set_event_fifo,
       // state table
@@ -419,10 +422,10 @@ void toe_top(
 
   );
 
-  tx_sar_table(rx_eng_to_tx_sar_req_fifo,
+  tx_sar_table(tx_app_to_tx_sar_upd_req_fifo,
+               rx_eng_to_tx_sar_req_fifo,
                tx_sar_to_rx_eng_rsp_fifo,
                tx_eng_to_tx_sar_req_fifo,
                tx_sar_to_tx_eng_rsp_fifo,
-               tx_app_to_tx_sar_req_fifo,
-               tx_sar_to_tx_app_rsp_fifo);
+               tx_sar_to_tx_app_upd_req_fifo);
 }
