@@ -35,9 +35,8 @@ void                 ListeningPortTable(stream<ListenPortReq> &   rx_app_to_ptab
 
   if (!rx_app_to_ptable_listen_port_req.empty()) {
     // check range, TODO make sure currPort is not equal in 2 consecutive cycles
-    rx_app_to_ptable_listen_port_req.read(curr_req);
-    logger.Info(RX_APP_IF, PORT_TBLE, "ListenPort Req", curr_req.to_string(), false);
-
+    curr_req = rx_app_to_ptable_listen_port_req.read();
+    logger.Info(RX_APP_IF, PORT_TBLE, "ListenPort Req in ptable", curr_req.to_string());
     listen_rsp.data.wrong_port_number = (curr_req.data.bit(15));
     listen_rsp.data.port_number       = curr_req.data;
 

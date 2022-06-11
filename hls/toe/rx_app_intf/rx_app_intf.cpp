@@ -26,25 +26,23 @@ void RxAppPortHandler(stream<NetAXISListenPortReq> &net_app_to_rx_app_listen_por
 
   enum RxAppPortFsmState { WAIT_NET, WAIT_PTABLE };
   static RxAppPortFsmState fsm_state = WAIT_NET;
-
-  static bool listen_port_lock = false;
+  ListenPortReq            listen_req;
+  ListenPortRsp            listen_rsp;
   switch (fsm_state) {
     case WAIT_NET:
-      if (!net_app_to_rx_app_listen_port_req.empty() && !listen_port_lock) {
-        ListenPortReq listen_req = net_app_to_rx_app_listen_port_req.read();
+      if (!net_app_to_rx_app_listen_port_req.empty()) {
+        listen_req = net_app_to_rx_app_listen_port_req.read();
         rx_app_to_ptable_listen_port_req.write(listen_req);
-        logger.Info(RX_APP_IF, PORT_TBLE, "ListenPort Req", listen_req.to_string(), false);
-        listen_port_lock = true;
-        fsm_state        = WAIT_PTABLE;
+        logger.Info(RX_APP_IF, PORT_TBLE, "ListenPort Req", listen_req.to_string());
+        fsm_state = WAIT_PTABLE;
       }
       break;
     case WAIT_PTABLE:
-      if (!ptable_to_rx_app_listen_port_rsp.empty() && listen_port_lock) {
-        ListenPortRsp listen_rsp = ptable_to_rx_app_listen_port_rsp.read();
+      if (!ptable_to_rx_app_listen_port_rsp.empty()) {
+        listen_rsp = ptable_to_rx_app_listen_port_rsp.read();
         rx_app_to_net_app_listen_port_rsp.write(listen_rsp.to_net_axis());
         logger.Info(RX_APP_IF, NET_APP, "ListenPort Rsp", listen_rsp.to_string(), false);
-        listen_port_lock = false;
-        fsm_state        = WAIT_NET;
+        fsm_state = WAIT_NET;
       }
       break;
   }
