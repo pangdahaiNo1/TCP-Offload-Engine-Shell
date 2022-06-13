@@ -131,7 +131,7 @@ void TxEngTcpFsm(
           // Sends everything between tx_sar_rsp.not_ackd and tx_sar_rsp.app_written
           if ((!rx_sar_to_tx_eng_lup_rsp.empty() && !tx_sar_to_tx_eng_rsp.empty()) ||
               tx_rx_sar_loaded) {
-            logger.Info("TX Seg");
+            logger.Info(TX_ENGINE, "TX Seg");
             if (!tx_rx_sar_loaded) {
               rx_sar_rsp_reg = rx_sar_to_tx_eng_lup_rsp.read();
               tx_sar_rsp     = tx_sar_to_tx_eng_rsp.read();
@@ -158,7 +158,7 @@ void TxEngTcpFsm(
               } else {
                 usableWindow_w = 0;
               }
-              logger.Info("Useable Win", usableWindow_w.to_string(16));
+              logger.Info(TX_ENGINE, "Useable Win", usableWindow_w.to_string(16));
             }
 
             tcp_tx_meta_reg.seq_number = tx_sar_rsp.not_ackd;
@@ -181,7 +181,7 @@ void TxEngTcpFsm(
                 if (tx_sar_rsp.fin_is_ready && (tx_sar_rsp.ackd_eq_not_ackd || curr_length == 0)) {
                   tx_eng_event_reg.type = FIN;
                 } else {
-                  logger.Info("Change state to LOAD, curren len < win");
+                  logger.Info(TX_ENGINE, "Change state to LOAD, curren len < win");
                   fsm_state = LOAD;  // MR TODO: this not should be conditional
                 }
                 // Check if small segment and if unacknowledged data in pipe (Nagle)
@@ -228,7 +228,7 @@ void TxEngTcpFsm(
                 logger.Info(
                     TX_ENGINE, PROBE_TMR, "Set PTimer", tx_eng_event_reg.session_id.to_string(16));
                 logger.Info(TX_ENGINE, TX_SAR_TB, "SAR Upd", to_tx_sar_req.to_string());
-                logger.Info("Change state to LOAD");
+                logger.Info(TX_ENGINE, "Change state to LOAD");
 
                 fsm_state = LOAD;
               }
@@ -245,7 +245,7 @@ void TxEngTcpFsm(
               to_rtimer_req = TxEngToRetransTimerReq(tx_eng_event_reg.session_id);
               tx_eng_to_timer_set_rtimer.write(to_rtimer_req);
 
-              logger.Info("ReadMem Cmd", to_mem_cmd.to_string());
+              logger.Info(TX_ENGINE, "ReadMem Cmd", to_mem_cmd.to_string());
               logger.Info(TX_ENGINE, TOE_TOP, "TX Meta", tcp_tx_meta_reg.to_string(), true);
               logger.Info(TX_ENGINE,
                           SLUP_CTRL,
@@ -262,10 +262,10 @@ void TxEngTcpFsm(
             tx_sar_rsp.not_ackd = txSar_not_ackd_w;
             ackd_eq_not_ackd    = (tx_sar_rsp.ackd == txSar_not_ackd_w) ? true : false;
             tx_sar_rsp_reg      = tx_sar_rsp;
-            logger.Info("Remain Win", remaining_window.to_string(16));
-            logger.Info("Used len", curr_length.to_string(16));
-            logger.Info("Not Acked", used_length.to_string(16));
-            logger.Info("Current TX SAR", tx_sar_rsp_reg.to_string());
+            logger.Info(TX_ENGINE, "Remain Win", remaining_window.to_string(16));
+            logger.Info(TX_ENGINE, "Used len", curr_length.to_string(16));
+            logger.Info(TX_ENGINE, "Not Acked", used_length.to_string(16));
+            logger.Info(TX_ENGINE, "Current TX SAR", tx_sar_rsp_reg.to_string());
             tx_rx_sar_loaded = true;
           }
           break;
@@ -273,7 +273,7 @@ void TxEngTcpFsm(
           if ((!rx_sar_to_tx_eng_lup_rsp.empty() && !tx_sar_to_tx_eng_rsp.empty())) {
             rx_sar_rsp_reg = rx_sar_to_tx_eng_lup_rsp.read();
             tx_sar_rsp     = tx_sar_to_tx_eng_rsp.read();
-            logger.Info("RT Seg");
+            logger.Info(TX_ENGINE, "RT Seg");
             logger.Info(RX_SAR_TB, TX_ENGINE, "SAR Rsp", rx_sar_rsp_reg.to_string());
             logger.Info(TX_SAR_TB, TX_ENGINE, "SAR Rsp", tx_sar_rsp.to_string());
 
@@ -354,7 +354,7 @@ void TxEngTcpFsm(
               to_rtimer_req = TxEngToRetransTimerReq(tx_eng_event_reg.session_id);
               tx_eng_to_timer_set_rtimer.write(to_rtimer_req);
 
-              logger.Info("ReadMem Cmd", to_mem_cmd.to_string());
+              logger.Info(TX_ENGINE, "ReadMem Cmd", to_mem_cmd.to_string());
               logger.Info(TX_ENGINE, TOE_TOP, "RT Meta", tcp_tx_meta_reg.to_string(), true);
               logger.Info(TX_ENGINE,
                           SLUP_CTRL,
@@ -368,7 +368,7 @@ void TxEngTcpFsm(
           break;
 
         case RT_CONT:
-          logger.Info("RT-CONT Seg");
+          logger.Info(TX_ENGINE, "RT-CONT Seg");
 
           // Compute how many bytes have to be retransmitted, If the fin was sent,
           // subtract 1 byte
@@ -444,7 +444,7 @@ void TxEngTcpFsm(
             to_rtimer_req = TxEngToRetransTimerReq(tx_eng_event_reg.session_id);
             tx_eng_to_timer_set_rtimer.write(to_rtimer_req);
 
-            logger.Info("ReadMem Cmd", to_mem_cmd.to_string());
+            logger.Info(TX_ENGINE, "ReadMem Cmd", to_mem_cmd.to_string());
             logger.Info(TX_ENGINE, TOE_TOP, "RT-CONT Meta", tcp_tx_meta_reg.to_string(), true);
             logger.Info(
                 TX_ENGINE, SLUP_CTRL, "Four Tuple Lup", tx_eng_event_reg.session_id.to_string(16));
@@ -458,7 +458,7 @@ void TxEngTcpFsm(
           if (!rx_sar_to_tx_eng_lup_rsp.empty() && !tx_sar_to_tx_eng_rsp.empty()) {
             rx_sar_rsp_reg = rx_sar_to_tx_eng_lup_rsp.read();
             tx_sar_rsp     = tx_sar_to_tx_eng_rsp.read();
-            logger.Info("ACK Seg");
+            logger.Info(TX_ENGINE, "ACK Seg");
             logger.Info(RX_SAR_TB, TX_ENGINE, "SAR Rsp", rx_sar_rsp_reg.to_string());
             logger.Info(TX_SAR_TB, TX_ENGINE, "SAR Rsp", tx_sar_rsp.to_string());
 
@@ -478,7 +478,7 @@ void TxEngTcpFsm(
             logger.Info(TX_ENGINE, TOE_TOP, "ACK Meta", tcp_tx_meta_reg.to_string(), true);
             logger.Info(
                 TX_ENGINE, SLUP_CTRL, "Four Tuple Lup", tx_eng_event_reg.session_id.to_string(16));
-            logger.Info("change state to LOAD from ACK event");
+            logger.Info(TX_ENGINE, "Change state to LOAD from ACK event");
 
             fsm_state = LOAD;
           }
@@ -486,7 +486,7 @@ void TxEngTcpFsm(
         case SYN:
           if (((tx_eng_event_reg.retrans_cnt != 0) && !tx_sar_to_tx_eng_rsp.empty()) ||
               (tx_eng_event_reg.retrans_cnt == 0)) {
-            logger.Info("SYN Seg");
+            logger.Info(TX_ENGINE, "SYN Seg");
             if (tx_eng_event_reg.retrans_cnt != 0) {
               tx_sar_rsp = tx_sar_to_tx_eng_rsp.read();
               logger.Info(TX_SAR_TB, TX_ENGINE, "SAR Rsp", tx_sar_rsp.to_string());
@@ -527,7 +527,7 @@ void TxEngTcpFsm(
           break;
         case SYN_ACK:
           if (!rx_sar_to_tx_eng_lup_rsp.empty() && !tx_sar_to_tx_eng_rsp.empty()) {
-            logger.Info("SYN_ACK Seg");
+            logger.Info(TX_ENGINE, "SYN_ACK Seg");
 
             rx_sar_rsp_reg = rx_sar_to_tx_eng_lup_rsp.read();
             tx_sar_rsp     = tx_sar_to_tx_eng_rsp.read();
@@ -575,7 +575,7 @@ void TxEngTcpFsm(
           // The term tx_rx_sar_loaded is used for retransmission proposes
           if ((!rx_sar_to_tx_eng_lup_rsp.empty() && !tx_sar_to_tx_eng_rsp.empty()) ||
               tx_rx_sar_loaded) {
-            logger.Info("FIN Seg");
+            logger.Info(TX_ENGINE, "FIN Seg");
 
             if (!tx_rx_sar_loaded) {
               rx_sar_rsp_reg = rx_sar_to_tx_eng_lup_rsp.read();
@@ -634,7 +634,7 @@ void TxEngTcpFsm(
         case RST:
           // Assumption RST length == 0
           rst_event = tx_eng_event_reg;
-          logger.Info("Rst Seg");
+          logger.Info(TX_ENGINE, "Rst Seg");
           if (!rst_event.has_session_id()) {
             tx_tcp_payload_length_out.write(0);
             tcp_tx_meta = TxEngFsmMetaData(0, rst_event.get_ack_number(), 1, 1, 0, 0);
@@ -643,7 +643,7 @@ void TxEngTcpFsm(
             tx_four_tuple_source.write(false);
 
             tx_eng_fsm_four_tuple_out.write(tx_eng_event_reg.four_tuple);
-            logger.Info("Four Tuple in FSM", tx_eng_event_reg.four_tuple.to_string());
+            logger.Info(TX_ENGINE, "Four Tuple in FSM", tx_eng_event_reg.four_tuple.to_string());
             logger.Info(TX_ENGINE, TOE_TOP, "Rst Meta", tcp_tx_meta.to_string(), true);
 
           } else if (!tx_sar_to_tx_eng_rsp.empty()) {
@@ -696,7 +696,7 @@ void TxEngFourTupleHandler(
     case LOAD_TUPLE_SRC:
       if (!tx_four_tuple_source.empty()) {
         tuple_is_from_slookup = tx_four_tuple_source.read();
-        logger.Info("Tx Four Tuple Source from SLUP ? or FSM", tuple_is_from_slookup ? "1" : "0");
+        logger.Info(TX_ENGINE,  "Tx Four Tuple from SLUP ? or FSM", tuple_is_from_slookup ? "1" : "0");
         fsm_state = tuple_is_from_slookup ? READ_TUPLE_FROM_SLUP_CTRL : READ_TUPLE_FROM_TX_ENG;
       }
       break;
@@ -720,8 +720,8 @@ void TxEngFourTupleHandler(
         tx_ip_pair_for_ip_header.write(ip_pair);
         tx_four_tuple_for_tcp_header.write(four_tuple);
         fsm_state = LOAD_TUPLE_SRC;
-        logger.Info("Tx FSM Tuple", four_tuple.to_string());
-        logger.Info("Tx FSM IpPair", ip_pair.to_string());
+        logger.Info(TX_ENGINE, "Tx FSM Tuple", four_tuple.to_string());
+        logger.Info(TX_ENGINE, "Tx FSM IpPair", ip_pair.to_string());
       }
       break;
   }
@@ -827,8 +827,8 @@ void                 TxEngPseudoFullHeaderConstruct(stream<TxEngFsmMetaData> &tx
     send_word.last = 1;
     tx_tcp_pseudo_full_header_out.write(send_word);
     tx_tcp_packet_contains_payload.write(packet_contains_payload);
-    logger.Info("TCP Pseudo header", send_word.to_string());
-    logger.Info("TCP Seg contains payload?", packet_contains_payload ? "1" : "0");
+    logger.Info(TX_ENGINE, "TCP Pseudo header", send_word.to_string());
+    logger.Info(TX_ENGINE, "TCP Seg contains payload?", packet_contains_payload ? "1" : "0");
   }
 }
 
@@ -861,7 +861,7 @@ void                 TxEngConstructPseudoPacket(stream<NetAXISWord> &tx_tcp_pseu
         tx_tcp_packet_contains_payload.read(packet_contains_payload);
         // no payload in this segment, send it immediately
         if (!packet_contains_payload) {
-          logger.Info("PseudoPacket Single", cur_word.to_string());
+          logger.Info(TX_ENGINE, "PseudoPacket Single", cur_word.to_string());
 
           tx_tcp_pseudo_packet_for_tx_eng.write(cur_word);
           tx_tcp_pseudo_packet_for_checksum.write(cur_word);
@@ -886,7 +886,7 @@ void                 TxEngConstructPseudoPacket(stream<NetAXISWord> &tx_tcp_pseu
             fsm_state = READ_PSEUDO;
           }
         }
-        logger.Info("PseudoPacket", send_word.to_string());
+        logger.Info(TX_ENGINE, "PseudoPacket", send_word.to_string());
         tx_tcp_pseudo_packet_for_tx_eng.write(send_word);
         tx_tcp_pseudo_packet_for_checksum.write(send_word);
         prev_word = cur_word;
@@ -898,7 +898,7 @@ void                 TxEngConstructPseudoPacket(stream<NetAXISWord> &tx_tcp_pseu
       // the last word in payload has more than 32B and less than 64B
       ConcatTwoWords(NetAXISWord(), prev_word, 32, send_word);
       send_word.last = 1;
-      logger.Info("PseudoPacket EXTRA", send_word.to_string());
+      logger.Info(TX_ENGINE, "PseudoPacket EXTRA", send_word.to_string());
       tx_tcp_pseudo_packet_for_tx_eng.write(send_word);
       tx_tcp_pseudo_packet_for_checksum.write(send_word);
       fsm_state = READ_PSEUDO;
@@ -929,7 +929,7 @@ void                 TxEngRemovePseudoHeader(stream<NetAXISWord> &tx_tcp_pseudo_
         if (cur_word.last) {
           ConcatTwoWords(NetAXISWord(), cur_word, pseudo_header_byte_offset, send_word);
           send_word.last = 1;
-          logger.Info("TcpPacket for TxEng Single", send_word.to_string());
+          logger.Info(TX_ENGINE, "TcpPacket for TxEng Single", send_word.to_string());
 
           tx_tcp_packet.write(send_word);
         } else {
@@ -953,7 +953,7 @@ void                 TxEngRemovePseudoHeader(stream<NetAXISWord> &tx_tcp_pseudo_
           }
         }
         tx_tcp_packet.write(send_word);
-        logger.Info("TcpPacket for TxEng", send_word.to_string());
+        logger.Info(TX_ENGINE, "TcpPacket for TxEng", send_word.to_string());
         prev_word = cur_word;
       }
       break;
@@ -961,7 +961,7 @@ void                 TxEngRemovePseudoHeader(stream<NetAXISWord> &tx_tcp_pseudo_
       ConcatTwoWords(NetAXISWord(), prev_word, pseudo_header_byte_offset, send_word);
       send_word.last = 1;
       tx_tcp_packet.write(send_word);
-      logger.Info("TcpPacket for TxEng EXTRA", send_word.to_string());
+      logger.Info(TX_ENGINE, "TcpPacket for TxEng EXTRA", send_word.to_string());
       fsm_state = READ;
       break;
   }
@@ -1028,7 +1028,7 @@ void                 TxEngConstructIpv4Header(stream<ap_uint<16> > &tx_tcp_paylo
 
 #endif
     tx_ipv4_header.write(send_word);
-    logger.Info("Tcp TX Ipv4 header", send_word.to_string());
+    logger.Info(TX_ENGINE, "Tcp TX Ipv4 header", send_word.to_string());
   }
 }
 

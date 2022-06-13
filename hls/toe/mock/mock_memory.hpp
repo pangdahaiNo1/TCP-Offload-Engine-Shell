@@ -37,25 +37,24 @@ public:
                    stream<NetAXIS> &        mover_write_mem_data,
                    stream<DataMoverStatus> &mover_write_mem_status) {
     DataMoverCmd cur_cmd;
-    NetAXIS      cur_word;
+    NetAXISWord  cur_word;
     // S2MM-Write data to mem
     if (!mover_write_mem_cmd.empty()) {
       cur_cmd = mover_write_mem_cmd.read();
 
-      logger.Info("TOE to Mem Write data cmd", cur_cmd.to_string(), false);
+      logger.Info(TOE_TOP, DATA_MVER, "WriteMem Cmd", cur_cmd.to_string());
       _s2mm_cmd_fifo.push(cur_cmd);
     }
     if (!mover_write_mem_data.empty()) {
       cur_word = mover_write_mem_data.read();
-      logger.Info(
-          "TOE to Mem Write data", to_string(KeepToLength(cur_word.keep)) + " Bytes", false);
-      S2MMWriteToMem(cur_word);
+      S2MMWriteToMem(cur_word.to_net_axis());
+      logger.Info(TOE_TOP, DATA_MVER, "WriteMem data", cur_word.to_string());
     }
     // MM2S - read data from mem
     if (!mover_read_mem_cmd.empty()) {
       cur_cmd = mover_read_mem_cmd.read();
-      logger.Info("TOE to Mem Read data cmd", cur_cmd.to_string(), false);
       MM2SReadFromMem(cur_cmd, mover_read_mem_data);
+      logger.Info(TOE_TOP, DATA_MVER, "ReadMem Cmd", cur_cmd.to_string());
     }
   }
   void PushS2MMCmd(const DataMoverCmd &cmd) { _s2mm_cmd_fifo.push(cmd); }

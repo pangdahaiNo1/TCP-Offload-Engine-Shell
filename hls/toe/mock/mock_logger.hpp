@@ -75,7 +75,7 @@ public:
                    const string &signal_name,
                    const string &signal_state,
                    bool          state_in_new_line = false) {
-    string delimiter = state_in_new_line ? ("\n\t\t\t") : ("\t");
+    string delimiter = state_in_new_line ? ("\n\t\t\t") : ("  ");
     if (enable_recv_log || enable_send_log) {
       string from_module_str  = "[" + module_name[from_module] + "]";
       string to_module_str    = "[" + module_name[to_module] + "]\t";
@@ -85,19 +85,37 @@ public:
       }
       if ((enable_recv_log && to_module == log_module) ||
           (enable_send_log && from_module == log_module) || (log_module == TOE_TOP)) {
-        output_stream << "C/" << sim_cycle << ":  ";
+        output_stream << "C/" << sim_cycle << ":\t";
         output_stream << from_module_str << "->" << to_module_str << "{" << signal_name << "}"
                       << delimiter << signal_state_str << endl;
       }
+    }
+  }
+  // signal state
+  // signal recv/send
+  INLINE void Info(ToeModule     from_module,
+                   const string &signal_name,
+                   const string &signal_state = "",
+                   bool          state_in_new_line = false) {
+    string delimiter = state_in_new_line ? ("\n\t\t\t") : ("  ");
+    if (enable_recv_log || enable_send_log) {
+      string from_module_str  = "[" + module_name[from_module] + "]";
+      string signal_state_str = signal_state;
+      if (state_in_new_line) {
+        signal_state_str = replace(signal_state_str, "\n", delimiter);
+      }
+      output_stream << "C/" << sim_cycle << ":\t";
+      output_stream << from_module_str << "\t\t\t\t"
+                    << "{" << signal_name << "}" << delimiter << signal_state << endl;
     }
   }
   // inner state
   INLINE void Info(const string &description,
                    const string &state             = "",
                    bool          state_in_new_line = false) {
-    string delimiter      = state_in_new_line ? ("\n\t\t") : ("\t");
+    string delimiter      = state_in_new_line ? ("\n\t\t") : ("  ");
     string log_module_str = "[" + module_name[log_module] + "]";
-    output_stream << "C/" << sim_cycle << ":  ";
+    output_stream << "C/" << sim_cycle << ":\t";
 
     output_stream << log_module_str << "\t\t\t\t"
                   << "{" << description << "}" << delimiter << state << endl;

@@ -161,7 +161,7 @@ void                 RxEngParseTcpHeader(stream<NetAXISWord> &        tcp_pseudo
         tcp_seg_meta.tcp_options      = cur_word.data(511, 256);
         // record the payload length
         tcp_seg_meta.header.payload_length = tcp_payload_length;
-        logger.Info("Payload Length", tcp_payload_length.to_string(16));
+        logger.Info(RX_ENGINE, "Payload Length", tcp_payload_length.to_string(16));
 
         if (cur_word.last) {
           if (tcp_payload_length != 0) {  // one-transaction packet with any data
@@ -604,7 +604,7 @@ void RxEngTcpFsm(
         rx_eng_ctrl_bits[1] = tcp_rx_meta_reg.header.syn;
         rx_eng_ctrl_bits[2] = tcp_rx_meta_reg.header.fin;
         rx_eng_ctrl_bits[3] = tcp_rx_meta_reg.header.rst;
-        logger.Info("CtrlBits", rx_eng_ctrl_bits.to_string(2));
+        logger.Info(RX_ENGINE, "CtrlBits", rx_eng_ctrl_bits.to_string(2));
         fsm_state = TRANSITION;
       }
       break;
@@ -626,7 +626,7 @@ void RxEngTcpFsm(
       switch (rx_eng_ctrl_bits) {
         case 1:  // ACK
           if (fsm_state == LOAD) {
-            logger.Info("Recv ACK");
+            logger.Info(RX_ENGINE, "Recv ACK");
             // if ack number is expected, stop the retransmit timer
             to_rtimer_req =
                 RxEngToRetransTimerReq(tcp_rx_meta_reg.session_id,
@@ -640,14 +640,14 @@ void RxEngTcpFsm(
               if (tcp_rx_meta_reg.header.ack_number == tx_sar_reg.perv_ack &&
                   tx_sar_reg.perv_ack != tx_sar_reg.next_byte) {
                 // Old ACK increase counter only if it does not contain data
-                logger.Info("Recv Old ACK");
+                logger.Info(RX_ENGINE, "Recv Old ACK");
                 if (tcp_rx_meta_reg.header.payload_length == 0) {
                   tx_sar_reg.retrans_count++;
-                  logger.Info("Payload is empty, increase RT cnt");
+                  logger.Info(RX_ENGINE, "Payload is empty, increase RT cnt");
                 }
               } else {  // new ACK arrived
                 // clear probe timer for new ACK
-                logger.Info("Recv New ACK");
+                logger.Info(RX_ENGINE, "Recv New ACK");
                 logger.Info(
                     RX_ENGINE, PROBE_TMR, "Clr PTimer", tcp_rx_meta_reg.session_id.to_string(16));
                 rx_eng_to_timer_clear_ptimer.write(tcp_rx_meta_reg.session_id);
@@ -785,7 +785,7 @@ void RxEngTcpFsm(
           if (fsm_state == LOAD) {
             // check state is LISTEN || SYN_SENT
             if (session_state_reg == CLOSED || session_state_reg == SYN_SENT) {
-              logger.Info("Recv SYN");
+              logger.Info(RX_ENGINE, "Recv SYN");
 
               //  If the other side announces a WSopt we use WINDOW_SCALE_BITS
               rx_win_scale  = (tcp_rx_meta_reg.header.win_scale == 0) ? 0 : WINDOW_SCALE_BITS;
@@ -849,7 +849,7 @@ void RxEngTcpFsm(
           break;
         case 3:  // SYN + ACK
           if (fsm_state == LOAD) {
-            logger.Info("Recv SYN+ACK");
+            logger.Info(RX_ENGINE, "Recv SYN+ACK");
             // Clear SYN retransmission time  if ack number is correct
             to_rtimer_req =
                 RxEngToRetransTimerReq(tcp_rx_meta_reg.session_id,
@@ -922,7 +922,7 @@ void RxEngTcpFsm(
           break;
         case 5:  // FIN + ACK
           if (fsm_state == LOAD) {
-            logger.Info("Recv FIN+ACK");
+            logger.Info(RX_ENGINE, "Recv FIN+ACK");
             to_rtimer_req =
                 RxEngToRetransTimerReq(tcp_rx_meta_reg.session_id,
                                        (tcp_rx_meta_reg.header.ack_number == tx_sar_reg.next_byte));

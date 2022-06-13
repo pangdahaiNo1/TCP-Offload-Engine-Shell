@@ -27,7 +27,7 @@ public:
 
     if (!slookup_to_cam_lup_req.empty()) {
       slookup_to_cam_lup_req.read(lookup_req);
-      logger.Info("Slookup to CAM Lookup Req", lookup_req.to_string(), false);
+      logger.Info(SLUP_CTRL, CUKOO_CAM, "Lup Req", lookup_req.to_string());
 
       iter = _mock_cam.find(lookup_req.key);
       if (iter != _mock_cam.end())  // hit
@@ -37,13 +37,13 @@ public:
         lookup_rsp = RtlCamToSlookupLupRsp(false, lookup_req.source);
       }
       cam_to_slookup_lup_rsp.write(lookup_rsp);
-      logger.Info("CAM to Slookup Lookup Rsp", lookup_rsp.to_string(), false);
+      logger.Info(CUKOO_CAM, SLUP_CTRL, "Lup Rsp", lookup_rsp.to_string());
     }
 
     if (!slookup_to_cam_upd_req.empty()) {
       slookup_to_cam_upd_req.read(update_req);
 
-      logger.Info("Slookup to CAM Update Req", update_req.to_string(), false);
+      logger.Info(SLUP_CTRL, CUKOO_CAM, "Upd Req", update_req.to_string());
       iter                  = _mock_cam.find(update_req.key);
       update_rsp.op         = update_req.op;
       update_rsp.key        = update_req.key;
@@ -68,7 +68,7 @@ public:
         }
       }
       cam_to_slookup_upd_rsp.write(update_rsp);
-      logger.Info("CAM to Slookup Update Rsp", update_rsp.to_string(), false);
+      logger.Info(CUKOO_CAM, SLUP_CTRL, "Upd Rsp", update_rsp.to_string());
     }
   }
 };

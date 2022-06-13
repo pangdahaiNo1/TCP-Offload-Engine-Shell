@@ -62,14 +62,14 @@ void                 retransmit_timer(stream<RxEngToRetransTimerReq> &rx_eng_to_
     rtimer_wait_for_write                              = false;
   } else if (!rx_eng_to_timer_clear_rtimer.empty() && !rtimer_wait_for_write) {
     rx_eng_to_timer_clear_rtimer.read(rx_eng_req);
-    logger.Info("Rx eng clear RTimer", rx_eng_req.to_string(), false);
+    logger.Info(RX_ENGINE, RTRMT_TMR, "Clr RTimer", rx_eng_req.to_string());
     rtimer_wait_for_write = true;
   } else {
     rtimer_cur_enrty_id = rtimer_cur_session_id;
 
     if (!tx_eng_to_timer_set_rtimer.empty()) {
       tx_eng_to_timer_set_rtimer.read(tx_eng_req);
-      logger.Info("Tx eng set RTimer", tx_eng_req.to_string(), false);
+      logger.Info(TX_ENGINE, RTRMT_TMR, "Set RTimer", tx_eng_req.to_string());
       rtimer_cur_enrty_id         = tx_eng_req.session_id;
       cur_op_is_tx_eng_or_default = 1;
       if (tx_eng_req.session_id - 3 < rtimer_cur_session_id &&
@@ -124,25 +124,26 @@ void                 retransmit_timer(stream<RxEngToRetransTimerReq> &rx_eng_to_
             if (rtimer_cur_entry.retries < TCP_MAX_RETX_ATTEMPTS) {
               rtimer_cur_entry.retries++;
               Event rt_event(rtimer_cur_entry.type, rtimer_cur_enrty_id, rtimer_cur_entry.retries);
-              logger.Info("RTimer To Event engine RT Event", rt_event.to_string(), false);
+              logger.Info(RTRMT_TMR, EVENT_ENG, "Set RT Event", rt_event.to_string());
               rtimer_to_event_eng_set_event.write(rt_event);
             } else {
               rtimer_cur_entry.retries = 0;
-              logger.Info(
-                  "RTimer To STtable caused by MAX RT", rtimer_cur_enrty_id.to_string(16), false);
+              logger.Info(RTRMT_TMR,
+                          STAT_TBLE,
+                          "Release State by MAX RT",
+                          rtimer_cur_enrty_id.to_string(16));
               rtimer_to_state_table_release_state.write(rtimer_cur_enrty_id);
               if (rtimer_cur_entry.type == SYN) {
                 // Open Session Failed
                 OpenConnRspNoTDEST open_conn_rsp(rtimer_cur_enrty_id, false);
-                logger.Info("RTimer To Tx App open session failed caused by MAX RT",
-                            open_conn_rsp.to_string(),
-                            false);
+                logger.Info(RTRMT_TMR,
+                            TX_APP_IF,
+                            "OpenSession Failed by MAX RT",
+                            open_conn_rsp.to_string());
                 rtimer_to_tx_app_notification.write(open_conn_rsp);
               } else {
                 AppNotificationNoTDEST app_notify(rtimer_cur_enrty_id, true);
-                logger.Info("RTimer To Rx app close session caused by MAX RT",
-                            app_notify.to_string(),
-                            false);
+                logger.Info(RTRMT_TMR, RX_APP_IF, "CloseConn by MAX RT", app_notify.to_string());
 
                 rtimer_to_rx_app_notification.write(app_notify);
               }
