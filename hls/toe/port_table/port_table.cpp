@@ -94,6 +94,7 @@ void                 FreePortTable(stream<TcpPortNumber> &   slookup_to_ptable_r
 
   if (!slookup_to_ptable_release_port_req_req.empty()) {
     slookup_to_ptable_release_port_req_req.read(slup_port_req);
+    logger.Info(SLUP_CTRL, PORT_TBLE, "Release FreePort Req", slup_port_req.to_string(16));
     if (slup_port_req.bit(15)) {
       free_port_table[slup_port_req(14, 0)].is_open = false;  // shift
     }
@@ -110,6 +111,7 @@ void                 FreePortTable(stream<TcpPortNumber> &   slookup_to_ptable_r
       free_port_table[pt_cursor].is_open = true;
       free_port_table[pt_cursor].role_id = tx_app_tdest;
       ptable_to_tx_app_rsp.write(cur_free_port);
+      logger.Info(PORT_TBLE, TX_APP_IF, "GetFreePort Rsp", cur_free_port.to_string(16));
     }
     // only receive a tx app request, then increase the port cursor
     pt_cursor++;

@@ -95,7 +95,7 @@ public:
   // signal recv/send
   INLINE void Info(ToeModule     from_module,
                    const string &signal_name,
-                   const string &signal_state = "",
+                   const string &signal_state      = "",
                    bool          state_in_new_line = false) {
     string delimiter = state_in_new_line ? ("\n\t\t\t") : ("  ");
     if (enable_recv_log || enable_send_log) {
@@ -105,7 +105,7 @@ public:
         signal_state_str = replace(signal_state_str, "\n", delimiter);
       }
       output_stream << "C/" << sim_cycle << ":\t";
-      output_stream << from_module_str << "\t\t\t\t"
+      output_stream << from_module_str << "\t\t\t\t\t"
                     << "{" << signal_name << "}" << delimiter << signal_state << endl;
     }
   }
@@ -117,7 +117,7 @@ public:
     string log_module_str = "[" + module_name[log_module] + "]";
     output_stream << "C/" << sim_cycle << ":\t";
 
-    output_stream << log_module_str << "\t\t\t\t"
+    output_stream << log_module_str << "\t\t\t\t\t"
                   << "{" << description << "}" << delimiter << state << endl;
   }
   // // inner state

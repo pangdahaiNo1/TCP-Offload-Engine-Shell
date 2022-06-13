@@ -696,7 +696,8 @@ void TxEngFourTupleHandler(
     case LOAD_TUPLE_SRC:
       if (!tx_four_tuple_source.empty()) {
         tuple_is_from_slookup = tx_four_tuple_source.read();
-        logger.Info(TX_ENGINE,  "Tx Four Tuple from SLUP ? or FSM", tuple_is_from_slookup ? "1" : "0");
+        logger.Info(
+            TX_ENGINE, "Tx Four Tuple from SLUP ? or FSM", tuple_is_from_slookup ? "1" : "0");
         fsm_state = tuple_is_from_slookup ? READ_TUPLE_FROM_SLUP_CTRL : READ_TUPLE_FROM_TX_ENG;
       }
       break;

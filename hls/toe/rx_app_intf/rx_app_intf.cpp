@@ -152,7 +152,7 @@ void NetAppNotificationTdestHandler(stream<AppNotificationNoTDEST> &app_notifica
     AppNotification net_app_notify;
     net_app_notify.data = notify_reg;
     net_app_notify.dest = temp_role_id;
-    logger.Info(RX_APP_IF, NET_APP, "NetAppNotify", notify_reg.to_string(), false);
+    logger.Info(RX_APP_IF, NET_APP, "NetAppNotify", net_app_notify.to_string(), false);
     net_app_notification.write(net_app_notify.to_net_axis());
     tdest_req_lock = false;
   }
