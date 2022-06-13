@@ -1,13 +1,8 @@
 #ifndef _MOCK_TOE_HPP_
 #define _MOCK_TOE_HPP_
-
+#pragma once
 #include "toe/toe_conn.hpp"
 #include "utils/axi_utils.hpp"
-
-#include <fstream>
-#include <iostream>
-using hls::stream;
-
 /**
  * NOTE: all varibles are in big endian
  */

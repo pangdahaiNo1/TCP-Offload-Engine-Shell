@@ -36,8 +36,9 @@ public:
                    stream<DataMoverCmd> &   mover_write_mem_cmd,
                    stream<NetAXIS> &        mover_write_mem_data,
                    stream<DataMoverStatus> &mover_write_mem_status) {
-    DataMoverCmd cur_cmd;
-    NetAXISWord  cur_word;
+    DataMoverCmd    cur_cmd;
+    NetAXISWord     cur_word;
+    DataMoverStatus cur_sts;
     // S2MM-Write data to mem
     if (!mover_write_mem_cmd.empty()) {
       cur_cmd = mover_write_mem_cmd.read();
@@ -48,6 +49,8 @@ public:
     if (!mover_write_mem_data.empty()) {
       cur_word = mover_write_mem_data.read();
       S2MMWriteToMem(cur_word.to_net_axis());
+      cur_sts.okay = 1;
+      mover_write_mem_status.write(cur_sts);
       logger.Info(TOE_TOP, DATA_MVER, "WriteMem data", cur_word.to_string());
     }
     // MM2S - read data from mem
