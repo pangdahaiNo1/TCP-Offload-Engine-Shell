@@ -718,9 +718,14 @@ void RxEngTcpFsm(
                 } else {
                   to_event_eng_event = Event(ACK, tcp_rx_meta_reg.session_id);
                 }
-                logger.Info(
-                    RX_ENGINE, EVENT_ENG, "Recv inorder ACK Event", to_event_eng_event.to_string());
-                rx_eng_fsm_to_event_eng_set_event.write(to_event_eng_event);
+                // only ack to other side, if the segment contains the data
+                if (tcp_rx_meta_reg.header.payload_length != 0) {
+                  logger.Info(RX_ENGINE,
+                              EVENT_ENG,
+                              "Recv inorder ACK Event",
+                              to_event_eng_event.to_string());
+                  rx_eng_fsm_to_event_eng_set_event.write(to_event_eng_event);
+                }
 
                 if (tcp_rx_meta_reg.header.ack_number == tx_sar_reg.next_byte) {
                   // This is necessary to unlock stateTable
