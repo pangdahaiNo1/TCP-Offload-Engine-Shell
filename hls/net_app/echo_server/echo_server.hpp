@@ -1,9 +1,7 @@
 #ifndef _ECHO_SERVER_HPP_
 #define _ECHO_SERVER_HPP_
-#include "toe/toe_intf.hpp"
-
+#include "toe/toe_conn.hpp"
 using namespace hls;
-using namespace std;
 const NetAXISDest kTDEST = 0x1;
 
 struct EchoServerMeta {
@@ -18,7 +16,7 @@ void echo_server(
     stream<NetAXISListenPortReq> &net_app_listen_port_req,
     stream<NetAXISListenPortRsp> &net_app_listen_port_rsp,
     // rx client notify
-    stream<NetAXISNewClientNotificaion> &net_app_new_client_notification,
+    stream<NetAXISNewClientNotification> &net_app_new_client_notification,
     // rx app notify
     stream<NetAXISAppNotification> &net_app_notification,
     // read data req/rsp
