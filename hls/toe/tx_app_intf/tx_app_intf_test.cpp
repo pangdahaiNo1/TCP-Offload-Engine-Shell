@@ -43,7 +43,7 @@ void EmptyTxAppConnFifos(MockLogger &                   logger,
 }
 
 void EmptyTxAppDataFifos(MockLogger &                    logger,
-                         stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_tans_data_rsp,
+                         stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_trans_data_rsp,
 
                          stream<TcpSessionID> &tx_app_to_sttable_lup_req,
                          stream<Event> &       tx_app_to_event_eng_set_event) {
@@ -51,8 +51,8 @@ void EmptyTxAppDataFifos(MockLogger &                    logger,
 
   TcpSessionID to_sttable;
   Event        to_event_engine;
-  while (!tx_app_to_net_app_tans_data_rsp.empty()) {
-    tx_app_to_net_app_tans_data_rsp.read(to_net_app_rsp);
+  while (!tx_app_to_net_app_trans_data_rsp.empty()) {
+    tx_app_to_net_app_trans_data_rsp.read(to_net_app_rsp);
     logger.Info(TX_APP_IF, NET_APP, "Trans Data Rsp", AppTransDataRsp(to_net_app_rsp).to_string());
   }
 
@@ -199,7 +199,7 @@ void TestTxAppConn() {
 void TestTxAppData(stream<NetAXIS> &input_tcp_packets) {
   // net app
   stream<NetAXISAppTransDataReq> net_app_to_tx_app_trans_data_req;
-  stream<NetAXISAppTransDataRsp> tx_app_to_net_app_tans_data_rsp;
+  stream<NetAXISAppTransDataRsp> tx_app_to_net_app_trans_data_rsp;
   stream<NetAXIS>                net_app_trans_data;
   // tx app table
   stream<TxAppToTxAppTableReq> tx_app_to_tx_app_table_req;
@@ -278,7 +278,7 @@ void TestTxAppData(stream<NetAXIS> &input_tcp_packets) {
         break;
     }
     TxAppDataHandler(net_app_to_tx_app_trans_data_req,
-                     tx_app_to_net_app_tans_data_rsp,
+                     tx_app_to_net_app_trans_data_rsp,
                      net_app_trans_data,
                      tx_app_to_tx_app_table_req,
                      tx_app_table_to_tx_app_rsp,
@@ -292,7 +292,7 @@ void TestTxAppData(stream<NetAXIS> &input_tcp_packets) {
                         tx_app_to_mem_write_data,
                         tx_app_to_mem_write_cmd);
     EmptyTxAppDataFifos(data_logger,
-                        tx_app_to_net_app_tans_data_rsp,
+                        tx_app_to_net_app_trans_data_rsp,
                         tx_app_to_sttable_lup_req,
                         tx_app_to_event_eng_set_event);
     EmptyTxAppTableFifos(data_logger, tx_app_to_tx_app_table_req);
@@ -332,7 +332,7 @@ void TestTxAppIntf(stream<NetAXIS> &input_tcp_packets) {
 
   // net app data request
   stream<NetAXISAppTransDataReq> net_app_to_tx_app_trans_data_req;
-  stream<NetAXISAppTransDataRsp> tx_app_to_net_app_tans_data_rsp;
+  stream<NetAXISAppTransDataRsp> tx_app_to_net_app_trans_data_rsp;
   stream<NetAXIS>                net_app_trans_data;
   // to/from tx sar upd req
   stream<TxAppToTxSarReq> tx_app_to_tx_sar_upd_req;
@@ -451,7 +451,7 @@ void TestTxAppIntf(stream<NetAXIS> &input_tcp_packets) {
                 tx_app_to_sttable_req,
                 sttable_to_tx_app_rsp,
                 net_app_to_tx_app_trans_data_req,
-                tx_app_to_net_app_tans_data_rsp,
+                tx_app_to_net_app_trans_data_rsp,
                 net_app_trans_data,
                 tx_app_to_tx_sar_upd_req,
                 tx_sar_to_tx_app_upd_req,
@@ -469,7 +469,7 @@ void TestTxAppIntf(stream<NetAXIS> &input_tcp_packets) {
                         tx_app_to_slookup_check_tdest_req,
                         tx_app_to_net_app_open_conn_rsp);
     EmptyTxAppDataFifos(top_logger,
-                        tx_app_to_net_app_tans_data_rsp,
+                        tx_app_to_net_app_trans_data_rsp,
                         tx_app_to_sttable_lup_req,
                         tx_app_to_event_eng_set_event);
     EmptyTxAppStsFifos(top_logger, tx_app_to_tx_sar_upd_req);

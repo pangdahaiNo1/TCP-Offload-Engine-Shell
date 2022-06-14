@@ -34,7 +34,7 @@ void toe_top(
     stream<NetAXISAppCloseConnReq> &      net_app_to_tx_app_close_conn_req,
     stream<NetAXISNewClientNotification> &net_app_new_client_notification,
     stream<NetAXISAppTransDataReq> &      net_app_to_tx_app_trans_data_req,
-    stream<NetAXISAppTransDataRsp> &      tx_app_to_net_app_tans_data_rsp,
+    stream<NetAXISAppTransDataRsp> &      tx_app_to_net_app_trans_data_rsp,
     stream<NetAXIS> &                     net_app_trans_data,
     stream<DataMoverCmd> &                tx_app_to_mem_write_cmd,
     stream<NetAXIS> &                     tx_app_to_mem_write_data,
@@ -97,8 +97,8 @@ void toe_top(
 #pragma HLS INTERFACE axis register both port = net_app_to_tx_app_trans_data_req
 #pragma HLS aggregate variable = net_app_to_tx_app_trans_data_req compact = bit
 
-#pragma HLS INTERFACE axis register both port = tx_app_to_net_app_tans_data_rsp
-#pragma HLS aggregate variable = tx_app_to_net_app_tans_data_rsp compact = bit
+#pragma HLS INTERFACE axis register both port = tx_app_to_net_app_trans_data_rsp
+#pragma HLS aggregate variable = tx_app_to_net_app_trans_data_rsp compact = bit
 
 #pragma HLS INTERFACE axis register both port = net_app_trans_data
 #pragma HLS aggregate variable = net_app_trans_data compact = bit
@@ -417,7 +417,7 @@ void toe_top(
 
       // net app data request
       net_app_to_tx_app_trans_data_req,
-      tx_app_to_net_app_tans_data_rsp,
+      tx_app_to_net_app_trans_data_rsp,
       net_app_trans_data,
       // tx sar req/rsp
       tx_app_to_tx_sar_upd_req_fifo,

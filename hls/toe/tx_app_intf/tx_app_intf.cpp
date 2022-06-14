@@ -219,7 +219,7 @@ void TxAppConnectionHandler(
 void TxAppDataHandler(
     // net app
     stream<NetAXISAppTransDataReq> &net_app_to_tx_app_trans_data_req,
-    stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_tans_data_rsp,
+    stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_trans_data_rsp,
     stream<NetAXIS> &               net_app_trans_data,
     // tx app table
     stream<TxAppToTxAppTableReq> &tx_app_to_tx_app_table_req,
@@ -235,7 +235,7 @@ void TxAppDataHandler(
 #pragma HLS PIPELINE off
 
 #pragma HLS INTERFACE axis register both port = net_app_to_tx_app_trans_data_req
-#pragma HLS INTERFACE axis register both port = tx_app_to_net_app_tans_data_rsp
+#pragma HLS INTERFACE axis register both port = tx_app_to_net_app_trans_data_rsp
 #pragma HLS INTERFACE axis register both port = net_app_trans_data
 #pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_cmd
 #pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_data
@@ -342,7 +342,7 @@ void TxAppDataHandler(
           fsm_state = READ_DATA;
         }
         trans_data_rsp.dest = trans_data_req.dest;
-        tx_app_to_net_app_tans_data_rsp.write(trans_data_rsp.to_axis());
+        tx_app_to_net_app_trans_data_rsp.write(trans_data_rsp.to_axis());
         logger.Info(TX_APP_IF, NET_APP, "TransData Rsp", trans_data_rsp.to_string());
       }
       break;
@@ -524,7 +524,7 @@ void tx_app_intf(
 
     // net app data request
     stream<NetAXISAppTransDataReq> &net_app_to_tx_app_trans_data_req,
-    stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_tans_data_rsp,
+    stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_trans_data_rsp,
     stream<NetAXIS> &               net_app_trans_data,
     // to/from tx sar upd req
     stream<TxAppToTxSarReq> &tx_app_to_tx_sar_upd_req,
@@ -540,12 +540,16 @@ void tx_app_intf(
     stream<DataMoverStatus> &mem_to_tx_app_write_status,
     // in big endian
     IpAddr &my_ip_addr) {
+//#pragma HLS          INLINE
+//#pragma HLS PIPELINE II = 1
+#pragma HLS DATAFLOW
+
 #pragma HLS INTERFACE axis register both port = net_app_to_tx_app_open_conn_req
 #pragma HLS INTERFACE axis register both port = tx_app_to_net_app_open_conn_rsp
 #pragma HLS INTERFACE axis register both port = net_app_to_tx_app_close_conn_req
 #pragma HLS INTERFACE axis register both port = net_app_new_client_notification
 #pragma HLS INTERFACE axis register both port = net_app_to_tx_app_trans_data_req
-#pragma HLS INTERFACE axis register both port = tx_app_to_net_app_tans_data_rsp
+#pragma HLS INTERFACE axis register both port = tx_app_to_net_app_trans_data_rsp
 #pragma HLS INTERFACE axis register both port = net_app_trans_data
 #pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_cmd
 #pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_data
@@ -610,7 +614,7 @@ void tx_app_intf(
   TxAppDataHandler(
       // net app
       net_app_to_tx_app_trans_data_req,
-      tx_app_to_net_app_tans_data_rsp,
+      tx_app_to_net_app_trans_data_rsp,
       net_app_trans_data,
       // tx app table
       tx_app_to_tx_app_table_req_fifo,

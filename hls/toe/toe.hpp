@@ -24,7 +24,7 @@ void toe_top(
     stream<NetAXISAppCloseConnReq> &      net_app_to_tx_app_close_conn_req,
     stream<NetAXISNewClientNotification> &net_app_new_client_notification,
     stream<NetAXISAppTransDataReq> &      net_app_to_tx_app_trans_data_req,
-    stream<NetAXISAppTransDataRsp> &      tx_app_to_net_app_tans_data_rsp,
+    stream<NetAXISAppTransDataRsp> &      tx_app_to_net_app_trans_data_rsp,
     stream<NetAXIS> &                     net_app_trans_data,
     stream<DataMoverCmd> &                tx_app_to_mem_write_cmd,
     stream<NetAXIS> &                     tx_app_to_mem_write_data,

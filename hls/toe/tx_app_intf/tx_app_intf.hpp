@@ -97,7 +97,7 @@ void TxAppConnectionHandler(
 void TxAppDataHandler(
     // net app
     stream<NetAXISAppTransDataReq> &net_app_to_tx_app_trans_data_req,
-    stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_tans_data_rsp,
+    stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_trans_data_rsp,
     stream<NetAXIS> &               net_app_trans_data,
     // tx app table
     stream<TxAppToTxAppTableReq> &tx_app_to_tx_app_table_req,
@@ -148,7 +148,7 @@ void tx_app_intf(
 
     // net app data request
     stream<NetAXISAppTransDataReq> &net_app_to_tx_app_trans_data_req,
-    stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_tans_data_rsp,
+    stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_trans_data_rsp,
     stream<NetAXIS> &               net_app_trans_data,
     // to/from tx sar upd req
     stream<TxAppToTxSarReq> &tx_app_to_tx_sar_upd_req,
