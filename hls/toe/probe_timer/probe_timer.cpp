@@ -64,7 +64,6 @@ void                  probe_timer(stream<TcpSessionID> &rx_eng_to_timer_clear_pt
       if (probe_timer_table[ptimer_cur_session_id].time == 0 || ptimer_cur_id_to_be_clear) {
         probe_timer_table[ptimer_cur_session_id].time   = 0;
         probe_timer_table[ptimer_cur_session_id].active = false;
-        // It's not an RT, we want to resume TX
 #if !(TCP_NODELAY)
         to_event_eng = Event(TX, ptimer_cur_session_id);
 #else

@@ -195,7 +195,7 @@ void TxEngTcpFsm(
                   tx_eng_to_timer_set_ptimer.write(tx_eng_event_reg.session_id);
                   logger.Info(TX_ENGINE,
                               PROBE_TMR,
-                              "Set PTimer",
+                              "Set PTimer 1st",
                               tx_eng_event_reg.session_id.to_string(16));
                 }
                 tcp_tx_meta_reg.length = curr_length;
@@ -225,8 +225,10 @@ void TxEngTcpFsm(
                 tx_eng_to_timer_set_ptimer.write(tx_eng_event_reg.session_id);
                 to_tx_sar_req = TxEngToTxSarReq(tx_eng_event_reg.session_id, txSar_not_ackd_w, 1);
                 tx_eng_to_tx_sar_req.write(to_tx_sar_req);
-                logger.Info(
-                    TX_ENGINE, PROBE_TMR, "Set PTimer", tx_eng_event_reg.session_id.to_string(16));
+                logger.Info(TX_ENGINE,
+                            PROBE_TMR,
+                            "Set PTimer 2nd",
+                            tx_eng_event_reg.session_id.to_string(16));
                 logger.Info(TX_ENGINE, TX_SAR_TB, "SAR Upd", to_tx_sar_req.to_string());
                 logger.Info(TX_ENGINE, "Change state to LOAD");
 
