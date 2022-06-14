@@ -702,7 +702,7 @@ struct RxEngToTxSarReq {
       , write(0) {}
   // update req
   RxEngToTxSarReq(TcpSessionID         id,
-                  TcpSessionBuffer     ackd,
+                  ap_uint<32>          ackd,
                   ap_uint<16>          recv_win,
                   ap_uint<WINDOW_BITS> cong_win,
                   ap_uint<2>           count,
@@ -715,7 +715,7 @@ struct RxEngToTxSarReq {
       , fast_retrans(fast_retrans)
       , write(1) {}
   RxEngToTxSarReq(TcpSessionID          id,
-                  TcpSessionBuffer      ackd,
+                  ap_uint<32>           ackd,
                   ap_uint<16>           recv_win,
                   TcpSessionBuffer      cong_win,
                   ap_uint<2>            count,
@@ -971,7 +971,8 @@ struct TxSarToTxEngRsp {
     sstream << "Used Length: " << used_length.to_string(16) << "\t";
     sstream << "Used Length Rst: " << used_length_rst.to_string(16) << "\t";
     sstream << "Usable Win: " << usable_window.to_string(16) << "\t";
-    sstream << "WinScaleOpt: " << win_shift.to_string(16);
+    sstream << "WinScaleOpt: " << win_shift.to_string(16) << "\t";
+    sstream << "Acked equal not acked" << ackd_eq_not_ackd ? "1" : "0";
     return sstream.str();
   }
 #else
