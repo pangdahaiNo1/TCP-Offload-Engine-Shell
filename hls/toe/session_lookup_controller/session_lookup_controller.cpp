@@ -12,6 +12,8 @@ extern MockLogger logger;
 void                 GetNewAvailableSessionId(stream<ap_uint<14> > &released_id_in,
                                               stream<ap_uint<14> > &available_id_out) {
 #pragma HLS PIPELINE II = 1
+#pragma HLS INLINE   off
+
   static ap_uint<14> cur_session_id = 0;
 #pragma HLS reset variable = cur_session_id
   ap_uint<14> session_id;
@@ -49,22 +51,27 @@ void CamLookupRspHandler(
     // insert req
     stream<SlookupToRevTableUpdReq> &reverse_table_insert_req) {
 #pragma HLS PIPELINE II = 1
+#pragma HLS INLINE   off
 
-  static stream<RevTableEntry> slookup_rev_table_req_cache_fifo("slookup_rev_table_req_cache_fifo");
-#pragma HLS STREAM variable = slookup_rev_table_req_cache_fifo depth = 4
+  //   static stream<RevTableEntry>
+  //   slookup_rev_table_req_cache_fifo("slookup_rev_table_req_cache_fifo");
+  // #pragma HLS STREAM variable = slookup_rev_table_req_cache_fifo depth = 4
 
-  static stream<SlookupReqInternal> slookup_to_cam_req_cache_fifo("slookup_to_cam_req_cache_fifo");
-#pragma HLS STREAM variable = slookup_to_cam_req_cache_fifo depth = 8
+  //   static stream<SlookupReqInternal>
+  //   slookup_to_cam_req_cache_fifo("slookup_to_cam_req_cache_fifo");
+  // #pragma HLS STREAM variable = slookup_to_cam_req_cache_fifo depth = 8
 
-  TxAppToSlookupReq     tx_app_req;
-  RxEngToSlookupReq     rx_eng_req;
-  RevTableEntry         reverse_table_one_entry;
-  SlookupReqInternal    req_internal;
-  RtlCamToSlookupLupRsp cam_rsp;
-  RtlCamToSlookupUpdRsp cam_update_rsp;
-  RtlSLookupToCamLupReq cam_lup_req;
-  ap_uint<14>           available_session_id = 0;
-  SessionLookupRsp      slookup_rsp;
+  static SlookupReqInternal to_cam_req_cache;
+  static bool               to_cam_req_cache_valid = false;
+  static RevTableEntry      to_rev_table_req_cache;
+  static bool               to_rev_table_req_cache_valid = false;
+  TxAppToSlookupReq         tx_app_req;
+  RxEngToSlookupReq         rx_eng_req;
+  RtlCamToSlookupLupRsp     cam_rsp;
+  RtlCamToSlookupUpdRsp     cam_update_rsp;
+  RtlSLookupToCamLupReq     cam_lup_req;
+  ap_uint<14>               available_session_id = 0;
+  SessionLookupRsp          slookup_rsp;
 
   enum SlookupFsmState { LUP_REQ, LUP_RSP, UPD_RSP };
   static SlookupFsmState slc_fsm_state = LUP_REQ;
@@ -73,46 +80,46 @@ void CamLookupRspHandler(
     case LUP_REQ:
       if (!tx_app_to_slookup_req.empty()) {
         tx_app_to_slookup_req.read(tx_app_req);
-        req_internal.tuple.there_ip_addr  = tx_app_req.four_tuple.dst_ip_addr;
-        req_internal.tuple.there_tcp_port = tx_app_req.four_tuple.dst_tcp_port;
-        req_internal.tuple.here_tcp_port  = tx_app_req.four_tuple.src_tcp_port;
-        req_internal.allow_creation       = true;
-        req_internal.source               = TX_APP;
-        req_internal.role_id              = tx_app_req.role_id;
-        cam_lup_req = RtlSLookupToCamLupReq(req_internal.tuple, req_internal.source);
+        to_cam_req_cache.tuple.there_ip_addr  = tx_app_req.four_tuple.dst_ip_addr;
+        to_cam_req_cache.tuple.there_tcp_port = tx_app_req.four_tuple.dst_tcp_port;
+        to_cam_req_cache.tuple.here_tcp_port  = tx_app_req.four_tuple.src_tcp_port;
+        to_cam_req_cache.allow_creation       = true;
+        to_cam_req_cache.source               = TX_APP;
+        to_cam_req_cache.role_id              = tx_app_req.role_id;
+        cam_lup_req = RtlSLookupToCamLupReq(to_cam_req_cache.tuple, to_cam_req_cache.source);
         slookup_to_cam_lup_req.write(cam_lup_req);
         logger.Info(SLUP_CTRL, CUKOO_CAM, "Lup Req from TxApp", cam_lup_req.to_string());
-        slookup_to_cam_req_cache_fifo.write(req_internal);
-        slc_fsm_state = LUP_RSP;
+        to_cam_req_cache_valid = true;
+        slc_fsm_state          = LUP_RSP;
       } else if (!rx_eng_to_slookup_req.empty()) {
         rx_eng_to_slookup_req.read(rx_eng_req);
-        req_internal.tuple.there_ip_addr  = rx_eng_req.four_tuple.src_ip_addr;
-        req_internal.tuple.there_tcp_port = rx_eng_req.four_tuple.src_tcp_port;
-        req_internal.tuple.here_tcp_port  = rx_eng_req.four_tuple.dst_tcp_port;
-        req_internal.allow_creation       = rx_eng_req.allow_creation;
-        req_internal.source               = RX;
-        req_internal.role_id              = rx_eng_req.role_id;
-        cam_lup_req = RtlSLookupToCamLupReq(req_internal.tuple, req_internal.source);
+        to_cam_req_cache.tuple.there_ip_addr  = rx_eng_req.four_tuple.src_ip_addr;
+        to_cam_req_cache.tuple.there_tcp_port = rx_eng_req.four_tuple.src_tcp_port;
+        to_cam_req_cache.tuple.here_tcp_port  = rx_eng_req.four_tuple.dst_tcp_port;
+        to_cam_req_cache.allow_creation       = rx_eng_req.allow_creation;
+        to_cam_req_cache.source               = RX;
+        to_cam_req_cache.role_id              = rx_eng_req.role_id;
+        cam_lup_req = RtlSLookupToCamLupReq(to_cam_req_cache.tuple, to_cam_req_cache.source);
         slookup_to_cam_lup_req.write(cam_lup_req);
         logger.Info(SLUP_CTRL, CUKOO_CAM, "Lup Req from RxEng", cam_lup_req.to_string());
-        slookup_to_cam_req_cache_fifo.write(req_internal);
-        slc_fsm_state = LUP_RSP;
+        to_cam_req_cache_valid = true;
+        slc_fsm_state          = LUP_RSP;
       }
       break;
     case LUP_RSP:
-      if (!cam_to_slookup_lup_rsp.empty() && !slookup_to_cam_req_cache_fifo.empty()) {
+      if (!cam_to_slookup_lup_rsp.empty() && to_cam_req_cache_valid) {
         cam_to_slookup_lup_rsp.read(cam_rsp);
-        slookup_to_cam_req_cache_fifo.read(req_internal);
-        if (!cam_rsp.hit && req_internal.allow_creation && !slookup_available_id_in.empty()) {
+        to_cam_req_cache_valid = false;
+        if (!cam_rsp.hit && to_cam_req_cache.allow_creation && !slookup_available_id_in.empty()) {
           slookup_available_id_in.read(available_session_id);
           slookup_to_cam_insert_req.write(RtlSlookupToCamUpdReq(
-              req_internal.tuple, available_session_id, INSERT, cam_rsp.source));
+              to_cam_req_cache.tuple, available_session_id, INSERT, cam_rsp.source));
           // Only when it allow create, the role-id insert to the reverse table
-          slookup_rev_table_req_cache_fifo.write(
-              RevTableEntry(req_internal.tuple, req_internal.role_id));
-          slc_fsm_state = UPD_RSP;
+          to_rev_table_req_cache = RevTableEntry(to_cam_req_cache.tuple, to_cam_req_cache.role_id);
+          to_rev_table_req_cache_valid = true;
+          slc_fsm_state                = UPD_RSP;
         } else {
-          slookup_rsp = SessionLookupRsp(cam_rsp.session_id, cam_rsp.hit, req_internal.role_id);
+          slookup_rsp = SessionLookupRsp(cam_rsp.session_id, cam_rsp.hit, to_cam_req_cache.role_id);
           if (cam_rsp.source == RX) {
             logger.Info(SLUP_CTRL, RX_ENGINE, "Lup Rsp", slookup_rsp.to_string());
             slookup_to_rx_eng_rsp.write(slookup_rsp);
@@ -125,17 +132,17 @@ void CamLookupRspHandler(
       }
       break;
     case UPD_RSP:
-      if (!cam_to_slookup_upd_rsp.empty() && !slookup_rev_table_req_cache_fifo.empty()) {
+      if (!cam_to_slookup_upd_rsp.empty() && to_rev_table_req_cache_valid) {
         cam_to_slookup_upd_rsp.read(cam_update_rsp);
-        slookup_rev_table_req_cache_fifo.read(reverse_table_one_entry);
+        to_rev_table_req_cache_valid = false;
         // update rev table requset
         reverse_table_insert_req.write(SlookupToRevTableUpdReq(cam_update_rsp.session_id,
-                                                               reverse_table_one_entry.three_tuple,
-                                                               reverse_table_one_entry.role_id));
+                                                               to_rev_table_req_cache.three_tuple,
+                                                               to_rev_table_req_cache.role_id));
 
         // reponse to rx engine or tx app
         slookup_rsp =
-            SessionLookupRsp(cam_update_rsp.session_id, true, reverse_table_one_entry.role_id);
+            SessionLookupRsp(cam_update_rsp.session_id, true, to_rev_table_req_cache.role_id);
         if (cam_update_rsp.source == RX) {
           logger.Info(SLUP_CTRL, RX_ENGINE, "Update Rsp", slookup_rsp.to_string());
           slookup_to_rx_eng_rsp.write(slookup_rsp);
@@ -159,6 +166,7 @@ void                 CamUpdateReqSender(stream<RtlSlookupToCamUpdReq> &slookup_t
                                         stream<ap_uint<14> > &         slookup_released_id,
                                         ap_uint<16> &                  reg_session_cnt) {
 #pragma HLS PIPELINE II = 1
+#pragma HLS INLINE   off
 
   static ap_uint<16>    used_session_id_cnt = 0;
   RtlSlookupToCamUpdReq cam_upd_req;
@@ -169,7 +177,7 @@ void                 CamUpdateReqSender(stream<RtlSlookupToCamUpdReq> &slookup_t
     rtl_slookup_to_cam_update_req.write(cam_upd_req);
     used_session_id_cnt++;
     reg_session_cnt = used_session_id_cnt;
-    logger.Info("Current Session count", reg_session_cnt.to_string(16));
+    logger.Info(SLUP_CTRL, "Current Session count", reg_session_cnt.to_string(16));
   } else if (!slookup_to_cam_delete_req.empty()) {
     slookup_to_cam_delete_req.read(cam_upd_req);
     logger.Info(SLUP_CTRL, CUKOO_CAM, "Delete Req", cam_upd_req.to_string());
@@ -177,8 +185,8 @@ void                 CamUpdateReqSender(stream<RtlSlookupToCamUpdReq> &slookup_t
     slookup_released_id.write(cam_upd_req.value(13, 0));
     used_session_id_cnt--;
     reg_session_cnt = used_session_id_cnt;
-    logger.Info("Current Released Seesion ", cam_upd_req.value(13, 0).to_string(16));
-    logger.Info("Current Session count", reg_session_cnt.to_string(16));
+    logger.Info(SLUP_CTRL, "Current Released Seesion ", cam_upd_req.value(13, 0).to_string(16));
+    logger.Info(SLUP_CTRL, "Current Session count", reg_session_cnt.to_string(16));
   }
 }
 
@@ -255,6 +263,8 @@ void SlookupReverseTableInterface(
 
   } else if (!tx_eng_to_slookup_rev_table_req.empty()) {
     tx_eng_to_slookup_rev_table_req.read(session_id);
+    logger.Info(
+        TX_ENGINE, SLUP_CTRL, "Rev Table Req for tuple and TDEST", session_id.to_string(16));
     tx_eng_rsp.four_tuple.src_ip_addr  = my_ip_addr;
     tx_eng_rsp.four_tuple.dst_ip_addr  = slookup_rev_table[session_id].three_tuple.there_ip_addr;
     tx_eng_rsp.four_tuple.src_tcp_port = slookup_rev_table[session_id].three_tuple.here_tcp_port;
@@ -264,7 +274,7 @@ void SlookupReverseTableInterface(
     slookup_rev_table_to_tx_eng_rsp.write(tx_eng_rsp);
   } else if (!rx_app_to_slookup_tdest_lookup_req.empty()) {
     rx_app_to_slookup_tdest_lookup_req.read(session_id);
-
+    logger.Info(RX_APP_IF, SLUP_CTRL, "Rev Table Req for TDEST", session_id.to_string(16));
     if (valid_tuple[session_id]) {
       ret_role_id = slookup_rev_table[session_id].role_id;
     } else {
@@ -274,6 +284,7 @@ void SlookupReverseTableInterface(
     slookup_to_rx_app_tdest_lookup_rsp.write(ret_role_id);
   } else if (!tx_app_to_slookup_check_tdest_req.empty()) {
     tx_app_to_slookup_check_tdest_req.read(session_id);
+    logger.Info(TX_APP_IF, SLUP_CTRL, "Rev Table Req for TDEST", session_id.to_string(16));
     if (valid_tuple[session_id]) {
       ret_role_id = slookup_rev_table[session_id].role_id;
     } else {
@@ -283,7 +294,7 @@ void SlookupReverseTableInterface(
     slookup_to_tx_app_check_tdest_rsp.write(ret_role_id);
   } else if (!sttable_to_slookup_release_req.empty()) {
     sttable_to_slookup_release_req.read(session_id);
-    logger.Info("Rev Table release Session", session_id.to_string(16));
+    logger.Info(SLUP_CTRL, "Rev Table release Session", session_id.to_string(16));
     cur_tuple_to_release = slookup_rev_table[session_id].three_tuple;
     if (valid_tuple[session_id])  // if valid
     {
@@ -349,7 +360,7 @@ void session_lookup_controller(
 
   static stream<RtlSlookupToCamUpdReq> slookup_to_cam_insert_req_fifo(
       "slookup_to_cam_insert_req_fifo");
-#pragma HLS STREAM variable = slookup_to_cam_insert_req_fifo depth = 4
+#pragma HLS STREAM variable = slookup_to_cam_insert_req_fifo depth = 16
 
   static stream<RtlSlookupToCamUpdReq> slookup_to_cam_delete_req_fifo(
       "slookup_to_cam_delete_req_fifo");

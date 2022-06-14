@@ -6,7 +6,7 @@ using namespace hls;
 struct RevTableEntry {
   ThreeTuple  three_tuple;
   NetAXISDest role_id;
-  RevTableEntry() {}
+  RevTableEntry() : three_tuple(), role_id(INVALID_TDEST) {}
   RevTableEntry(ThreeTuple tuple, NetAXISDest role) : three_tuple(tuple), role_id(role) {}
 };
 /** @ingroup session_lookup_controller
@@ -17,7 +17,7 @@ struct SlookupReqInternal {
   bool          allow_creation;
   SlookupSource source;
   NetAXISDest   role_id;
-  SlookupReqInternal() {}
+  SlookupReqInternal() : tuple(), allow_creation(0), source(RX), role_id(INVALID_TDEST) {}
   SlookupReqInternal(ThreeTuple tuple, bool allow_creation, SlookupSource src, NetAXISDest role_id)
       : tuple(tuple), allow_creation(allow_creation), source(src), role_id(role_id) {}
 };

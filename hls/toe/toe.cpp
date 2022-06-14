@@ -64,27 +64,67 @@ void toe_top(
 #pragma HLS INTERFACE axis port = tx_ip_pkt_out
 // rx app
 #pragma HLS INTERFACE axis register both port = net_app_to_rx_app_listen_port_req
+#pragma HLS aggregate variable = net_app_to_rx_app_listen_port_req compact = bit
+
 #pragma HLS INTERFACE axis register both port = rx_app_to_net_app_listen_port_rsp
+#pragma HLS aggregate variable = rx_app_to_net_app_listen_port_rsp compact = bit
+
 #pragma HLS INTERFACE axis register both port = net_app_read_data_req
+#pragma HLS aggregate variable = net_app_read_data_req compact = bit
+
 #pragma HLS INTERFACE axis register both port = net_app_read_data_rsp
+#pragma HLS aggregate variable = net_app_read_data_rsp compact = bit
+
 #pragma HLS INTERFACE axis register both port = rx_app_to_net_app_data
+#pragma HLS aggregate variable = rx_app_to_net_app_data compact = bit
+
 #pragma HLS INTERFACE axis register both port = net_app_notification
+#pragma HLS aggregate variable = net_app_notification compact = bit
+
 // tx app
 #pragma HLS INTERFACE axis register both port = net_app_to_tx_app_open_conn_req
+#pragma HLS aggregate variable = net_app_to_tx_app_open_conn_req compact = bit
+
 #pragma HLS INTERFACE axis register both port = tx_app_to_net_app_open_conn_rsp
+#pragma HLS aggregate variable = tx_app_to_net_app_open_conn_rsp compact = bit
+
 #pragma HLS INTERFACE axis register both port = net_app_to_tx_app_close_conn_req
+#pragma HLS aggregate variable = net_app_to_tx_app_close_conn_req compact = bit
+
 #pragma HLS INTERFACE axis register both port = net_app_new_client_notification
+#pragma HLS aggregate variable = net_app_new_client_notification compact = bit
+
 #pragma HLS INTERFACE axis register both port = net_app_to_tx_app_trans_data_req
+#pragma HLS aggregate variable = net_app_to_tx_app_trans_data_req compact = bit
+
 #pragma HLS INTERFACE axis register both port = tx_app_to_net_app_tans_data_rsp
+#pragma HLS aggregate variable = tx_app_to_net_app_tans_data_rsp compact = bit
+
 #pragma HLS INTERFACE axis register both port = net_app_trans_data
+#pragma HLS aggregate variable = net_app_trans_data compact = bit
+
 #pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_cmd
+#pragma HLS aggregate variable = tx_app_to_mem_write_cmd compact = bit
+
 #pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_data
+#pragma HLS aggregate variable = tx_app_to_mem_write_data compact = bit
+
 #pragma HLS INTERFACE axis register both port = mem_to_tx_app_write_status
+#pragma HLS aggregate variable = mem_to_tx_app_write_status compact = bit
+
 // CAM
 #pragma HLS INTERFACE axis register port = rtl_slookup_to_cam_lookup_req
+#pragma HLS aggregate variable = rtl_slookup_to_cam_lookup_req compact = bit
+
 #pragma HLS INTERFACE axis register port = rtl_cam_to_slookup_lookup_rsp
+#pragma HLS aggregate variable = rtl_cam_to_slookup_lookup_rsp compact = bit
+
 #pragma HLS INTERFACE axis register port = rtl_slookup_to_cam_update_req
+#pragma HLS aggregate variable = rtl_slookup_to_cam_update_req compact = bit
+
 #pragma HLS INTERFACE axis register port = rtl_cam_to_slookup_update_rsp
+#pragma HLS aggregate variable = rtl_cam_to_slookup_update_rsp compact = bit
+
 // ip
 #pragma HLS INTERFACE ap_stable register port = my_ip_addr name = my_ip_addr
 // session count register
