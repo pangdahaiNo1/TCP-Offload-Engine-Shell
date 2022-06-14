@@ -65,7 +65,8 @@ void TestEchoServer() {
   ListenPortRsp   listen_port_rsp;
   AppNotification app_notify;
   AppReadRsp      read_rsp;
-  AppTransDataRsp trans_rsp;NetAXISWord cur_word;
+  AppTransDataRsp trans_rsp;
+  NetAXISWord     cur_word;
   ap_uint<16>     payload_len = 0xFFF;
   int             sim_cycle   = 0;
   while (sim_cycle < 200) {
@@ -88,11 +89,11 @@ void TestEchoServer() {
         break;
       case 4:
         GenRandStream(payload_len, rand_data);
-        do{
-             cur_word = rand_data.read();
-             rand_data_copy.write(cur_word.to_net_axis());
-             net_app_rx_data_in.write(cur_word.to_net_axis());
-        }while(cur_word.last != 1);
+        do {
+          cur_word = rand_data.read();
+          rand_data_copy.write(cur_word.to_net_axis());
+          net_app_rx_data_in.write(cur_word.to_net_axis());
+        } while (cur_word.last != 1);
         break;
       case 5:
         trans_rsp.data.error           = NO_ERROR;
