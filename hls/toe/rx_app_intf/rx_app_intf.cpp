@@ -191,7 +191,8 @@ void rx_app_intf(
     //     stream<DataMoverCmd> &rx_buffer_read_cmd,
     // #endif
 ) {
-  // #pragma HLS DATAFLOW
+//#pragma HLS PIPELINE II = 1
+#pragma HLS DATAFLOW
 
 #pragma HLS INTERFACE axis register both port = net_app_to_rx_app_listen_port_req
 #pragma HLS INTERFACE axis register both port = rx_app_to_net_app_listen_port_rsp
