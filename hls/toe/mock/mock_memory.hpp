@@ -24,10 +24,13 @@ public:
   unordered_map<uint64_t, ap_uint<8> > _mock_memory;
   // write cmd fifo
   queue<DataMoverCmd> _s2mm_cmd_fifo;
+  // read cmd fifo
+  queue<DataMoverCmd> _mm2s_cmd_fifo;
 
   MockMem() {
     _mock_memory   = unordered_map<uint64_t, ap_uint<8> >();
     _s2mm_cmd_fifo = queue<DataMoverCmd>();
+    _mm2s_cmd_fifo = queue<DataMoverCmd>();
   }
   void MockMemIntf(MockLogger &          logger,
                    stream<DataMoverCmd> &mover_read_mem_cmd,
@@ -48,29 +51,42 @@ public:
     }
     if (!mover_write_mem_data.empty()) {
       cur_word = mover_write_mem_data.read();
-      S2MMWriteToMem(cur_word.to_net_axis());
-      cur_sts.okay = 1;
-      mover_write_mem_status.write(cur_sts);
+      S2MMWriteToMem(logger, cur_word.to_net_axis());
       logger.Info(TOE_TOP, DATA_MVER, "WriteMem data", cur_word.to_string());
+      // write mem data then return OKAY flag
+      if (cur_word.last == 1) {
+        cur_sts.okay = 1;
+        mover_write_mem_status.write(cur_sts);
+      }
     }
     // MM2S - read data from mem
     if (!mover_read_mem_cmd.empty()) {
       cur_cmd = mover_read_mem_cmd.read();
-      MM2SReadFromMem(cur_cmd, mover_read_mem_data);
+      _mm2s_cmd_fifo.push(cur_cmd);
       logger.Info(TOE_TOP, DATA_MVER, "ReadMem Cmd", cur_cmd.to_string());
+    }
+    // if current read mem fifo is not empty, return one beat data
+    if (!_mm2s_cmd_fifo.empty()) {
+      NetAXIS cur_read_beat = NewNetAXIS(0, 0, 0, 0);
+      MM2SReadFromMem(logger, cur_read_beat);
+      logger.Info(TOE_TOP, DATA_MVER, "ReadMem Data", NetAXISWord(cur_read_beat).to_string());
+
+      mover_read_mem_data.write(cur_read_beat);
     }
   }
   void PushS2MMCmd(const DataMoverCmd &cmd) { _s2mm_cmd_fifo.push(cmd); }
 
   // assume the head cmd.bbt is larger than one_beat data length
   // ignore the one_beat last signal
-  void S2MMWriteToMem(const NetAXIS &one_beat) {
+  void S2MMWriteToMem(MockLogger &logger, const NetAXIS &one_beat) {
     assert(!_s2mm_cmd_fifo.empty());
     DataMoverCmd   front_cmd        = _s2mm_cmd_fifo.front();
     const uint16_t s2mm_data_length = KeepToLength(one_beat.keep);
     // cout << s2mm_data_length << " " << one_beat.keep.to_string(16) << endl;
     uint64_t cur_addr        = front_cmd.saddr.to_uint64();
     uint64_t remaining_bytes = front_cmd.bbt;
+    logger.Info(MOCK_MEMY, "Write MockMem cmd", front_cmd.to_string());
+    logger.Info(MOCK_MEMY, "Write MockMem data", NetAXISWord(one_beat).to_string());
     for (int i = 0; i < s2mm_data_length; i++) {
       _mock_memory[cur_addr] = one_beat.data((i + 1) * 8 - 1, i * 8);
       cur_addr += 1;
@@ -82,6 +98,38 @@ public:
     } else {
       _s2mm_cmd_fifo.front().bbt   = remaining_bytes;
       _s2mm_cmd_fifo.front().saddr = cur_addr;
+    }
+    return;
+  }
+
+  void MM2SReadFromMem(MockLogger &logger, NetAXIS &one_beat) {
+    assert(!_mm2s_cmd_fifo.empty());
+    DataMoverCmd   front_cmd        = _mm2s_cmd_fifo.front();
+    const uint16_t mm2s_data_length = std::min(front_cmd.bbt.to_uint(), uint(NET_TDATA_BYTES));
+    uint64_t       cur_addr         = front_cmd.saddr.to_uint64();
+    uint64_t       remaining_bytes  = front_cmd.bbt;
+    for (int i = 0; i < mm2s_data_length; i++) {
+      auto iter = _mock_memory.find(cur_addr);
+      if (iter == _mock_memory.end()) {
+        std::cerr << "read a invalid mem" << hex << cur_addr << std::endl;
+        DumpMockMemoryToFile("mem_dump.dat");
+        exit(-1);
+      } else {
+        one_beat.data((i + 1) * 8 - 1, i * 8) = iter->second;
+        one_beat.keep[i]                      = 1;
+      }
+      cur_addr += 1;
+      remaining_bytes -= 1;
+    }
+    assert(remaining_bytes >= 0);
+    if (remaining_bytes == 0) {
+      _mm2s_cmd_fifo.pop();
+      //! import
+      one_beat.last = 1;
+    } else {
+      _mm2s_cmd_fifo.front().bbt   = remaining_bytes;
+      _mm2s_cmd_fifo.front().saddr = cur_addr;
+      one_beat.last                = 0;
     }
     return;
   }
@@ -105,7 +153,7 @@ public:
     return;
   }
 
-  void MM2SReadFromMem(const DataMoverCmd &cmd, stream<NetAXIS> &mem_data) {
+  void MM2SReadFromMemAll(MockLogger &logger, const DataMoverCmd &cmd, stream<NetAXIS> &mem_data) {
     uint64_t            bytes_to_trans = cmd.bbt;
     uint64_t            cur_addr       = cmd.saddr;
     vector<ap_uint<8> > read_vals      = vector<ap_uint<8> >();
@@ -113,6 +161,7 @@ public:
       auto iter = _mock_memory.find(cur_addr);
       if (iter == _mock_memory.end()) {
         std::cerr << "read a invalid mem" << hex << cur_addr << std::endl;
+        DumpMockMemoryToFile("mem_dump.dat");
         exit(-1);
       } else {
         read_vals.push_back(iter->second);
