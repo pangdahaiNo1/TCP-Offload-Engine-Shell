@@ -23,4 +23,81 @@ FourTuple reverse_mock_tuple(mock_dst_ip_addr,
                              mock_dst_tcp_port,
                              mock_src_tcp_port);
 
+struct ToeIntf {
+  // rx engine
+  stream<NetAXIS> rx_ip_pkt_in;
+  // tx engine
+  stream<DataMoverCmd> mover_read_mem_cmd_out;
+  stream<NetAXIS>      mover_read_mem_data_in;
+  stream<NetAXIS>      tx_app_to_tx_eng_data;
+  stream<NetAXIS>      tx_ip_pkt_out;
+  // rx app
+  stream<NetAXISListenPortReq>   net_app_to_rx_app_listen_port_req;
+  stream<NetAXISListenPortRsp>   rx_app_to_net_app_listen_port_rsp;
+  stream<NetAXISAppReadReq>      net_app_to_rx_app_recv_data_req;
+  stream<NetAXISAppReadRsp>      rx_app_to_net_app_recv_data_rsp;
+  stream<NetAXIS>                net_app_recv_data;
+  stream<NetAXISAppNotification> net_app_notification;
+  // tx app
+  stream<NetAXISAppOpenConnReq>        net_app_to_tx_app_open_conn_req;
+  stream<NetAXISAppOpenConnRsp>        tx_app_to_net_app_open_conn_rsp;
+  stream<NetAXISAppCloseConnReq>       net_app_to_tx_app_close_conn_req;
+  stream<NetAXISNewClientNotification> net_app_new_client_notification;
+  stream<NetAXISAppTransDataReq>       net_app_to_tx_app_trans_data_req;
+  stream<NetAXISAppTransDataRsp>       tx_app_to_net_app_trans_data_rsp;
+  stream<NetAXIS>                      net_app_trans_data;
+  stream<DataMoverCmd>                 tx_app_to_mem_write_cmd;
+  stream<NetAXIS>                      tx_app_to_mem_write_data;
+  stream<DataMoverStatus>              mem_to_tx_app_write_status;
+  // CAM
+  stream<RtlSLookupToCamLupReq> rtl_slookup_to_cam_lookup_req;
+  stream<RtlCamToSlookupLupRsp> rtl_cam_to_slookup_lookup_rsp;
+  stream<RtlSlookupToCamUpdReq> rtl_slookup_to_cam_update_req;
+  stream<RtlCamToSlookupUpdRsp> rtl_cam_to_slookup_update_rsp;
+
+  // registers
+  ap_uint<16> reg_session_cnt;
+  // in big endian
+  IpAddr my_ip_addr;
+  ToeIntf(IpAddr ip_addr, string fifo_suffix) {
+    my_ip_addr = ip_addr;
+    // set fifo name
+    rx_ip_pkt_in.set_name(("rx_ip_pkt_in" + fifo_suffix).c_str());
+    mover_read_mem_cmd_out.set_name(("mover_read_mem_cmd_out" + fifo_suffix).c_str());
+    mover_read_mem_data_in.set_name(("mover_read_mem_data_in" + fifo_suffix).c_str());
+    tx_app_to_tx_eng_data.set_name(("tx_app_to_tx_eng_data" + fifo_suffix).c_str());
+    tx_ip_pkt_out.set_name(("tx_ip_pkt_out" + fifo_suffix).c_str());
+    net_app_to_rx_app_listen_port_req.set_name(
+        ("net_app_to_rx_app_listen_port_req" + fifo_suffix).c_str());
+    rx_app_to_net_app_listen_port_rsp.set_name(
+        ("rx_app_to_net_app_listen_port_rsp" + fifo_suffix).c_str());
+    net_app_to_rx_app_recv_data_req.set_name(
+        ("net_app_to_rx_app_recv_data_req" + fifo_suffix).c_str());
+    rx_app_to_net_app_recv_data_rsp.set_name(
+        ("rx_app_to_net_app_recv_data_rsp" + fifo_suffix).c_str());
+    net_app_recv_data.set_name(("net_app_recv_data" + fifo_suffix).c_str());
+    net_app_notification.set_name(("net_app_notification" + fifo_suffix).c_str());
+    net_app_to_tx_app_open_conn_req.set_name(
+        ("net_app_to_tx_app_open_conn_req" + fifo_suffix).c_str());
+    tx_app_to_net_app_open_conn_rsp.set_name(
+        ("tx_app_to_net_app_open_conn_rsp" + fifo_suffix).c_str());
+    net_app_to_tx_app_close_conn_req.set_name(
+        ("net_app_to_tx_app_close_conn_req" + fifo_suffix).c_str());
+    net_app_new_client_notification.set_name(
+        ("net_app_new_client_notification" + fifo_suffix).c_str());
+    net_app_to_tx_app_trans_data_req.set_name(
+        ("net_app_to_tx_app_trans_data_req" + fifo_suffix).c_str());
+    tx_app_to_net_app_trans_data_rsp.set_name(
+        ("tx_app_to_net_app_trans_data_rsp" + fifo_suffix).c_str());
+    net_app_trans_data.set_name(("net_app_trans_data" + fifo_suffix).c_str());
+    tx_app_to_mem_write_cmd.set_name(("tx_app_to_mem_write_cmd" + fifo_suffix).c_str());
+    tx_app_to_mem_write_data.set_name(("tx_app_to_mem_write_data" + fifo_suffix).c_str());
+    mem_to_tx_app_write_status.set_name(("mem_to_tx_app_write_status" + fifo_suffix).c_str());
+    rtl_slookup_to_cam_lookup_req.set_name(("rtl_slookup_to_cam_lookup_req" + fifo_suffix).c_str());
+    rtl_cam_to_slookup_lookup_rsp.set_name(("rtl_cam_to_slookup_lookup_rsp" + fifo_suffix).c_str());
+    rtl_slookup_to_cam_update_req.set_name(("rtl_slookup_to_cam_update_req" + fifo_suffix).c_str());
+    rtl_cam_to_slookup_update_rsp.set_name(("rtl_cam_to_slookup_update_rsp" + fifo_suffix).c_str());
+  }
+};
+
 #endif

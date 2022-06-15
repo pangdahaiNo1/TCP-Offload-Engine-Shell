@@ -13,6 +13,7 @@ using std::dec;
 using std::endl;
 using std::hex;
 
+using hls::axis;
 using hls::stream;
 // change the endian of parameter
 template <int BITWIDTH>
@@ -37,6 +38,27 @@ void                 AxiStreamMerger(stream<T> &in1, stream<T> &in2, stream<T> &
     out.write(in1.read());
   } else if (!in2.empty()) {
     out.write(in2.read());
+  }
+}
+
+/**
+ * Generic stream switch function, only support two TDEST: tdest 0x0 and tdest 0x1;
+ */
+template <typename T>
+void                 AxiStreamSwitch(stream<axis<T, 0, 0, NET_TDEST_WIDTH> > &in,
+                                     stream<axis<T, 0, 0, NET_TDEST_WIDTH> > &out0,
+                                     stream<axis<T, 0, 0, NET_TDEST_WIDTH> > &out1,
+                                     NetAXISDest                              out0_tdest,
+                                     NetAXISDest                              out1_tdest) {
+#pragma HLS PIPELINE II = 1
+
+  if (!in.empty()) {
+    axis<T, 0, 0, NET_TDEST_WIDTH> cur_word = in.read();
+    if (cur_word.dest == out0_tdest) {
+      out0.write(cur_word);
+    } else if (cur_word.dest == out1_tdest) {
+      out1.write(cur_word);
+    }
   }
 }
 

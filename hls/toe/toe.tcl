@@ -51,11 +51,12 @@ if {$hls_act == "csim"} {
    exit
 }
 csynth_design
+if {$hls_act == "cosim"} {
+   csim_design -clean   -argv "${pcap_input_dir}/echo_client_golden.pcap \
+                              ${pcap_input_dir}/echo_client_golden_syn_ack.pcap"
+   exit
+}
 
 export_design -rtl verilog -format ip_catalog
 
-if {$hls_act == "cosim"} {
-   #cosim_design -rtl verilog -argv "${pcap_input_dir}/echo_golden.pcap"
-   exit
-}
 exit
