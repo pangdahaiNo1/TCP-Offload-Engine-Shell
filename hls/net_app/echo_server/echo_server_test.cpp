@@ -39,7 +39,7 @@ void EmptyEchoFifos(MockLogger &                    logger,
 void TestEchoServer() {
   stream<NetAXIS> rand_data;
   stream<NetAXIS> rand_data_copy;
-  NetAppIntf      net_ap_intf(0x1, "_uint_test");
+  NetAppIntf      app(0x1, "_uint_test");
 
   MockLogger top_logger("./echo_server_top.log", NET_APP);
 
@@ -55,63 +55,63 @@ void TestEchoServer() {
       case 1:
         listen_port_rsp.data.port_number       = 15000;
         listen_port_rsp.data.open_successfully = true;
-        listen_port_rsp.dest                   = net_ap_intf.tdest_const;
-        net_ap_intf.net_app_listen_port_rsp.write(listen_port_rsp.to_net_axis());
+        listen_port_rsp.dest                   = app.tdest_const;
+        app.net_app_listen_port_rsp.write(listen_port_rsp.to_net_axis());
         break;
       case 2:
         app_notify.data = AppNotificationNoTDEST(0x1, payload_len, mock_src_ip_addr, 15000, false);
-        app_notify.dest = net_ap_intf.tdest_const;
-        net_ap_intf.net_app_notification.write(app_notify.to_net_axis());
+        app_notify.dest = app.tdest_const;
+        app.net_app_notification.write(app_notify.to_net_axis());
         break;
       case 3:
         read_rsp.data = 0x1;
-        read_rsp.dest = net_ap_intf.tdest_const;
-        net_ap_intf.net_app_read_data_rsp.write(read_rsp.to_net_axis());
+        read_rsp.dest = app.tdest_const;
+        app.net_app_recv_data_rsp.write(read_rsp.to_net_axis());
         break;
       case 4:
         GenRandStream(payload_len, rand_data);
         do {
           cur_word = rand_data.read();
           rand_data_copy.write(cur_word.to_net_axis());
-          net_ap_intf.net_app_rx_data_in.write(cur_word.to_net_axis());
+          app.net_app_recv_data.write(cur_word.to_net_axis());
         } while (cur_word.last != 1);
         break;
       case 5:
         trans_rsp.data.error           = NO_ERROR;
         trans_rsp.data.length          = payload_len;
         trans_rsp.data.remaining_space = 0xFFFF;
-        trans_rsp.dest                 = net_ap_intf.tdest_const;
-        net_ap_intf.net_app_trans_data_rsp.write(trans_rsp.to_axis());
+        trans_rsp.dest                 = app.tdest_const;
+        app.net_app_trans_data_rsp.write(trans_rsp.to_axis());
         break;
 
       default:
         break;
     }
-    echo_server(net_ap_intf.net_app_listen_port_req,
-                net_ap_intf.net_app_listen_port_rsp,
-                net_ap_intf.net_app_new_client_notification,
-                net_ap_intf.net_app_notification,
-                net_ap_intf.net_app_read_data_req,
-                net_ap_intf.net_app_read_data_rsp,
-                net_ap_intf.net_app_open_conn_req,
-                net_ap_intf.net_app_open_conn_rsp,
-                net_ap_intf.net_app_close_conn_req,
-                net_ap_intf.net_app_rx_data_in,
-                net_ap_intf.net_app_trans_data_req,
-                net_ap_intf.net_app_trans_data_rsp,
-                net_ap_intf.net_app_tx_data_out,
-                net_ap_intf.tdest_const);
+    echo_server(app.net_app_listen_port_req,
+                app.net_app_listen_port_rsp,
+                app.net_app_new_client_notification,
+                app.net_app_notification,
+                app.net_app_recv_data_req,
+                app.net_app_recv_data_rsp,
+                app.net_app_recv_data,
+                app.net_app_open_conn_req,
+                app.net_app_open_conn_rsp,
+                app.net_app_close_conn_req,
+                app.net_app_trans_data_req,
+                app.net_app_trans_data_rsp,
+                app.net_app_trans_data,
+                app.tdest_const);
     EmptyEchoFifos(top_logger,
-                   net_ap_intf.net_app_listen_port_req,
-                   net_ap_intf.net_app_read_data_req,
-                   net_ap_intf.net_app_open_conn_req,
-                   net_ap_intf.net_app_close_conn_req,
-                   net_ap_intf.net_app_trans_data_req);
+                   app.net_app_listen_port_req,
+                   app.net_app_recv_data_req,
+                   app.net_app_open_conn_req,
+                   app.net_app_close_conn_req,
+                   app.net_app_trans_data_req);
     sim_cycle++;
     logger.SetSimCycle(sim_cycle);
     top_logger.SetSimCycle(sim_cycle);
   }
-  ComparePacpPacketsWithGolden(rand_data_copy, net_ap_intf.net_app_tx_data_out, false);
+  ComparePacpPacketsWithGolden(rand_data_copy, app.net_app_trans_data, false);
 }
 
 int main() { TestEchoServer(); }

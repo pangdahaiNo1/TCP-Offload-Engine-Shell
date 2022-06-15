@@ -24,9 +24,9 @@ void toe_top(
     // rx app
     stream<NetAXISListenPortReq> &  net_app_to_rx_app_listen_port_req,
     stream<NetAXISListenPortRsp> &  rx_app_to_net_app_listen_port_rsp,
-    stream<NetAXISAppReadReq> &     net_app_read_data_req,
-    stream<NetAXISAppReadRsp> &     net_app_read_data_rsp,
-    stream<NetAXIS> &               rx_app_to_net_app_data,
+    stream<NetAXISAppReadReq> &     net_app_to_rx_app_recv_data_req,
+    stream<NetAXISAppReadRsp> &     rx_app_to_net_app_recv_data_rsp,
+    stream<NetAXIS> &               net_app_recv_data,
     stream<NetAXISAppNotification> &net_app_notification,
     // tx app
     stream<NetAXISAppOpenConnReq> &       net_app_to_tx_app_open_conn_req,
@@ -69,14 +69,14 @@ void toe_top(
 #pragma HLS INTERFACE axis register both port = rx_app_to_net_app_listen_port_rsp
 #pragma HLS aggregate variable = rx_app_to_net_app_listen_port_rsp compact = bit
 
-#pragma HLS INTERFACE axis register both port = net_app_read_data_req
-#pragma HLS aggregate variable = net_app_read_data_req compact = bit
+#pragma HLS INTERFACE axis register both port = net_app_to_rx_app_recv_data_req
+#pragma HLS aggregate variable = net_app_to_rx_app_recv_data_req compact = bit
 
-#pragma HLS INTERFACE axis register both port = net_app_read_data_rsp
-#pragma HLS aggregate variable = net_app_read_data_rsp compact = bit
+#pragma HLS INTERFACE axis register both port = rx_app_to_net_app_recv_data_rsp
+#pragma HLS aggregate variable = rx_app_to_net_app_recv_data_rsp compact = bit
 
-#pragma HLS INTERFACE axis register both port = rx_app_to_net_app_data
-#pragma HLS aggregate variable = rx_app_to_net_app_data compact = bit
+#pragma HLS INTERFACE axis register both port = net_app_recv_data
+#pragma HLS aggregate variable = net_app_recv_data compact = bit
 
 #pragma HLS INTERFACE axis register both port = net_app_notification
 #pragma HLS aggregate variable = net_app_notification compact = bit
@@ -305,12 +305,12 @@ void toe_top(
               rx_app_to_net_app_listen_port_rsp,
               rx_app_to_ptable_listen_port_req_fifo,
               ptable_to_rx_app_listen_port_rsp_fifo,
-              net_app_read_data_req,
-              net_app_read_data_rsp,
+              net_app_to_rx_app_recv_data_req,
+              rx_app_to_net_app_recv_data_rsp,
               rx_app_to_rx_sar_req_fifo,
               rx_sar_to_rx_app_rsp_fifo,
               rx_eng_to_rx_app_data_fifo,
-              rx_app_to_net_app_data,
+              net_app_recv_data,
               rx_eng_to_rx_app_notification_fifo,
               rtimer_to_rx_app_notification_fifo,
               rx_app_to_slookup_tdest_lookup_req_fifo,

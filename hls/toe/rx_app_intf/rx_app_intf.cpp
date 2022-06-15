@@ -53,25 +53,25 @@ void RxAppPortHandler(stream<NetAXISListenPortReq> &net_app_to_rx_app_listen_por
  *  The Application polls data from the buffer by sending a readRequest. The module checks
  *  if the readRequest is valid then it sends a read request to the memory. After processing
  *  the request the MetaData containig the Session-ID is also written back.
- *  @param[in]		net_app_read_data_req
+ *  @param[in]		net_app_to_rx_app_recv_data_req
  *  @param[in]		rx_sar_to_rx_app_rsp
- *  @param[out]		net_app_read_data_rsp
+ *  @param[out]		rx_app_to_net_app_recv_data_rsp
  *  @param[out]		rx_app_to_rx_sar_req
  *  @param[out]		rx_buffer_read_cmd
  */
-void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_read_data_req,
-                                      stream<NetAXISAppReadRsp> &net_app_read_data_rsp,
+void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_to_rx_app_recv_data_req,
+                                      stream<NetAXISAppReadRsp> &rx_app_to_net_app_recv_data_rsp,
                                       stream<RxSarAppReqRsp> &   rx_app_to_rx_sar_req,
                                       stream<RxSarAppReqRsp> &   rx_sar_to_rx_app_rsp,
                                       // rx engine data to net app
                                       stream<NetAXISWord> &rx_eng_to_rx_app_data,
-                                      stream<NetAXIS> &    rx_app_to_net_app_data) {
+                                      stream<NetAXIS> &    net_app_recv_data) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
-#pragma HLS INTERFACE axis register both port = net_app_read_data_req
-#pragma HLS INTERFACE axis register both port = net_app_read_data_rsp
-#pragma HLS INTERFACE axis register both port = rx_app_to_net_app_data
+#pragma HLS INTERFACE axis register both port = net_app_to_rx_app_recv_data_req
+#pragma HLS INTERFACE axis register both port = rx_app_to_net_app_recv_data_rsp
+#pragma HLS INTERFACE axis register both port = net_app_recv_data
 
   static ap_uint<16> rx_app_read_length;
   static NetAXISDest rx_app_role_id;
@@ -83,8 +83,8 @@ void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_read_da
 
   switch (fsm_state) {
     case WAIT_NET_APP_DATA_REQ:
-      if (!net_app_read_data_req.empty()) {
-        AppReadReq app_read_request = net_app_read_data_req.read();
+      if (!net_app_to_rx_app_recv_data_req.empty()) {
+        AppReadReq app_read_request = net_app_to_rx_app_recv_data_req.read();
         logger.Info(NET_APP, RX_APP_IF, "ReadData Req", app_read_request.to_string(), false);
         // Make sure length is not 0, otherwise Data Mover will hang up
         if (app_read_request.data.read_length != 0) {
@@ -109,7 +109,7 @@ void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_read_da
         NetAXISAppReadRsp net_app_rsp;
         net_app_rsp.data = rx_app_rsp.session_id;
         net_app_rsp.dest = rx_app_role_id;
-        net_app_read_data_rsp.write(net_app_rsp);
+        rx_app_to_net_app_recv_data_rsp.write(net_app_rsp);
         // Update app read pointer
         RxSarAppReqRsp rx_sar_upd_req(rx_app_rsp.session_id,
                                       rx_app_rsp.app_read + rx_app_read_length);
@@ -122,7 +122,7 @@ void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_read_da
       if (!rx_eng_to_rx_app_data.empty()) {
         rx_eng_to_rx_app_data.read(cur_word);
         // cur_word.dest = rx_app_role_id;  // assume the TDEST is assigned in Rx engine
-        rx_app_to_net_app_data.write(cur_word.to_net_axis());
+        net_app_recv_data.write(cur_word.to_net_axis());
         logger.Info(RX_APP_IF, NET_APP, "Data", cur_word.to_string(), false);
         if (cur_word.last) {
           fsm_state         = WAIT_NET_APP_DATA_REQ;
@@ -166,14 +166,14 @@ void rx_app_intf(
     stream<ListenPortReq> &rx_app_to_ptable_listen_port_req,
     stream<ListenPortRsp> &ptable_to_rx_app_listen_port_rsp,
     // not role - data handler
-    stream<NetAXISAppReadReq> &net_app_read_data_req,
-    stream<NetAXISAppReadRsp> &net_app_read_data_rsp,
+    stream<NetAXISAppReadReq> &net_app_to_rx_app_recv_data_req,
+    stream<NetAXISAppReadRsp> &rx_app_to_net_app_recv_data_rsp,
     // rx sar req/rsp
     stream<RxSarAppReqRsp> &rx_app_to_rx_sar_req,
     stream<RxSarAppReqRsp> &rx_sar_to_rx_app_rsp,
     // data from rx engine to net app
     stream<NetAXISWord> &rx_eng_to_rx_app_data,
-    stream<NetAXIS> &    rx_app_to_net_app_data,
+    stream<NetAXIS> &    net_app_recv_data,
 
     // net role app - notification
     // Rx engine to Rx app
@@ -196,9 +196,9 @@ void rx_app_intf(
 
 #pragma HLS INTERFACE axis register both port = net_app_to_rx_app_listen_port_req
 #pragma HLS INTERFACE axis register both port = rx_app_to_net_app_listen_port_rsp
-#pragma HLS INTERFACE axis register both port = net_app_read_data_req
-#pragma HLS INTERFACE axis register both port = net_app_read_data_rsp
-#pragma HLS INTERFACE axis register both port = rx_app_to_net_app_data
+#pragma HLS INTERFACE axis register both port = net_app_to_rx_app_recv_data_req
+#pragma HLS INTERFACE axis register both port = rx_app_to_net_app_recv_data_rsp
+#pragma HLS INTERFACE axis register both port = net_app_recv_data
 #pragma HLS INTERFACE axis register both port = net_app_notification
 
   RxAppPortHandler(net_app_to_rx_app_listen_port_req,
@@ -206,12 +206,12 @@ void rx_app_intf(
                    rx_app_to_ptable_listen_port_req,
                    ptable_to_rx_app_listen_port_rsp);
 
-  RxAppDataHandler(net_app_read_data_req,
-                   net_app_read_data_rsp,
+  RxAppDataHandler(net_app_to_rx_app_recv_data_req,
+                   rx_app_to_net_app_recv_data_rsp,
                    rx_app_to_rx_sar_req,
                    rx_sar_to_rx_app_rsp,
                    rx_eng_to_rx_app_data,
-                   rx_app_to_net_app_data);
+                   net_app_recv_data);
 
   // to be merged in Slookup controller for looking TDEST
   static stream<AppNotificationNoTDEST> rx_app_notification_no_tdest(

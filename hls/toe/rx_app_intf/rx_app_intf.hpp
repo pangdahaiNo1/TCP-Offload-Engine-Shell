@@ -11,13 +11,13 @@ void RxAppPortHandler(stream<NetAXISListenPortReq> &net_app_to_rx_app_listen_por
                       stream<ListenPortReq> &       rx_app_to_ptable_listen_port_req,
                       stream<ListenPortRsp> &       ptable_to_rx_app_listen_port_rsp);
 
-void RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_read_data_req,
-                      stream<NetAXISAppReadRsp> &net_app_read_data_rsp,
+void RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_to_rx_app_recv_data_req,
+                      stream<NetAXISAppReadRsp> &rx_app_to_net_app_recv_data_rsp,
                       stream<RxSarAppReqRsp> &   rx_app_to_rx_sar_req,
                       stream<RxSarAppReqRsp> &   rx_sar_to_rx_app_rsp,
                       // rx engine data to net app
                       stream<NetAXISWord> &rx_eng_to_rx_app_data,
-                      stream<NetAXIS> &    rx_app_to_net_app_data);
+                      stream<NetAXIS> &    net_app_recv_data);
 
 void NetAppNotificationTdestHandler(stream<AppNotificationNoTDEST> &app_notification_no_tdest,
                                     stream<NetAXISAppNotification> &net_app_notification,
@@ -32,14 +32,14 @@ void rx_app_intf(
     stream<ListenPortReq> &rx_app_to_ptable_listen_port_req,
     stream<ListenPortRsp> &ptable_to_rx_app_listen_port_rsp,
     // not role - data handler
-    stream<NetAXISAppReadReq> &net_app_read_data_req,
-    stream<NetAXISAppReadRsp> &net_app_read_data_rsp,
+    stream<NetAXISAppReadReq> &net_app_to_rx_app_recv_data_req,
+    stream<NetAXISAppReadRsp> &rx_app_to_net_app_recv_data_rsp,
     // rx sar req/rsp
     stream<RxSarAppReqRsp> &rx_app_to_rx_sar_req,
     stream<RxSarAppReqRsp> &rx_sar_to_rx_app_rsp,
     // data from rx engine to net app
     stream<NetAXISWord> &rx_eng_to_rx_app_data,
-    stream<NetAXIS> &    rx_app_to_net_app_data,
+    stream<NetAXIS> &    net_app_recv_data,
 
     // net role app - notification
     // Rx engine to Rx app

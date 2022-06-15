@@ -19,18 +19,18 @@ void echo_server(
     // rx app notify
     stream<NetAXISAppNotification> &net_app_notification,
     // read data req/rsp
-    stream<NetAXISAppReadReq> &net_app_read_data_req,
-    stream<NetAXISAppReadRsp> &net_app_read_data_rsp,
+    stream<NetAXISAppReadReq> &net_app_recv_data_req,
+    stream<NetAXISAppReadRsp> &net_app_recv_data_rsp,
+    // read data
+    stream<NetAXIS> &net_app_recv_data,
     // open/close conn
     stream<NetAXISAppOpenConnReq> & net_app_open_conn_req,
     stream<NetAXISAppOpenConnRsp> & net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_close_conn_req,
-    // read data
-    stream<NetAXIS> &net_app_rx_data_in,
     // transmit data
     stream<NetAXISAppTransDataReq> &net_app_trans_data_req,
     stream<NetAXISAppTransDataRsp> &net_app_trans_data_rsp,
-    stream<NetAXIS> &               net_app_tx_data_out,
+    stream<NetAXIS> &               net_app_trans_data,
     // tdest constant
     NetAXISDest &tdest_const);
 #endif

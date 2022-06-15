@@ -14,9 +14,9 @@ void toe_top(
     // rx app
     stream<NetAXISListenPortReq> &  net_app_to_rx_app_listen_port_req,
     stream<NetAXISListenPortRsp> &  rx_app_to_net_app_listen_port_rsp,
-    stream<NetAXISAppReadReq> &     net_app_read_data_req,
-    stream<NetAXISAppReadRsp> &     net_app_read_data_rsp,
-    stream<NetAXIS> &               rx_app_to_net_app_data,
+    stream<NetAXISAppReadReq> &     net_app_to_rx_app_recv_data_req,
+    stream<NetAXISAppReadRsp> &     rx_app_to_net_app_recv_data_rsp,
+    stream<NetAXIS> &               net_app_recv_data,
     stream<NetAXISAppNotification> &net_app_notification,
     // tx app
     stream<NetAXISAppOpenConnReq> &       net_app_to_tx_app_open_conn_req,
