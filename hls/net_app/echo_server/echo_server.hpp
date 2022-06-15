@@ -2,7 +2,6 @@
 #define _ECHO_SERVER_HPP_
 #include "toe/toe_conn.hpp"
 using namespace hls;
-const NetAXISDest kTDEST = 0x1;
 
 struct EchoServerMeta {
   TcpSessionID session_id;
@@ -31,5 +30,7 @@ void echo_server(
     // transmit data
     stream<NetAXISAppTransDataReq> &net_app_trans_data_req,
     stream<NetAXISAppTransDataRsp> &net_app_trans_data_rsp,
-    stream<NetAXIS> &               net_app_tx_data_out);
+    stream<NetAXIS> &               net_app_tx_data_out,
+    // tdest constant
+    NetAXISDest &tdest_const);
 #endif

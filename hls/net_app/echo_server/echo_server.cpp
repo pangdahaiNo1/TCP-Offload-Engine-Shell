@@ -4,7 +4,8 @@
 extern MockLogger logger;
 
 void                 OpenPortHandler(stream<NetAXISListenPortReq> &net_app_listen_port_req,
-                                     stream<NetAXISListenPortRsp> &net_app_listen_port_rsp) {
+                                     stream<NetAXISListenPortRsp> &net_app_listen_port_rsp,
+                                     NetAXISDest &                 tdest_const) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -22,7 +23,7 @@ void                 OpenPortHandler(stream<NetAXISListenPortReq> &net_app_liste
     /* Open/Listen on Port at start-up */
     case OPEN_PORT:
       net_listen_req.data = listen_port;
-      net_listen_req.dest = kTDEST;
+      net_listen_req.dest = tdest_const;
       net_app_listen_port_req.write(net_listen_req.to_net_axis());
       logger.Info(NET_APP, TOE_TOP, "ListenPort Req", net_listen_req.to_string());
       fsm_state = WAIT_RESPONSE;
@@ -64,7 +65,8 @@ void EchoServerReceiveData(
     stream<NetAXIS> &    net_app_rx_data_in,
     stream<NetAXISWord> &net_app_rx_data_out,
     // echo server meta
-    stream<EchoServerMeta> &echo_server_meta) {
+    stream<EchoServerMeta> &echo_server_meta,
+    NetAXISDest &           tdest_const) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -96,7 +98,7 @@ void EchoServerReceiveData(
         if (app_notification.data.length != 0) {
           read_data_req.data =
               AppReadReqNoTEST(app_notification.data.session_id, app_notification.data.length);
-          read_data_req.dest = kTDEST;
+          read_data_req.dest = tdest_const;
           net_app_read_data_req.write(read_data_req.to_net_axis());
           logger.Info(NET_APP, TOE_TOP, "Read Data Req", read_data_req.to_string());
           fsm_state = WAIT_SESSION_ID;
@@ -132,7 +134,8 @@ void                 EchoServerTransmitData(stream<EchoServerMeta> &        echo
                                             stream<NetAXISAppTransDataReq> &net_app_trans_data_req,
                                             stream<NetAXISAppTransDataRsp> &net_app_trans_data_rsp,
                                             stream<NetAXISWord> &           net_app_tx_data_in,
-                                            stream<NetAXIS> &               net_app_tx_data_out) {
+                                            stream<NetAXIS> &               net_app_tx_data_out,
+                                            NetAXISDest &                   tdest_const) {
 #pragma HLS INLINE   off
 #pragma HLS PIPELINE II = 1
 
@@ -150,7 +153,7 @@ void                 EchoServerTransmitData(stream<EchoServerMeta> &        echo
     case READ_META:
       if (!echo_server_meta.empty()) {
         echo_server_meta.read(meta_data);
-        trans_data_req = AppTransDataReq(meta_data.length, meta_data.session_id, kTDEST);
+        trans_data_req = AppTransDataReq(meta_data.length, meta_data.session_id, tdest_const);
         net_app_trans_data_req.write(trans_data_req.to_net_axis());
         logger.Info(NET_APP, TOE_TOP, "TransData Req", trans_data_req.to_string());
         fsm_state = WAIT_RESPONSE;
@@ -173,7 +176,7 @@ void                 EchoServerTransmitData(stream<EchoServerMeta> &        echo
     case FORWARD_DATA:
       if (!net_app_tx_data_in.empty()) {
         cur_word      = net_app_tx_data_in.read();
-        cur_word.dest = kTDEST;
+        cur_word.dest = tdest_const;
         net_app_tx_data_out.write(cur_word.to_net_axis());
         logger.Info(NET_APP, "Trans Data", cur_word.to_string());
         if (cur_word.last) {
@@ -185,7 +188,7 @@ void                 EchoServerTransmitData(stream<EchoServerMeta> &        echo
       cycle_counter++;
       if (cycle_counter == 100) {
         // issue writing command again and wait for response
-        trans_data_req = AppTransDataReq(meta_data.length, meta_data.session_id, kTDEST);
+        trans_data_req = AppTransDataReq(meta_data.length, meta_data.session_id, tdest_const);
         net_app_trans_data_req.write(trans_data_req.to_net_axis());
         logger.Info(NET_APP, TOE_TOP, "TransData Req in cycles", trans_data_req.to_string());
 
@@ -197,7 +200,8 @@ void                 EchoServerTransmitData(stream<EchoServerMeta> &        echo
 
 void                 EchoServerDummy(stream<NetAXISAppOpenConnReq> & net_app_open_conn_req,
                                      stream<NetAXISAppOpenConnRsp> & net_app_open_conn_rsp,
-                                     stream<NetAXISAppCloseConnReq> &net_app_close_conn_req) {
+                                     stream<NetAXISAppCloseConnReq> &net_app_close_conn_req,
+                                     NetAXISDest &                   tdest_const) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -210,11 +214,11 @@ void                 EchoServerDummy(stream<NetAXISAppOpenConnReq> & net_app_ope
     net_app_open_conn_rsp.read(open_conn_rsp);
     open_conn_req.data.ip_addr  = 0xC0A80008;  // 192.168.0.8
     open_conn_req.data.tcp_port = 13330;
-    open_conn_req.dest          = kTDEST;
+    open_conn_req.dest          = tdest_const;
     net_app_open_conn_req.write(open_conn_req);
     if (open_conn_rsp.data.success) {
       net_app_close_conn_req.write(
-          AppCloseConnReq(open_conn_rsp.data.session_id, kTDEST).to_net_axis());
+          AppCloseConnReq(open_conn_rsp.data.session_id, tdest_const).to_net_axis());
       // closePort.write(tuple.ip_port);
     }
   }
@@ -240,9 +244,13 @@ void echo_server(
     // transmit data
     stream<NetAXISAppTransDataReq> &net_app_trans_data_req,
     stream<NetAXISAppTransDataRsp> &net_app_trans_data_rsp,
-    stream<NetAXIS> &               net_app_tx_data_out) {
+    stream<NetAXIS> &               net_app_tx_data_out,
+    NetAXISDest &                   tdest_const) {
 #pragma HLS                        DATAFLOW
 #pragma HLS INTERFACE ap_ctrl_none port = return
+
+#pragma HLS stable variable = tdest_const
+  //#pragma HLS INTERFACE mode = ap_stable register port = tdest_const
 
 #pragma HLS INTERFACE axis register both port = net_app_listen_port_req
 #pragma HLS aggregate variable = net_app_listen_port_req compact = bit
@@ -290,20 +298,23 @@ void echo_server(
 #pragma HLS stream variable = net_app_rxtx_data_fifo depth = 512
 #pragma HLS aggregate variable = net_app_rxtx_data_fifo compact = bit
 
-  OpenPortHandler(net_app_listen_port_req, net_app_listen_port_rsp);
+  OpenPortHandler(net_app_listen_port_req, net_app_listen_port_rsp, tdest_const);
   EchoServerReceiveData(net_app_new_client_notification,
                         net_app_notification,
                         net_app_read_data_req,
                         net_app_read_data_rsp,
                         net_app_rx_data_in,
                         net_app_rxtx_data_fifo,
-                        echo_server_meta_fifo);
+                        echo_server_meta_fifo,
+                        tdest_const);
 
   EchoServerTransmitData(echo_server_meta_fifo,
                          net_app_trans_data_req,
                          net_app_trans_data_rsp,
                          net_app_rxtx_data_fifo,
-                         net_app_tx_data_out);
+                         net_app_tx_data_out,
+                         tdest_const);
 
-  EchoServerDummy(net_app_open_conn_req, net_app_open_conn_rsp, net_app_close_conn_req);
+  EchoServerDummy(
+      net_app_open_conn_req, net_app_open_conn_rsp, net_app_close_conn_req, tdest_const);
 }

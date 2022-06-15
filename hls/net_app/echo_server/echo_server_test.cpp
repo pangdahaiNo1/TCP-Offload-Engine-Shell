@@ -1,4 +1,5 @@
 #include "echo_server.hpp"
+#include "toe/mock/mock_net_app.hpp"
 #include "toe/mock/mock_toe.hpp"
 // DONOT change the header files sequence
 #include "toe/mock/mock_logger.hpp"
@@ -36,29 +37,9 @@ void EmptyEchoFifos(MockLogger &                    logger,
 }
 
 void TestEchoServer() {
-  // listen port
-  stream<NetAXISListenPortReq> net_app_listen_port_req;
-  stream<NetAXISListenPortRsp> net_app_listen_port_rsp;
-  // rx client notify
-  stream<NetAXISNewClientNotification> net_app_new_client_notification;
-  // rx app notify
-  stream<NetAXISAppNotification> net_app_notification;
-  // read data req/rsp
-  stream<NetAXISAppReadReq> net_app_read_data_req;
-  stream<NetAXISAppReadRsp> net_app_read_data_rsp;
-  // open/close conn
-  stream<NetAXISAppOpenConnReq>  net_app_open_conn_req;
-  stream<NetAXISAppOpenConnRsp>  net_app_open_conn_rsp;
-  stream<NetAXISAppCloseConnReq> net_app_close_conn_req;
-  // read data
-  stream<NetAXIS> net_app_rx_data_in;
-  // transmit data
-  stream<NetAXISAppTransDataReq> net_app_trans_data_req;
-  stream<NetAXISAppTransDataRsp> net_app_trans_data_rsp;
-  stream<NetAXIS>                net_app_tx_data_out;
-
   stream<NetAXIS> rand_data;
   stream<NetAXIS> rand_data_copy;
+  NetAppIntf      net_ap_intf(0x1, "_uint_test");
 
   MockLogger top_logger("./echo_server_top.log", NET_APP);
 
@@ -74,62 +55,63 @@ void TestEchoServer() {
       case 1:
         listen_port_rsp.data.port_number       = 15000;
         listen_port_rsp.data.open_successfully = true;
-        listen_port_rsp.dest                   = kTDEST;
-        net_app_listen_port_rsp.write(listen_port_rsp.to_net_axis());
+        listen_port_rsp.dest                   = net_ap_intf.tdest_const;
+        net_ap_intf.net_app_listen_port_rsp.write(listen_port_rsp.to_net_axis());
         break;
       case 2:
         app_notify.data = AppNotificationNoTDEST(0x1, payload_len, mock_src_ip_addr, 15000, false);
-        app_notify.dest = kTDEST;
-        net_app_notification.write(app_notify.to_net_axis());
+        app_notify.dest = net_ap_intf.tdest_const;
+        net_ap_intf.net_app_notification.write(app_notify.to_net_axis());
         break;
       case 3:
         read_rsp.data = 0x1;
-        read_rsp.dest = kTDEST;
-        net_app_read_data_rsp.write(read_rsp.to_net_axis());
+        read_rsp.dest = net_ap_intf.tdest_const;
+        net_ap_intf.net_app_read_data_rsp.write(read_rsp.to_net_axis());
         break;
       case 4:
         GenRandStream(payload_len, rand_data);
         do {
           cur_word = rand_data.read();
           rand_data_copy.write(cur_word.to_net_axis());
-          net_app_rx_data_in.write(cur_word.to_net_axis());
+          net_ap_intf.net_app_rx_data_in.write(cur_word.to_net_axis());
         } while (cur_word.last != 1);
         break;
       case 5:
         trans_rsp.data.error           = NO_ERROR;
         trans_rsp.data.length          = payload_len;
         trans_rsp.data.remaining_space = 0xFFFF;
-        trans_rsp.dest                 = kTDEST;
-        net_app_trans_data_rsp.write(trans_rsp.to_axis());
+        trans_rsp.dest                 = net_ap_intf.tdest_const;
+        net_ap_intf.net_app_trans_data_rsp.write(trans_rsp.to_axis());
         break;
 
       default:
         break;
     }
-    echo_server(net_app_listen_port_req,
-                net_app_listen_port_rsp,
-                net_app_new_client_notification,
-                net_app_notification,
-                net_app_read_data_req,
-                net_app_read_data_rsp,
-                net_app_open_conn_req,
-                net_app_open_conn_rsp,
-                net_app_close_conn_req,
-                net_app_rx_data_in,
-                net_app_trans_data_req,
-                net_app_trans_data_rsp,
-                net_app_tx_data_out);
+    echo_server(net_ap_intf.net_app_listen_port_req,
+                net_ap_intf.net_app_listen_port_rsp,
+                net_ap_intf.net_app_new_client_notification,
+                net_ap_intf.net_app_notification,
+                net_ap_intf.net_app_read_data_req,
+                net_ap_intf.net_app_read_data_rsp,
+                net_ap_intf.net_app_open_conn_req,
+                net_ap_intf.net_app_open_conn_rsp,
+                net_ap_intf.net_app_close_conn_req,
+                net_ap_intf.net_app_rx_data_in,
+                net_ap_intf.net_app_trans_data_req,
+                net_ap_intf.net_app_trans_data_rsp,
+                net_ap_intf.net_app_tx_data_out,
+                net_ap_intf.tdest_const);
     EmptyEchoFifos(top_logger,
-                   net_app_listen_port_req,
-                   net_app_read_data_req,
-                   net_app_open_conn_req,
-                   net_app_close_conn_req,
-                   net_app_trans_data_req);
+                   net_ap_intf.net_app_listen_port_req,
+                   net_ap_intf.net_app_read_data_req,
+                   net_ap_intf.net_app_open_conn_req,
+                   net_ap_intf.net_app_close_conn_req,
+                   net_ap_intf.net_app_trans_data_req);
     sim_cycle++;
     logger.SetSimCycle(sim_cycle);
     top_logger.SetSimCycle(sim_cycle);
   }
-  ComparePacpPacketsWithGolden(rand_data_copy, net_app_tx_data_out, false);
+  ComparePacpPacketsWithGolden(rand_data_copy, net_ap_intf.net_app_tx_data_out, false);
 }
 
 int main() { TestEchoServer(); }
