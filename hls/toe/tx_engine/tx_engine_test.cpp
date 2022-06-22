@@ -50,8 +50,8 @@ void TestTcpTxConstructIpv4Pkt(stream<NetAXISWord> &input_tcp_packet) {
 
     // the tcp pseudo packet input contains the valid checksum, then calculate checksum here will
     // make all tcp checksum = 0, if not zero, the testbench are failed
-    ComputeTxSubChecksum(tx_tcp_pseudo_packet_for_checksum_fifo,
-                         tcp_pseudo_packet_subchecksum_fifo);
+    ComputeSubChecksum<0>(tx_tcp_pseudo_packet_for_checksum_fifo,
+                          tcp_pseudo_packet_subchecksum_fifo);
     CheckChecksum(tcp_pseudo_packet_subchecksum_fifo, tcp_pseudo_packet_checksum_fifo);
     TxEngRemovePseudoHeader(tx_tcp_pseudo_packet_for_tx_eng_fifo, tx_tcp_packet_fifo);
     TxEngConstructIpv4Packet(input_tcp_packet_ip_header,

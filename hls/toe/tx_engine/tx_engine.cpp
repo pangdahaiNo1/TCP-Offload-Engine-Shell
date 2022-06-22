@@ -164,8 +164,8 @@ void TxEngTcpFsm(
             tcp_tx_meta_reg.seq_number = tx_sar_rsp.not_ackd;
 
             // Construct paylaod address by tx_sar_rsp.not_ackd
-            GetSessionMemAddr(
-                tx_eng_event_reg.session_id, tx_sar_rsp.not_ackd, false, payload_mem_addr);
+            GetSessionMemAddr<0>(
+                tx_eng_event_reg.session_id, tx_sar_rsp.not_ackd, payload_mem_addr);
 
             // Check length, if bigger than Usable Window or MMS
             if (curr_length <= usableWindow_w) {
@@ -299,8 +299,7 @@ void TxEngTcpFsm(
             // payload_mem_addr(30, WINDOW_BITS) = tx_eng_event_reg.session_id(13, 0);
             // payload_mem_addr(WINDOW_BITS - 1, 0) =
             //     tx_sar_rsp.ackd(WINDOW_BITS - 1, 0);  // tx_eng_event_reg.address;
-            GetSessionMemAddr(
-                tx_eng_event_reg.session_id, tx_sar_rsp.ackd, false, payload_mem_addr);
+            GetSessionMemAddr<0>(tx_eng_event_reg.session_id, tx_sar_rsp.ackd, payload_mem_addr);
             // Decrease Slow Start Threshold, only on first RT from retransmitTimer
             if (!tx_rx_sar_loaded && (tx_eng_event_reg.retrans_cnt == 1)) {
               if (curr_length > (4 * TCP_MSS)) {  // max( FlightSize/2, 2*TCP_MSS) RFC:5681
@@ -391,7 +390,7 @@ void TxEngTcpFsm(
           // payload_mem_addr(30, WINDOW_BITS) = tx_eng_event_reg.session_id(13, 0);
           // payload_mem_addr(WINDOW_BITS - 1, 0) =
           //     tx_sar_rsp_reg.ackd(WINDOW_BITS - 1, 0);  // tx_eng_event_reg.address;
-          GetSessionMemAddr(tx_eng_event_reg.session_id, tx_sar_rsp.ackd, false, payload_mem_addr);
+          GetSessionMemAddr<0>(tx_eng_event_reg.session_id, tx_sar_rsp.ackd, payload_mem_addr);
 
           // Decrease Slow Start Threshold, only on first RT from retransmitTimer
           if (!tx_rx_sar_loaded && (tx_eng_event_reg.retrans_cnt == 1)) {
@@ -1251,22 +1250,13 @@ void tx_engine(
               tx_tcp_payload_length_fifo,
               tx_eng_fsm_meta_data_fifo,
               tx_eng_to_mem_cmd_fifo,
-#if (TCP_NODELAY)
-              tx_eng_is_ddr_bypass_fifo,
-#endif
               tx_four_tuple_source_fifo,
               tx_eng_fsm_four_tuple_fifo);
 
-  TxEngReadDataSendCmd(
-      tx_eng_to_mem_cmd_fifo, mover_read_mem_cmd_out, mem_buffer_double_access_fifo);
+  ReadDataSendCmd<0>(tx_eng_to_mem_cmd_fifo, mover_read_mem_cmd_out, mem_buffer_double_access_fifo);
 
-  TxEngReadDataFromMem(mover_read_mem_data_in,
-                       mem_buffer_double_access_fifo,
-#if (TCP_NODELAY)
-                       tx_eng_is_ddr_bypass_fifo,
-                       tx_app_to_tx_eng_data,
-#endif
-                       tx_eng_read_tcp_payload_fifo);
+  ReadDataFromMem<0>(
+      mover_read_mem_data_in, mem_buffer_double_access_fifo, tx_eng_read_tcp_payload_fifo);
 
   TxEngFourTupleHandler(slookup_rev_table_to_tx_eng_rsp,
                         tx_four_tuple_source_fifo,
@@ -1285,7 +1275,7 @@ void tx_engine(
                              tx_tcp_pseudo_packet_for_tx_eng_fifo,
                              tx_tcp_pseudo_packet_for_checksum_fifo);
 
-  ComputeTxSubChecksum(tx_tcp_pseudo_packet_for_checksum_fifo, tcp_pseudo_packet_subchecksum_fifo);
+  ComputeSubChecksum<0>(tx_tcp_pseudo_packet_for_checksum_fifo, tcp_pseudo_packet_subchecksum_fifo);
 
   CheckChecksum(tcp_pseudo_packet_subchecksum_fifo, tcp_pseudo_packet_checksum_fifo);
 
