@@ -1045,7 +1045,7 @@ struct AppNotificationNoTDEST {
   IpAddr        ip_addr;
   TcpPortNumber dst_tcp_port;
   bool          closed;
-  AppNotificationNoTDEST() {}
+  AppNotificationNoTDEST() : session_id(0), length(0), ip_addr(0), dst_tcp_port(0), closed(0) {}
   AppNotificationNoTDEST(TcpSessionID id, bool closed)
       : session_id(id), length(0), ip_addr(0), dst_tcp_port(0), closed(closed) {}
   AppNotificationNoTDEST(TcpSessionID id, ap_uint<16> len, IpAddr addr, ap_uint<16> port)

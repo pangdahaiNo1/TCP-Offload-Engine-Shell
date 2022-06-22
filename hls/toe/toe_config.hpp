@@ -11,7 +11,7 @@
 #define TCP_NODELAY 0
 
 // Rx data write to DDR or write to App directly
-#define TCP_RX_DDR_BYPASS 1
+#define TCP_RX_DDR_BYPASS 0
 
 // TCP fast recovery/fast retransmit
 #define TCP_FAST_RETRANSMIT 1

@@ -66,7 +66,14 @@ void RxEngTcpPayloadDropper(stream<NetAXISWord> &tcp_payload_in,
                             stream<bool> &       tcp_payload_dropped_by_port_or_session,
                             stream<NetAXISDest> &tcp_payload_tdest,
                             stream<bool> &       tcp_payload_dropped_by_rx_fsm,
-                            stream<NetAXISWord> &tcp_payload_out);
+#if TCP_RX_DDR_BYPASS
+                            // send data to rx app intf
+                            stream<NetAXISWord> &tcp_payload_out
+#else
+                            // send data to datamover
+                            stream<NetAXIS> &tcp_payload_out
+#endif
+);
 void RxEngTcpFsm(
     // read in rx eng meta data
     stream<RxEngFsmMetaData> &rx_eng_fsm_meta_data_in,
@@ -92,7 +99,7 @@ void RxEngTcpFsm(
     // to app data notify
     stream<AppNotificationNoTDEST> &rx_eng_to_rx_app_notification,
 #if !TCP_RX_DDR_BYPASS
-    stream<DataMoverCmd> &rx_buffer_write_cmd,
+    stream<DataMoverCmd> &rx_eng_to_mem_cmd,
 #endif
     // to app payload should be dropped?
     stream<bool> &tcp_payload_dropped_by_rx_fsm
@@ -131,9 +138,15 @@ void rx_engine(
 
     // to event engine
     stream<EventWithTuple> &rx_eng_to_event_eng_set_event,
+#if !TCP_RX_DDR_BYPASS
+    // tcp payload to mem
+    stream<DataMoverCmd> &   rx_eng_to_mem_write_cmd,
+    stream<NetAXIS> &        rx_eng_to_mem_write_data,
+    stream<DataMoverStatus> &mem_to_rx_eng_write_status
+#else
     // tcp payload to rx app
     stream<NetAXISWord> &rx_eng_to_rx_app_data
-
+#endif
 );
 
 #endif  //_RX_ENGINE_

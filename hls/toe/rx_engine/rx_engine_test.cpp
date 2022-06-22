@@ -1,6 +1,8 @@
 #include "rx_engine.hpp"
+#include "toe/memory_access/memory_access.hpp"
 #include "toe/mock/mock_logger.hpp"
 #include "toe/mock/mock_toe.hpp"
+#include "utils/axi_utils.hpp"
 #include "utils/axi_utils_test.hpp"
 #include "utils/pcap/pcap_to_stream.hpp"
 
@@ -11,6 +13,22 @@ void EmptyTcpPayloadFifos(MockLogger &logger, stream<NetAXISWord> &tcp_payload_f
   while (!tcp_payload_fifo.empty()) {
     tcp_payload_fifo.read(tcp_payload);
     logger.Info(RX_ENGINE, NET_APP, "Recv Payload", tcp_payload.to_string(), false);
+  }
+}
+
+void EmptyTcpPayloadWithMemFifos(MockLogger &          logger,
+                                 stream<DataMoverCmd> &rx_eng_to_mem_write_cmd,
+                                 stream<NetAXIS> &     rx_eng_to_mem_write_data) {
+  NetAXISWord  to_mem_data;
+  DataMoverCmd to_mem_cmd;
+
+  while (!rx_eng_to_mem_write_cmd.empty()) {
+    to_mem_cmd = rx_eng_to_mem_write_cmd.read();
+    logger.Info(RX_ENGINE, DATA_MVER, "Write CMD", to_mem_cmd.to_string(), false);
+  }
+  while (!rx_eng_to_mem_write_data.empty()) {
+    to_mem_data = rx_eng_to_mem_write_data.read();
+    logger.Info(RX_ENGINE, DATA_MVER, "Write Data", to_mem_data.to_string(), false);
   }
 }
 
@@ -140,7 +158,7 @@ void TestTcpPseudoHeaderParser(stream<NetAXIS> &input_tcp_packet) {
   while (sim_cycle < 200) {
     RxEngTcpPseudoHeaderInsert(
         input_tcp_packet, tcp_pseudo_packet_for_checksum_fifo, tcp_pseudo_packet_for_rx_eng_fifo);
-    ComputeSubChecksum(tcp_pseudo_packet_for_checksum_fifo, tcp_pseudo_packet_subchecksum_fifo);
+    ComputeSubChecksum<1>(tcp_pseudo_packet_for_checksum_fifo, tcp_pseudo_packet_subchecksum_fifo);
     CheckChecksum(tcp_pseudo_packet_subchecksum_fifo, tcp_pseudo_packet_checksum_fifo);
     RxEngParseTcpHeader(
         tcp_pseudo_packet_for_rx_eng_fifo, tcp_pseudo_header_meta_fifo, tcp_payload_fifo);
@@ -159,6 +177,7 @@ void TestTcpPseudoHeaderParser(stream<NetAXIS> &input_tcp_packet) {
   SaveNetAXISToFile(tcp_payload_fifo_for_save, "tcp_payload.dat");
 }
 
+// with or without RX_DDR_BYPASS
 void TestRxEngine(stream<NetAXIS> &input_tcp_packet, int input_tcp_packet_cnt) {
   // rx engine fifos
   // port table check open and TDEST
@@ -193,6 +212,10 @@ void TestRxEngine(stream<NetAXIS> &input_tcp_packet, int input_tcp_packet_cnt) {
   stream<EventWithTuple> rx_eng_to_event_eng_set_event("rx_eng_to_event_eng_set_event");
   // tcp payload to rx app
   stream<NetAXISWord> rx_eng_to_rx_app_data("rx_eng_to_rx_app_data");
+  // tcp payload to mem
+  stream<DataMoverCmd>    rx_eng_to_mem_write_cmd;
+  stream<NetAXIS>         rx_eng_to_mem_write_data;
+  stream<DataMoverStatus> mem_to_rx_eng_write_status;
 
   MockLogger       top_logger("rx_eng.log", RX_ENGINE);
   int              sim_cycle       = 0;
@@ -201,6 +224,7 @@ void TestRxEngine(stream<NetAXIS> &input_tcp_packet, int input_tcp_packet_cnt) {
   SessionLookupRsp slup_rsp;
   RxSarTableEntry  rx_sar_rsp;
   TxSarToRxEngRsp  tx_sar_rsp;
+  DataMoverStatus  datamover_sts;
   cout << "Test Rx eng" << endl;
   while (sim_cycle < total_sim_cycle) {
     switch (sim_cycle) {
@@ -307,6 +331,10 @@ void TestRxEngine(stream<NetAXIS> &input_tcp_packet, int input_tcp_packet_cnt) {
         tx_sar_to_rx_eng_rsp.write(tx_sar_rsp);
         break;
       case 30:
+#if !TCP_RX_DDR_BYPASS
+        datamover_sts.okay = 1;
+        mem_to_rx_eng_write_status.write(datamover_sts);
+#endif
         // 5th packet - FIN + ACK no data
         ptable_rsp.is_open = true;
         ptable_rsp.role_id = 0x1;
@@ -378,7 +406,16 @@ void TestRxEngine(stream<NetAXIS> &input_tcp_packet, int input_tcp_packet_cnt) {
               rx_eng_to_tx_app_new_client_notification,
               rx_eng_to_rx_app_notification,
               rx_eng_to_event_eng_set_event,
-              rx_eng_to_rx_app_data);
+#if !TCP_RX_DDR_BYPASS
+              // tcp payload to mem
+              rx_eng_to_mem_write_cmd,
+              rx_eng_to_mem_write_data,
+              mem_to_rx_eng_write_status
+#else
+              // tcp payload to rx app
+              rx_eng_to_rx_app_data
+#endif
+    );
     EmptyTcpRxEngCheckPortFifo(top_logger, rx_eng_to_ptable_check_req);
     EmptyTcpRxEngFSMFifo(top_logger,
                          rx_eng_to_slookup_req,
@@ -392,7 +429,11 @@ void TestRxEngine(stream<NetAXIS> &input_tcp_packet, int input_tcp_packet_cnt) {
                          rx_eng_to_tx_app_new_client_notification,
                          rx_eng_to_rx_app_notification,
                          rx_eng_to_event_eng_set_event);
+#if !TCP_RX_DDR_BYPASS
+    EmptyTcpPayloadWithMemFifos(top_logger, rx_eng_to_mem_write_cmd, rx_eng_to_mem_write_data);
+#else
     EmptyTcpPayloadFifos(top_logger, rx_eng_to_rx_app_data);
+#endif
     sim_cycle++;
     top_logger.SetSimCycle(sim_cycle);
     logger.SetSimCycle(sim_cycle);
