@@ -230,8 +230,8 @@ void TxAppDataHandler(
     // to event eng
     stream<Event> &tx_app_to_event_eng_set_event,
     // to datamover
-    stream<DataMoverCmd> &tx_app_to_mem_write_cmd,
-    stream<NetAXISWord> & tx_app_to_mem_write_data) {
+    stream<MemBufferRWCmd> &tx_app_to_mem_write_cmd,
+    stream<NetAXISWord> &   tx_app_to_mem_write_data) {
 #pragma HLS PIPELINE off
 
 #pragma HLS INTERFACE axis register both port = net_app_to_tx_app_trans_data_req
@@ -255,7 +255,7 @@ void TxAppDataHandler(
   ap_uint<32>                 trans_data_mem_addr;
   TxAppToTxAppTableReq        to_tx_app_table_req;
   Event                       to_event_eng_event;
-  DataMoverCmd                to_data_mover_cmd;
+  MemBufferRWCmd              to_data_mover_cmd;
   switch (fsm_state) {
     case READ_REQUEST:
       if (!net_app_to_tx_app_trans_data_req.empty() && !trans_data_lock) {
@@ -322,10 +322,10 @@ void TxAppDataHandler(
           // trans_data_mem_addr(31, 30)             = (!TCP_RX_DDR_BYPASS);
           // trans_data_mem_addr(29, WINDOW_BITS)    = trans_data_req.id(13, 0);
           // trans_data_mem_addr(WINDOW_BITS - 1, 0) = tx_app_table_rsp.app_written_ideal;
-          GetSessionMemAddr(
-              trans_data_req.id, tx_app_table_rsp.app_written_ideal, false, trans_data_mem_addr);
+          GetSessionMemAddr<0>(
+              trans_data_req.id, tx_app_table_rsp.app_written_ideal, trans_data_mem_addr);
 
-          to_data_mover_cmd = DataMoverCmd(trans_data_mem_addr, trans_data_req.data);
+          to_data_mover_cmd = MemBufferRWCmd(trans_data_mem_addr, trans_data_req.data);
           tx_app_to_mem_write_cmd.write(to_data_mover_cmd);
           logger.Info(TX_APP_IF, DATA_MVER, "WriteMemCmd", to_data_mover_cmd.to_string());
 
@@ -368,7 +368,8 @@ void TxAppDataHandler(
  * filter all TX event in @p tx_app_to_event_eng_cache, the TX event will write to
  * @p tx_app_to_event_eng_set_event iff the Datamover returned OKAY
  */
-void                 TxAppRspHandler(stream<DataMoverStatus> &mover_to_tx_app_sts,
+void                 TxAppRspHandler(stream<ap_uint<1> > &    mem_buffer_double_access_flag,
+                                     stream<DataMoverStatus> &mover_to_tx_app_sts,
                                      stream<Event> &          tx_app_to_event_eng_cache,
                                      stream<Event> &          tx_app_to_event_eng_set_event,
                                      stream<TxAppToTxSarReq> &tx_app_to_tx_sar_upd_req) {
@@ -380,10 +381,10 @@ void                 TxAppRspHandler(stream<DataMoverStatus> &mover_to_tx_app_st
   static StatusHandlerFsmState fsm_status = READ_EV;
 
   static Event cur_event;
+  bool         double_access_flag = false;
 
-  DataMoverStatus          datamover_sts;
-  ap_uint<WINDOW_BITS + 1> temp_length;
-  TxAppToTxSarReq          to_tx_sar_req;
+  DataMoverStatus datamover_sts;
+  TxAppToTxSarReq to_tx_sar_req;
 
   switch (fsm_status) {
     case READ_EV:
@@ -397,15 +398,14 @@ void                 TxAppRspHandler(stream<DataMoverStatus> &mover_to_tx_app_st
       }
       break;
     case READ_STATUS_1:
-      if (!mover_to_tx_app_sts.empty()) {
-        mover_to_tx_app_sts.read(datamover_sts);
+      if (!mem_buffer_double_access_flag.empty() && !mover_to_tx_app_sts.empty()) {
+        datamover_sts      = mover_to_tx_app_sts.read();
+        double_access_flag = mem_buffer_double_access_flag.read();
         logger.Info(DATA_MVER, TX_APP_IF, "WriteMemSts", datamover_sts.to_string());
-
-        temp_length = cur_event.buf_addr(WINDOW_BITS - 1, 0) + cur_event.length;
 
         if (datamover_sts.okay) {
           // overflow, write mem twice
-          if (temp_length.bit(WINDOW_BITS)) {
+          if (double_access_flag) {
             fsm_status = READ_STATUS_2;
           } else {
             // update the app_written in real
@@ -416,6 +416,8 @@ void                 TxAppRspHandler(stream<DataMoverStatus> &mover_to_tx_app_st
             fsm_status = READ_EV;
             tx_app_to_event_eng_set_event.write(cur_event);
           }
+        } else {
+          fsm_status = READ_EV;
         }
       }
       break;
@@ -431,8 +433,8 @@ void                 TxAppRspHandler(stream<DataMoverStatus> &mover_to_tx_app_st
           tx_app_to_tx_sar_upd_req.write(to_tx_sar_req);
           logger.Info(TX_APP_IF, TX_SAR_TB, "Upd AppWritten BreakDown", to_tx_sar_req.to_string());
           tx_app_to_event_eng_set_event.write(cur_event);
-          fsm_status = READ_EV;
         }
+        fsm_status = READ_EV;
       }
       break;
     default:
@@ -578,9 +580,12 @@ void tx_app_intf(
 #pragma HLS stream variable = tx_app_to_event_eng_cache depth = 16
 #pragma HLS aggregate variable = tx_app_to_event_eng_cache compact = bit
 
-  static stream<DataMoverCmd> tx_app_to_mem_write_cmd_fifo("tx_app_to_mem_write_cmd_fifo");
+  static stream<MemBufferRWCmd> tx_app_to_mem_write_cmd_fifo("tx_app_to_mem_write_cmd_fifo");
 #pragma HLS aggregate variable = tx_app_to_mem_write_cmd_fifo compact = bit
 #pragma HLS stream variable = tx_app_to_mem_write_cmd_fifo depth = 4
+
+  static stream<ap_uint<1> > tx_app_to_mem_double_access_fifo("tx_app_to_mem_double_access_fifo");
+#pragma HLS stream variable = tx_app_to_mem_double_access_fifo depth = 4
 
   static stream<NetAXISWord> tx_app_to_mem_write_data_fifo("tx_app_to_mem_write_data_fifo");
 #pragma HLS aggregate variable = tx_app_to_mem_write_data_fifo compact = bit
@@ -628,16 +633,18 @@ void tx_app_intf(
       tx_app_to_mem_write_cmd_fifo,
       tx_app_to_mem_write_data_fifo);
 
-  TxAppWriteDataToMem(tx_app_to_mem_write_data_fifo,
-                      tx_app_to_mem_write_cmd_fifo,
-                      tx_app_to_mem_write_data,
-                      tx_app_to_mem_write_cmd);
+  WriteDataToMem<0>(tx_app_to_mem_write_cmd_fifo,
+                    tx_app_to_mem_write_data_fifo,
+                    tx_app_to_mem_write_cmd,
+                    tx_app_to_mem_write_data,
+                    tx_app_to_mem_double_access_fifo);
 
   TxAppEventMerger(tx_app_conn_handler_to_event_engine_fifo,
                    tx_app_data_handler_to_event_engine_fifo,
                    tx_app_to_event_eng_cache);
 
-  TxAppRspHandler(mem_to_tx_app_write_status,
+  TxAppRspHandler(tx_app_to_mem_double_access_fifo,
+                  mem_to_tx_app_write_status,
                   tx_app_to_event_eng_cache,
                   tx_app_to_event_eng_set_event,
                   tx_app_to_tx_sar_upd_req);

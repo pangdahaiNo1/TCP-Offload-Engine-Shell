@@ -108,10 +108,11 @@ void TxAppDataHandler(
     // to event eng
     stream<Event> &tx_app_to_event_eng_set_event,
     // to datamover
-    stream<DataMoverCmd> &tx_app_to_mem_write_cmd,
+    stream<MemBufferRWCmd> &tx_app_to_mem_write_cmd,
     stream<NetAXISWord> & tx_app_to_mem_write_data);
 
-void TxAppRspHandler(stream<DataMoverStatus> &mover_to_tx_app_sts,
+void TxAppRspHandler(stream<ap_uint<1> > &    mem_buffer_double_access_flag,
+                     stream<DataMoverStatus> &mover_to_tx_app_sts,
                      stream<Event> &          tx_app_to_event_eng_cache,
                      stream<Event> &          tx_app_to_event_eng_set_event,
                      stream<TxAppToTxSarReq> &tx_app_to_tx_sar_upd_req);

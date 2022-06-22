@@ -210,11 +210,13 @@ void TestTxAppData(stream<NetAXIS> &input_tcp_packets) {
   // to event eng
   stream<Event> tx_app_to_event_eng_set_event;
   // to datamover
-  stream<DataMoverCmd> tx_app_to_mem_write_cmd_fifo("tx_app_to_mem_write_cmd_fifo");
+  stream<MemBufferRWCmd> tx_app_to_mem_write_cmd_fifo("tx_app_to_mem_write_cmd_fifo");
   stream<NetAXISWord>  tx_app_to_mem_write_data_fifo("tx_app_to_mem_write_data_fifo");
   // to mem
   stream<DataMoverCmd> tx_app_to_mem_write_cmd("tx_app_to_mem_write_cmd_fifo");
   stream<NetAXIS>      tx_app_to_mem_write_data("tx_app_to_mem_write_data_fifo");
+  // if mem access break down, write true to this fifo
+  stream<ap_uint<1> > mem_buffer_double_access_flag;
 
   MockLogger data_logger("tx_app_data.log", TX_APP_IF);
 
@@ -287,10 +289,11 @@ void TestTxAppData(stream<NetAXIS> &input_tcp_packets) {
                      tx_app_to_event_eng_set_event,
                      tx_app_to_mem_write_cmd_fifo,
                      tx_app_to_mem_write_data_fifo);
-    TxAppWriteDataToMem(tx_app_to_mem_write_data_fifo,
-                        tx_app_to_mem_write_cmd_fifo,
-                        tx_app_to_mem_write_data,
-                        tx_app_to_mem_write_cmd);
+    WriteDataToMem<0>(tx_app_to_mem_write_cmd_fifo,
+                      tx_app_to_mem_write_data_fifo,
+                      tx_app_to_mem_write_cmd,
+                      tx_app_to_mem_write_data,
+                      mem_buffer_double_access_flag);
     EmptyTxAppDataFifos(data_logger,
                         tx_app_to_net_app_trans_data_rsp,
                         tx_app_to_sttable_lup_req,

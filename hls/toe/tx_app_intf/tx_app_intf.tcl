@@ -21,13 +21,13 @@ set_top tx_app_intf
 
 add_files "${prj_src_dir}/${prj_name}.cpp \
             ${src_top_dir}/utils/axi_utils.cpp \
-            ${src_top_dir}/toe/memory_access/memory_access.cpp" -cflags "-I${src_top_dir} -DDEBUG"
+            ${src_top_dir}/toe/memory_access/memory_access.hpp" -cflags "-I${src_top_dir} -DDEBUG"
 
 add_files -tb " ${prj_src_dir}/${prj_name}_test.cpp \
                   ${src_top_dir}/utils/pcap/pcap_to_stream.cpp \
                   ${src_top_dir}/utils/pcap/pcap.cpp \  
                   ${src_top_dir}/utils/axi_utils.cpp \
-                  ${src_top_dir}/toe/memory_access/memory_access.cpp \
+                  ${src_top_dir}/toe/memory_access/memory_access.hpp \
                   ${src_top_dir}/toe/toe_conn.hpp"  -cflags "-I${src_top_dir} -DDEBUG"
 
 
