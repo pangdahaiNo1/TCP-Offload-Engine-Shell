@@ -56,6 +56,7 @@ public:
       // write mem data then return OKAY flag
       if (cur_word.last == 1) {
         cur_sts.okay = 1;
+        logger.Info(TOE_TOP, DATA_MVER, "WriteMem Sts", "OKAY");
         mover_write_mem_status.write(cur_sts);
       }
     }

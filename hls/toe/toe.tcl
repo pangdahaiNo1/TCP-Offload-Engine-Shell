@@ -32,7 +32,7 @@ add_files " ${prj_src_dir}/${prj_name}.cpp \
             ${prj_src_dir}/close_timer/close_timer.cpp \
             ${prj_src_dir}/probe_timer/probe_timer.cpp \
             ${prj_src_dir}/retransmit_timer/retransmit_timer.cpp \
-            ${prj_src_dir}/memory_access/memory_access.cpp \
+            ${prj_src_dir}/memory_access/memory_access.hpp \
             ${prj_src_dir}/tx_app_intf/tx_app_intf.cpp \
             ${prj_src_dir}/tx_engine/tx_engine.cpp \
             ${prj_src_dir}/tx_sar_table/tx_sar_table.cpp \

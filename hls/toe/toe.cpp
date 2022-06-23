@@ -14,13 +14,17 @@
 void toe_top(
     // rx engine
     stream<NetAXIS> &rx_ip_pkt_in,
-    // tx engine
-    stream<DataMoverCmd> &mover_read_mem_cmd_out,
-    stream<NetAXIS> &     mover_read_mem_data_in,
-#if (TCP_NODELAY)
-    stream<NetAXIS> &tx_app_to_tx_eng_data,
+#if !TCP_RX_DDR_BYPASS
+    // rx eng write to data mover
+    stream<DataMoverCmd> &   rx_eng_to_mover_write_cmd,
+    stream<NetAXIS> &        rx_eng_to_mover_write_data,
+    stream<DataMoverStatus> &mover_to_rx_eng_write_status,
 #endif
-    stream<NetAXIS> &tx_ip_pkt_out,
+    // tx engine
+    // tx engine read from data mover
+    stream<DataMoverCmd> &tx_eng_to_mover_read_cmd,
+    stream<NetAXIS> &     mover_to_tx_eng_read_data,
+    stream<NetAXIS> &     tx_ip_pkt_out,
     // rx app
     stream<NetAXISListenPortReq> &  net_app_to_rx_app_listen_port_req,
     stream<NetAXISListenPortRsp> &  rx_app_to_net_app_listen_port_rsp,
@@ -28,6 +32,11 @@ void toe_top(
     stream<NetAXISAppReadRsp> &     rx_app_to_net_app_recv_data_rsp,
     stream<NetAXIS> &               net_app_recv_data,
     stream<NetAXISAppNotification> &net_app_notification,
+#if !(TCP_RX_DDR_BYPASS)
+    // rx app read from data mover
+    stream<DataMoverCmd> &rx_app_to_mover_read_cmd,
+    stream<NetAXIS> &     mover_to_rx_app_read_data,
+#endif
     // tx app
     stream<NetAXISAppOpenConnReq> &       net_app_to_tx_app_open_conn_req,
     stream<NetAXISAppOpenConnRsp> &       tx_app_to_net_app_open_conn_rsp,
@@ -36,9 +45,10 @@ void toe_top(
     stream<NetAXISAppTransDataReq> &      net_app_to_tx_app_trans_data_req,
     stream<NetAXISAppTransDataRsp> &      tx_app_to_net_app_trans_data_rsp,
     stream<NetAXIS> &                     net_app_trans_data,
-    stream<DataMoverCmd> &                tx_app_to_mem_write_cmd,
-    stream<NetAXIS> &                     tx_app_to_mem_write_data,
-    stream<DataMoverStatus> &             mem_to_tx_app_write_status,
+    // tx app write to data mover
+    stream<DataMoverCmd> &   tx_app_to_mover_write_cmd,
+    stream<NetAXIS> &        tx_app_to_mover_write_data,
+    stream<DataMoverStatus> &mover_to_tx_app_write_status,
     // CAM
     stream<RtlSLookupToCamLupReq> &rtl_slookup_to_cam_lookup_req,
     stream<RtlCamToSlookupLupRsp> &rtl_cam_to_slookup_lookup_rsp,
@@ -54,13 +64,11 @@ void toe_top(
 // rx engine
 #pragma HLS INTERFACE axis register both port = rx_ip_pkt_in
 // tx engine
-#pragma HLS INTERFACE axis port = mover_read_mem_cmd_out
-#pragma HLS aggregate variable = mover_read_mem_cmd_out compact = bit
+#pragma HLS INTERFACE axis port = tx_eng_to_mover_read_cmd
+#pragma HLS aggregate variable = tx_eng_to_mover_read_cmd compact = bit
 
-#pragma HLS INTERFACE axis port = mover_read_mem_data_in
-#if (TCP_NODELAY)
-#pragma HLS INTERFACE axis port = tx_app_to_tx_eng_data
-#endif
+#pragma HLS INTERFACE axis port = mover_to_tx_eng_read_data
+
 #pragma HLS INTERFACE axis port = tx_ip_pkt_out
 // rx app
 #pragma HLS INTERFACE axis register both port = net_app_to_rx_app_listen_port_req
@@ -103,14 +111,33 @@ void toe_top(
 #pragma HLS INTERFACE axis register both port = net_app_trans_data
 #pragma HLS aggregate variable = net_app_trans_data compact = bit
 
-#pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_cmd
-#pragma HLS aggregate variable = tx_app_to_mem_write_cmd compact = bit
+#pragma HLS INTERFACE axis register both port = tx_app_to_mover_write_cmd
+#pragma HLS aggregate variable = tx_app_to_mover_write_cmd compact = bit
 
-#pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_data
-#pragma HLS aggregate variable = tx_app_to_mem_write_data compact = bit
+#pragma HLS INTERFACE axis register both port = tx_app_to_mover_write_data
+#pragma HLS aggregate variable = tx_app_to_mover_write_data compact = bit
 
-#pragma HLS INTERFACE axis register both port = mem_to_tx_app_write_status
-#pragma HLS aggregate variable = mem_to_tx_app_write_status compact = bit
+#pragma HLS INTERFACE axis register both port = mover_to_tx_app_write_status
+#pragma HLS aggregate variable = mover_to_tx_app_write_status compact = bit
+
+#if !(TCP_RX_DDR_BYPASS)
+// rx eng write to data mover
+#pragma HLS INTERFACE axis register both port = rx_eng_to_mover_write_cmd
+#pragma HLS aggregate variable = rx_eng_to_mover_write_cmd compact = bit
+
+#pragma HLS INTERFACE axis register both port = rx_eng_to_mover_write_data
+#pragma HLS aggregate variable = rx_eng_to_mover_write_data compact = bit
+
+#pragma HLS INTERFACE axis register both port = mover_to_rx_eng_write_status
+#pragma HLS aggregate variable = mover_to_rx_eng_write_status compact = bit
+
+// rx app read from data mover
+#pragma HLS INTERFACE axis register both port = rx_app_to_mover_read_cmd
+#pragma HLS aggregate variable = rx_app_to_mover_read_cmd compact = bit
+
+#pragma HLS INTERFACE axis register both port = mover_to_rx_app_read_data
+#pragma HLS aggregate variable = mover_to_rx_app_read_data compact = bit
+#endif  // TCP_RX_DDR_BYPASS
 
 // CAM
 #pragma HLS INTERFACE axis register port = rtl_slookup_to_cam_lookup_req
@@ -173,8 +200,10 @@ void toe_top(
   static stream<RxSarAppReqRsp, 4> rx_sar_to_rx_app_rsp_fifo("rx_sar_to_rx_app_rsp_fifo");
 #pragma HLS aggregate variable = rx_sar_to_rx_app_rsp_fifo compact = bit
 
+#if (TCP_RX_DDR_BYPASS)
   static stream<NetAXISWord, 512> rx_eng_to_rx_app_data_fifo("rx_eng_to_rx_app_data_fifo");
 #pragma HLS aggregate variable = rx_eng_to_rx_app_data_fifo compact = bit
+#endif
 
   static stream<AppNotificationNoTDEST, 4> rx_eng_to_rx_app_notification_fifo(
       "rx_eng_to_rx_app_notification_fifo");
@@ -309,7 +338,13 @@ void toe_top(
               rx_app_to_net_app_recv_data_rsp,
               rx_app_to_rx_sar_req_fifo,
               rx_sar_to_rx_app_rsp_fifo,
+#if !(TCP_RX_DDR_BYPASS)
+              rx_app_to_mover_read_cmd,
+              mover_to_rx_app_read_data,
+#else
+              // data from rx engine to net app
               rx_eng_to_rx_app_data_fifo,
+#endif
               net_app_recv_data,
               rx_eng_to_rx_app_notification_fifo,
               rtimer_to_rx_app_notification_fifo,
@@ -335,7 +370,15 @@ void toe_top(
             rx_eng_to_tx_app_new_client_notification_fifo,
             rx_eng_to_rx_app_notification_fifo,
             rx_eng_to_event_eng_set_event_fifo,
-            rx_eng_to_rx_app_data_fifo);
+#if !(TCP_RX_DDR_BYPASS)
+            rx_eng_to_mover_write_cmd,
+            rx_eng_to_mover_write_data,
+            mover_to_rx_eng_write_status
+#else
+            // data from rx engine to net app
+            rx_eng_to_rx_app_data_fifo
+#endif
+  );
   // rx sar
   rx_sar_table(rx_app_to_rx_sar_req_fifo,
                rx_sar_to_rx_app_rsp_fifo,
@@ -428,9 +471,9 @@ void toe_top(
       tx_app_to_sttable_lup_req_fifo,
       sttable_to_tx_app_lup_rsp_fifo,
       // datamover req/rsp
-      tx_app_to_mem_write_cmd,
-      tx_app_to_mem_write_data,
-      mem_to_tx_app_write_status,
+      tx_app_to_mover_write_cmd,
+      tx_app_to_mover_write_data,
+      mover_to_tx_app_write_status,
       // in big endian
       my_ip_addr);
 
@@ -451,9 +494,9 @@ void toe_top(
       tx_eng_to_slookup_rev_table_req_fifo,
       slookup_rev_table_to_tx_eng_rsp_fifo,
       // to datamover cmd
-      mover_read_mem_cmd_out,
+      tx_eng_to_mover_read_cmd,
       // read data from data mem
-      mover_read_mem_data_in,
+      mover_to_tx_eng_read_data,
 #if (TCP_NODELAY)
       tx_app_to_tx_eng_data,
 #endif
