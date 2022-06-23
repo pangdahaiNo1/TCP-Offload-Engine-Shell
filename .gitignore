@@ -1,5 +1,7 @@
-*hls_prj/
+*hls_prj*/
 *.pcap
 ip_repo/
 test_port/
 .vscode/
+hls/pcap/*
+*.log
