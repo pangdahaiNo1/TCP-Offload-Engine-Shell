@@ -85,7 +85,7 @@ void EchoServerReceiveData(
 
   if (!net_app_new_client_notification.empty()) {
     new_client_notification = net_app_new_client_notification.read();
-    logger.Info(NET_APP, TOE_TOP, "NewClient", new_client_notification.to_string());
+    logger.Info(TOE_TOP, NET_APP, "NewClient", new_client_notification.to_string());
   }
 
   switch (fsm_state) {
