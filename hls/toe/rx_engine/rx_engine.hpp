@@ -140,9 +140,9 @@ void rx_engine(
     stream<EventWithTuple> &rx_eng_to_event_eng_set_event,
 #if !TCP_RX_DDR_BYPASS
     // tcp payload to mem
-    stream<DataMoverCmd> &   rx_eng_to_mem_write_cmd,
-    stream<NetAXIS> &        rx_eng_to_mem_write_data,
-    stream<DataMoverStatus> &mem_to_rx_eng_write_status
+    stream<DataMoverCmd> &   rx_eng_to_mover_write_cmd,
+    stream<NetAXIS> &        rx_eng_to_mover_write_data,
+    stream<DataMoverStatus> &mover_to_rx_eng_write_status
 #else
     // tcp payload to rx app
     stream<NetAXISWord> &rx_eng_to_rx_app_data

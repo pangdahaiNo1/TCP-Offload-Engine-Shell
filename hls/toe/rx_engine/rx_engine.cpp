@@ -595,7 +595,7 @@ void RxEngTcpFsm(
   StateTableReq                to_sttable_req;
   OpenConnRspNoTDEST           to_tx_app_open_conn;
   NewClientNotificationNoTDEST to_tx_app_new_client_notify;
-  MemBufferRWCmd                 to_mem_write_cmd;
+  MemBufferRWCmd               to_mem_write_cmd;
 
   switch (fsm_state) {
     case LOAD:
@@ -1108,7 +1108,7 @@ void RxEngTcpFsm(
  */
 void RxEngNotificaionHandler(
     // from  datamover status
-    stream<DataMoverStatus> &mem_to_rx_eng_write_status,
+    stream<DataMoverStatus> &mover_to_rx_eng_write_status,
     stream<ap_uint<1> > &    mem_buffer_double_access_flag,
     // from rx eng fsm
     stream<AppNotificationNoTDEST> &rx_eng_to_rx_app_notification_cache,
@@ -1117,7 +1117,7 @@ void RxEngNotificaionHandler(
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
-#pragma HLS INTERFACE axis register both port = mover_to_tx_app_sts
+#pragma HLS INTERFACE axis register both port = mover_to_rx_eng_write_status
 
   enum NotificaionHandlerFsmState { READ_NOTIFY, READ_STATUS_1, READ_STATUS_2 };
   static NotificaionHandlerFsmState fsm_state = READ_NOTIFY;
@@ -1135,14 +1135,15 @@ void RxEngNotificaionHandler(
         if (app_notificaion_reg1.length != 0) {
           fsm_state = READ_STATUS_1;
         } else {
+          logger.Info(RX_ENGINE, RX_APP_IF, "To RxApp Notify", app_notificaion_reg1.to_string());
           rx_eng_to_rx_app_notification.write(app_notificaion_reg1);
         }
       }
       break;
     case READ_STATUS_1:
-      if (!mem_buffer_double_access_flag.empty() && !mem_to_rx_eng_write_status.empty()) {
+      if (!mem_buffer_double_access_flag.empty() && !mover_to_rx_eng_write_status.empty()) {
         double_access_flag = mem_buffer_double_access_flag.read();
-        datamover_sts      = mem_to_rx_eng_write_status.read();
+        datamover_sts      = mover_to_rx_eng_write_status.read();
         logger.Info(DATA_MVER, RX_ENGINE, "WriteMemSts1", datamover_sts.to_string());
 
         if (datamover_sts.okay) {
@@ -1161,8 +1162,8 @@ void RxEngNotificaionHandler(
       }
       break;
     case READ_STATUS_2:
-      if (!mem_to_rx_eng_write_status.empty()) {
-        datamover_sts = mem_to_rx_eng_write_status.read();
+      if (!mover_to_rx_eng_write_status.empty()) {
+        datamover_sts = mover_to_rx_eng_write_status.read();
         logger.Info(DATA_MVER, RX_ENGINE, "WriteMemSts2", datamover_sts.to_string());
 
         if (datamover_sts.okay) {
@@ -1222,9 +1223,9 @@ void rx_engine(
     stream<EventWithTuple> &rx_eng_to_event_eng_set_event,
 #if !TCP_RX_DDR_BYPASS
     // tcp payload to mem
-    stream<DataMoverCmd> &   rx_eng_to_mem_write_cmd,
-    stream<NetAXIS> &        rx_eng_to_mem_write_data,
-    stream<DataMoverStatus> &mem_to_rx_eng_write_status
+    stream<DataMoverCmd> &   rx_eng_to_mover_write_cmd,
+    stream<NetAXIS> &        rx_eng_to_mover_write_data,
+    stream<DataMoverStatus> &mover_to_rx_eng_write_status
 #else
     // tcp payload to rx app
     stream<NetAXISWord> &rx_eng_to_rx_app_data
@@ -1236,9 +1237,9 @@ void rx_engine(
 //#pragma HLS INTERFACE ap_ctrl_none       port = return
 #pragma HLS INTERFACE axis register both port = rx_ip_pkt_in
 #if !TCP_RX_DDR_BYPASS
-#pragma HLS INTERFACE axis register both port = rx_eng_to_mem_write_cmd
-#pragma HLS INTERFACE axis register both port = rx_eng_to_mem_write_data
-#pragma HLS INTERFACE axis register both port = mem_to_rx_eng_write_status
+#pragma HLS INTERFACE axis register both port = rx_eng_to_mover_write_cmd
+#pragma HLS INTERFACE axis register both port = rx_eng_to_mover_write_data
+#pragma HLS INTERFACE axis register both port = mover_to_rx_eng_write_status
 #endif
 
   static stream<NetAXISWord> tcp_pseudo_packet_for_checksum_fifo(
@@ -1283,13 +1284,13 @@ void rx_engine(
 #pragma HLS aggregate variable = tcp_payload_fifo compact = bit
 
 #if (!TCP_RX_DDR_BYPASS)
-  static stream<NetAXISWord> rx_eng_to_mem_payload_fifo("rx_eng_to_mem_payload_fifo");
-#pragma HLS STREAM variable = rx_eng_to_mem_payload_fifo depth = 512
-#pragma HLS aggregate variable = rx_eng_to_mem_payload_fifo compact = bit
+  static stream<NetAXISWord> rx_eng_to_mem_write_data_fifo("rx_eng_to_mem_write_data_fifo");
+#pragma HLS STREAM variable = rx_eng_to_mem_write_data_fifo depth = 512
+#pragma HLS aggregate variable = rx_eng_to_mem_write_data_fifo compact = bit
 
-  static stream<MemBufferRWCmd> rx_eng_to_mem_cmd_fifo("rx_eng_to_mem_cmd_fifo");
-#pragma HLS STREAM variable = rx_eng_to_mem_cmd_fifo depth = 16
-#pragma HLS aggregate variable = rx_eng_to_mem_cmd_fifo compact = bit
+  static stream<MemBufferRWCmd> rx_eng_to_mem_write_cmd_fifo("rx_eng_to_mem_write_cmd_fifo");
+#pragma HLS STREAM variable = rx_eng_to_mem_write_cmd_fifo depth = 16
+#pragma HLS aggregate variable = rx_eng_to_mem_write_cmd_fifo compact = bit
 
   static stream<ap_uint<1> > mem_buffer_double_access_flag_fifo(
       "mem_buffer_double_access_flag_fifo");
@@ -1297,8 +1298,8 @@ void rx_engine(
 
   static stream<AppNotificationNoTDEST> rx_eng_to_rx_app_notification_cache_fifo(
       "rx_eng_to_rx_app_notification_cache_fifo");
-#pragma HLS STREAM variable = AppNotificationNoTDEST depth = 256
-#pragma HLS aggregate variable = AppNotificationNoTDEST compact = bit
+#pragma HLS STREAM variable = rx_eng_to_rx_app_notification_cache_fifo depth = 256
+#pragma HLS aggregate variable = rx_eng_to_rx_app_notification_cache_fifo compact = bit
 
 #endif
   // payload drop fifo
@@ -1360,7 +1361,7 @@ void rx_engine(
                          tcp_payload_tdest_fifo,
                          payload_dropped_by_rx_fsm_fifo,
 #if (!TCP_RX_DDR_BYPASS)
-                         rx_eng_to_mem_payload_fifo
+                         rx_eng_to_mem_write_data_fifo
 #else
                          rx_eng_to_rx_app_data
 #endif
@@ -1381,8 +1382,8 @@ void rx_engine(
 #if (!TCP_RX_DDR_BYPASS)
               // if tcp rx ddr bypass is disabled, rx app notificaion should be delayed
               rx_eng_to_rx_app_notification_cache_fifo,
-              rx_eng_to_mem_cmd_fifo,
-#elif
+              rx_eng_to_mem_write_cmd_fifo,
+#else
               // if tcp rx ddr bypass, rx app notifications should be pushed directly to the
               // rx_app_intf
               rx_eng_to_rx_app_notification,
@@ -1390,13 +1391,13 @@ void rx_engine(
               payload_dropped_by_rx_fsm_fifo);
 
 #if (!TCP_RX_DDR_BYPASS)
-  WriteDataToMem<1>(rx_eng_to_mem_cmd_fifo,
-                    rx_eng_to_mem_payload_fifo,
-                    rx_eng_to_mem_write_cmd,
-                    rx_eng_to_mem_write_data,
+  WriteDataToMem<1>(rx_eng_to_mem_write_cmd_fifo,
+                    rx_eng_to_mem_write_data_fifo,
+                    rx_eng_to_mover_write_cmd,
+                    rx_eng_to_mover_write_data,
                     mem_buffer_double_access_flag_fifo);
 
-  RxEngNotificaionHandler(mem_to_rx_eng_write_status,
+  RxEngNotificaionHandler(mover_to_rx_eng_write_status,
                           mem_buffer_double_access_flag_fifo,
                           rx_eng_to_rx_app_notification_cache_fifo,
                           rx_eng_to_rx_app_notification);
