@@ -1,4 +1,6 @@
 #include "rx_app_intf.hpp"
+
+#include "toe/memory_access/memory_access.hpp"
 using namespace hls;
 // logger
 #include "toe/mock/mock_logger.hpp"
@@ -41,7 +43,7 @@ void RxAppPortHandler(stream<NetAXISListenPortReq> &net_app_to_rx_app_listen_por
       if (!ptable_to_rx_app_listen_port_rsp.empty()) {
         listen_rsp = ptable_to_rx_app_listen_port_rsp.read();
         rx_app_to_net_app_listen_port_rsp.write(listen_rsp.to_net_axis());
-        logger.Info(RX_APP_IF, NET_APP, "ListenPort Rsp", listen_rsp.to_string(), false);
+        logger.Info(RX_APP_IF, NET_APP, "ListenPort Rsp", listen_rsp.to_string());
         fsm_state = WAIT_NET;
       }
       break;
@@ -59,13 +61,20 @@ void RxAppPortHandler(stream<NetAXISListenPortReq> &net_app_to_rx_app_listen_por
  *  @param[out]		rx_app_to_rx_sar_req
  *  @param[out]		rx_buffer_read_cmd
  */
-void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_to_rx_app_recv_data_req,
-                                      stream<NetAXISAppReadRsp> &rx_app_to_net_app_recv_data_rsp,
-                                      stream<RxSarAppReqRsp> &   rx_app_to_rx_sar_req,
-                                      stream<RxSarAppReqRsp> &   rx_sar_to_rx_app_rsp,
-                                      // rx engine data to net app
-                                      stream<NetAXISWord> &rx_eng_to_rx_app_data,
-                                      stream<NetAXIS> &    net_app_recv_data) {
+void RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_to_rx_app_recv_data_req,
+                      stream<NetAXISAppReadRsp> &rx_app_to_net_app_recv_data_rsp,
+                      stream<RxSarAppReqRsp> &   rx_app_to_rx_sar_req,
+                      stream<RxSarAppReqRsp> &   rx_sar_to_rx_app_rsp,
+#if !(TCP_RX_DDR_BYPASS)
+                      // inner read mem cmd
+                      stream<MemBufferRWCmd> &rx_app_to_mem_read_cmd,
+                      // read mem payload
+                      stream<NetAXISWord> &mover_to_rx_app_read_data,
+#else
+                      // rx engine data to net app
+                      stream<NetAXISWord> &rx_eng_to_rx_app_data,
+#endif
+                      stream<NetAXIS> &net_app_recv_data) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -75,11 +84,13 @@ void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_to_rx_a
 
   static ap_uint<16> rx_app_read_length;
   static NetAXISDest rx_app_role_id;
-  enum RxAppDataDataFsmState { WAIT_NET_APP_DATA_REQ, WAIT_SAR_RSP, WAIT_RX_ENG_DATA };
+  enum RxAppDataDataFsmState { WAIT_NET_APP_DATA_REQ, WAIT_SAR_RSP, WAIT_DATA };
   static RxAppDataDataFsmState fsm_state = WAIT_NET_APP_DATA_REQ;
   // add a lock for record role_id
-  static bool net_app_data_lock = false;
-  NetAXISWord cur_word;
+  static bool    net_app_data_lock = false;
+  NetAXISWord    cur_word;
+  MemBufferRWCmd to_mem_cmd;
+  ap_uint<32>    payload_mem_addr = 0;
 
   switch (fsm_state) {
     case WAIT_NET_APP_DATA_REQ:
@@ -114,21 +125,45 @@ void                 RxAppDataHandler(stream<NetAXISAppReadReq> &net_app_to_rx_a
         RxSarAppReqRsp rx_sar_upd_req(rx_app_rsp.session_id,
                                       rx_app_rsp.app_read + rx_app_read_length);
         rx_app_to_rx_sar_req.write(rx_sar_upd_req);
-        logger.Info(RX_APP_IF, RX_SAR_TB, "SessionSAR Upd Req", rx_sar_upd_req.to_string(), false);
-        fsm_state = WAIT_RX_ENG_DATA;
+        logger.Info(RX_APP_IF, RX_SAR_TB, "SessionSAR Upd Req", rx_sar_upd_req.to_string());
+#if !(TCP_RX_DDR_BYPASS)
+        // inner read mem cmd
+        GetSessionMemAddr<1>(rx_app_rsp.session_id, rx_app_rsp.app_read, payload_mem_addr);
+        to_mem_cmd = MemBufferRWCmd(payload_mem_addr, rx_app_read_length);
+        logger.Info(RX_APP_IF, DATA_MVER, "Rx read cmd", to_mem_cmd.to_string());
+
+        rx_app_to_mem_read_cmd.write(to_mem_cmd);
+#endif
+        fsm_state = WAIT_DATA;
       }
       break;
-    case WAIT_RX_ENG_DATA:
-      if (!rx_eng_to_rx_app_data.empty()) {
-        rx_eng_to_rx_app_data.read(cur_word);
-        // cur_word.dest = rx_app_role_id;  // assume the TDEST is assigned in Rx engine
+#if !(TCP_RX_DDR_BYPASS)
+    case WAIT_DATA:
+      if (!mover_to_rx_app_read_data.empty()) {
+        mover_to_rx_app_read_data.read(cur_word);
+        cur_word.dest = rx_app_role_id;  // TDEST should be assigned in Rx app intf
         net_app_recv_data.write(cur_word.to_net_axis());
-        logger.Info(RX_APP_IF, NET_APP, "Data", cur_word.to_string(), false);
+        logger.Info(RX_APP_IF, NET_APP, "Rx App Data from Mem", cur_word.to_string());
         if (cur_word.last) {
           fsm_state         = WAIT_NET_APP_DATA_REQ;
           net_app_data_lock = false;
         }
       }
+      break;
+#else
+    case WAIT_DATA:
+      if (!rx_eng_to_rx_app_data.empty()) {
+        rx_eng_to_rx_app_data.read(cur_word);
+        // cur_word.dest = rx_app_role_id;  // assume the TDEST is assigned in Rx engine
+        net_app_recv_data.write(cur_word.to_net_axis());
+        logger.Info(RX_APP_IF, NET_APP, "Rx App Data from rx eng", cur_word.to_string());
+        if (cur_word.last) {
+          fsm_state         = WAIT_NET_APP_DATA_REQ;
+          net_app_data_lock = false;
+        }
+      }
+      break;
+#endif
   }
 }
 
@@ -171,9 +206,15 @@ void rx_app_intf(
     // rx sar req/rsp
     stream<RxSarAppReqRsp> &rx_app_to_rx_sar_req,
     stream<RxSarAppReqRsp> &rx_sar_to_rx_app_rsp,
+#if !(TCP_RX_DDR_BYPASS)
+    // data from mem to net app
+    stream<DataMoverCmd> &rx_app_to_mover_read_cmd,
+    stream<NetAXIS> &     mover_to_rx_app_read_data,
+#else
     // data from rx engine to net app
     stream<NetAXISWord> &rx_eng_to_rx_app_data,
-    stream<NetAXIS> &    net_app_recv_data,
+#endif
+    stream<NetAXIS> &net_app_recv_data,
 
     // net role app - notification
     // Rx engine to Rx app
@@ -184,13 +225,7 @@ void rx_app_intf(
     stream<TcpSessionID> &rx_app_to_slookup_tdest_lookup_req,
     stream<NetAXISDest> & slookup_to_rx_app_tdest_lookup_rsp,
     // appnotifacation to net app with TDEST
-    stream<NetAXISAppNotification> &net_app_notification
-    // datamover read req/rsp,
-    // TODO: currently not support this yet zelin 220509
-    // #if !(TCP_RX_DDR_BYPASS)
-    //     stream<DataMoverCmd> &rx_buffer_read_cmd,
-    // #endif
-) {
+    stream<NetAXISAppNotification> &net_app_notification) {
 //#pragma HLS PIPELINE II = 1
 #pragma HLS DATAFLOW
 
@@ -205,6 +240,38 @@ void rx_app_intf(
                    rx_app_to_net_app_listen_port_rsp,
                    rx_app_to_ptable_listen_port_req,
                    ptable_to_rx_app_listen_port_rsp);
+#if !(TCP_RX_DDR_BYPASS)
+
+// interface
+#pragma HLS INTERFACE axis register both port = rx_app_to_mover_read_cmd
+#pragma HLS INTERFACE axis register both port = mover_to_rx_app_read_data
+
+  static stream<MemBufferRWCmd> rx_app_to_mem_read_cmd_fifo("rx_app_to_mem_read_cmd_fifo");
+#pragma HLS aggregate variable = rx_app_to_mem_read_cmd_fifo compact = bit
+#pragma HLS stream variable = rx_app_to_mem_read_cmd_fifo depth = 16
+
+  static stream<MemBufferRWCmdDoubleAccess> rx_app_mem_double_access_fifo(
+      "rx_app_mem_double_access_fifo");
+#pragma HLS stream variable = rx_app_mem_double_access_fifo depth = 16
+#pragma HLS aggregate variable = rx_app_mem_double_access_fifo compact = bit
+
+  static stream<NetAXISWord> mem_to_rx_app_read_data_fifo("mem_to_rx_app_read_data_fifo");
+#pragma HLS aggregate variable = mem_to_rx_app_read_data_fifo compact = bit
+#pragma HLS stream variable = mem_to_rx_app_read_data_fifo depth = 256
+
+  RxAppDataHandler(net_app_to_rx_app_recv_data_req,
+                   rx_app_to_net_app_recv_data_rsp,
+                   rx_app_to_rx_sar_req,
+                   rx_sar_to_rx_app_rsp,
+                   rx_app_to_mem_read_cmd_fifo,
+                   mem_to_rx_app_read_data_fifo,
+                   net_app_recv_data);
+  ReadDataSendCmd<1>(
+      rx_app_to_mem_read_cmd_fifo, rx_app_to_mover_read_cmd, rx_app_mem_double_access_fifo);
+  ReadDataFromMem<1>(
+      mover_to_rx_app_read_data, rx_app_mem_double_access_fifo, mem_to_rx_app_read_data_fifo);
+
+#else
 
   RxAppDataHandler(net_app_to_rx_app_recv_data_req,
                    rx_app_to_net_app_recv_data_rsp,
@@ -212,7 +279,7 @@ void rx_app_intf(
                    rx_sar_to_rx_app_rsp,
                    rx_eng_to_rx_app_data,
                    net_app_recv_data);
-
+#endif
   // to be merged in Slookup controller for looking TDEST
   static stream<AppNotificationNoTDEST> rx_app_notification_no_tdest(
       "rx_app_notification_no_tdest");
