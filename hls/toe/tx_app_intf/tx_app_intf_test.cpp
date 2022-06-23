@@ -67,17 +67,17 @@ void EmptyTxAppDataFifos(MockLogger &                    logger,
 }
 
 void EmptyDataMoverFifos(MockLogger &          logger,
-                         stream<DataMoverCmd> &tx_app_to_mem_write_cmd,
-                         stream<NetAXIS> &     tx_app_to_mem_write_data) {
+                         stream<DataMoverCmd> &tx_app_to_mover_write_cmd,
+                         stream<NetAXIS> &     tx_app_to_mover_write_data) {
   DataMoverCmd cmd_out;
   NetAXISWord  data_out;
 
-  while (!tx_app_to_mem_write_cmd.empty()) {
-    tx_app_to_mem_write_cmd.read(cmd_out);
+  while (!tx_app_to_mover_write_cmd.empty()) {
+    tx_app_to_mover_write_cmd.read(cmd_out);
     logger.Info(TX_APP_IF, DATA_MVER, "Write CMD", cmd_out.to_string());
   }
-  while (!tx_app_to_mem_write_data.empty()) {
-    data_out = tx_app_to_mem_write_data.read();
+  while (!tx_app_to_mover_write_data.empty()) {
+    data_out = tx_app_to_mover_write_data.read();
     logger.Info(TX_APP_IF, DATA_MVER, "Write Data", data_out.to_string());
   }
 }
@@ -211,10 +211,10 @@ void TestTxAppData(stream<NetAXIS> &input_tcp_packets) {
   stream<Event> tx_app_to_event_eng_set_event;
   // to datamover
   stream<MemBufferRWCmd> tx_app_to_mem_write_cmd_fifo("tx_app_to_mem_write_cmd_fifo");
-  stream<NetAXISWord>  tx_app_to_mem_write_data_fifo("tx_app_to_mem_write_data_fifo");
+  stream<NetAXISWord>    tx_app_to_mem_write_data_fifo("tx_app_to_mem_write_data_fifo");
   // to mem
-  stream<DataMoverCmd> tx_app_to_mem_write_cmd("tx_app_to_mem_write_cmd_fifo");
-  stream<NetAXIS>      tx_app_to_mem_write_data("tx_app_to_mem_write_data_fifo");
+  stream<DataMoverCmd> tx_app_to_mover_write_cmd("tx_app_to_mem_write_cmd_fifo");
+  stream<NetAXIS>      tx_app_to_mover_write_data("tx_app_to_mem_write_data_fifo");
   // if mem access break down, write true to this fifo
   stream<ap_uint<1> > mem_buffer_double_access_flag;
 
@@ -291,8 +291,8 @@ void TestTxAppData(stream<NetAXIS> &input_tcp_packets) {
                      tx_app_to_mem_write_data_fifo);
     WriteDataToMem<0>(tx_app_to_mem_write_cmd_fifo,
                       tx_app_to_mem_write_data_fifo,
-                      tx_app_to_mem_write_cmd,
-                      tx_app_to_mem_write_data,
+                      tx_app_to_mover_write_cmd,
+                      tx_app_to_mover_write_data,
                       mem_buffer_double_access_flag);
     EmptyTxAppDataFifos(data_logger,
                         tx_app_to_net_app_trans_data_rsp,
@@ -300,7 +300,7 @@ void TestTxAppData(stream<NetAXIS> &input_tcp_packets) {
                         tx_app_to_event_eng_set_event);
     EmptyTxAppTableFifos(data_logger, tx_app_to_tx_app_table_req);
 
-    EmptyDataMoverFifos(data_logger, tx_app_to_mem_write_cmd, tx_app_to_mem_write_data);
+    EmptyDataMoverFifos(data_logger, tx_app_to_mover_write_cmd, tx_app_to_mover_write_data);
 
     sim_cycle++;
     data_logger.SetSimCycle(sim_cycle);
@@ -346,9 +346,9 @@ void TestTxAppIntf(stream<NetAXIS> &input_tcp_packets) {
   stream<TcpSessionID> tx_app_to_sttable_lup_req;
   stream<SessionState> sttable_to_tx_app_lup_rsp;
   // datamover req/rsp
-  stream<DataMoverCmd>    tx_app_to_mem_write_cmd;
-  stream<NetAXIS>         tx_app_to_mem_write_data;
-  stream<DataMoverStatus> mem_to_tx_app_write_status;
+  stream<DataMoverCmd>    tx_app_to_mover_write_cmd;
+  stream<NetAXIS>         tx_app_to_mover_write_data;
+  stream<DataMoverStatus> mover_to_tx_app_write_status;
   // in big endian
   IpAddr my_ip_addr = mock_src_ip_addr;
 
@@ -432,7 +432,7 @@ void TestTxAppIntf(stream<NetAXIS> &input_tcp_packets) {
       case 20:
         // datamover sts, it will update TX SAR app_written
         data_mover_sts.okay = 1;
-        mem_to_tx_app_write_status.write(data_mover_sts);
+        mover_to_tx_app_write_status.write(data_mover_sts);
         break;
 
       default:
@@ -461,9 +461,9 @@ void TestTxAppIntf(stream<NetAXIS> &input_tcp_packets) {
                 tx_app_to_event_eng_set_event,
                 tx_app_to_sttable_lup_req,
                 sttable_to_tx_app_lup_rsp,
-                tx_app_to_mem_write_cmd,
-                tx_app_to_mem_write_data,
-                mem_to_tx_app_write_status,
+                tx_app_to_mover_write_cmd,
+                tx_app_to_mover_write_data,
+                mover_to_tx_app_write_status,
                 my_ip_addr);
     EmptyTxAppConnFifos(top_logger,
                         tx_app_to_ptable_req,
@@ -477,7 +477,7 @@ void TestTxAppIntf(stream<NetAXIS> &input_tcp_packets) {
                         tx_app_to_event_eng_set_event);
     EmptyTxAppStsFifos(top_logger, tx_app_to_tx_sar_upd_req);
 
-    EmptyDataMoverFifos(top_logger, tx_app_to_mem_write_cmd, tx_app_to_mem_write_data);
+    EmptyDataMoverFifos(top_logger, tx_app_to_mover_write_cmd, tx_app_to_mover_write_data);
     sim_cycle++;
     top_logger.SetSimCycle(sim_cycle);
     logger.SetSimCycle(sim_cycle);

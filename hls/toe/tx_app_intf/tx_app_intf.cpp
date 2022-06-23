@@ -230,15 +230,15 @@ void TxAppDataHandler(
     // to event eng
     stream<Event> &tx_app_to_event_eng_set_event,
     // to datamover
-    stream<MemBufferRWCmd> &tx_app_to_mem_write_cmd,
-    stream<NetAXISWord> &   tx_app_to_mem_write_data) {
+    stream<MemBufferRWCmd> &tx_app_to_mover_write_cmd,
+    stream<NetAXISWord> &   tx_app_to_mover_write_data) {
 #pragma HLS PIPELINE off
 
 #pragma HLS INTERFACE axis register both port = net_app_to_tx_app_trans_data_req
 #pragma HLS INTERFACE axis register both port = tx_app_to_net_app_trans_data_rsp
 #pragma HLS INTERFACE axis register both port = net_app_trans_data
-#pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_cmd
-#pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_data
+#pragma HLS INTERFACE axis register both port = tx_app_to_mover_write_cmd
+#pragma HLS INTERFACE axis register both port = tx_app_to_mover_write_data
 
   enum TxAppDataFsmState { READ_REQUEST, READ_META, READ_DATA };
   static TxAppDataFsmState fsm_state = READ_REQUEST;
@@ -252,7 +252,7 @@ void TxAppDataHandler(
   static TcpSessionBuffer     max_write_length;
   TcpSessionBuffer            used_length;
   TcpSessionBuffer            useable_win;
-  ap_uint<32>                 trans_data_mem_addr;
+  ap_uint<32>                 payload_mem_addr;
   TxAppToTxAppTableReq        to_tx_app_table_req;
   Event                       to_event_eng_event;
   MemBufferRWCmd              to_data_mover_cmd;
@@ -319,14 +319,11 @@ void TxAppDataHandler(
         } else {
           // normal
           // If DDR is not used in the RX start from the  beginning of the memory
-          // trans_data_mem_addr(31, 30)             = (!TCP_RX_DDR_BYPASS);
-          // trans_data_mem_addr(29, WINDOW_BITS)    = trans_data_req.id(13, 0);
-          // trans_data_mem_addr(WINDOW_BITS - 1, 0) = tx_app_table_rsp.app_written_ideal;
           GetSessionMemAddr<0>(
-              trans_data_req.id, tx_app_table_rsp.app_written_ideal, trans_data_mem_addr);
+              trans_data_req.id, tx_app_table_rsp.app_written_ideal, payload_mem_addr);
 
-          to_data_mover_cmd = MemBufferRWCmd(trans_data_mem_addr, trans_data_req.data);
-          tx_app_to_mem_write_cmd.write(to_data_mover_cmd);
+          to_data_mover_cmd = MemBufferRWCmd(payload_mem_addr, trans_data_req.data);
+          tx_app_to_mover_write_cmd.write(to_data_mover_cmd);
           logger.Info(TX_APP_IF, DATA_MVER, "WriteMemCmd", to_data_mover_cmd.to_string());
 
           trans_data_rsp.data.length          = trans_data_req.data;
@@ -349,7 +346,7 @@ void TxAppDataHandler(
     case READ_DATA:
       if (!net_app_trans_data.empty() && trans_data_lock) {
         NetAXIS cur_word = net_app_trans_data.read();
-        tx_app_to_mem_write_data.write(cur_word);
+        tx_app_to_mover_write_data.write(cur_word);
         logger.Info(NET_APP, TX_APP_IF, "TransData", NetAXISWord(cur_word).to_string());
         logger.Info(TX_APP_IF, DATA_MVER, "WriteMem", NetAXISWord(cur_word).to_string());
 
@@ -369,13 +366,13 @@ void TxAppDataHandler(
  * @p tx_app_to_event_eng_set_event iff the Datamover returned OKAY
  */
 void                 TxAppRspHandler(stream<ap_uint<1> > &    mem_buffer_double_access_flag,
-                                     stream<DataMoverStatus> &mover_to_tx_app_sts,
+                                     stream<DataMoverStatus> &mover_to_tx_app_write_status,
                                      stream<Event> &          tx_app_to_event_eng_cache,
                                      stream<Event> &          tx_app_to_event_eng_set_event,
                                      stream<TxAppToTxSarReq> &tx_app_to_tx_sar_upd_req) {
 #pragma HLS PIPELINE II = 1
 
-#pragma HLS INTERFACE axis register both port = mover_to_tx_app_sts
+#pragma HLS INTERFACE axis register both port = mover_to_tx_app_write_status
 
   enum StatusHandlerFsmState { READ_EV, READ_STATUS_1, READ_STATUS_2 };
   static StatusHandlerFsmState fsm_status = READ_EV;
@@ -398,8 +395,8 @@ void                 TxAppRspHandler(stream<ap_uint<1> > &    mem_buffer_double_
       }
       break;
     case READ_STATUS_1:
-      if (!mem_buffer_double_access_flag.empty() && !mover_to_tx_app_sts.empty()) {
-        datamover_sts      = mover_to_tx_app_sts.read();
+      if (!mem_buffer_double_access_flag.empty() && !mover_to_tx_app_write_status.empty()) {
+        datamover_sts      = mover_to_tx_app_write_status.read();
         double_access_flag = mem_buffer_double_access_flag.read();
         logger.Info(DATA_MVER, TX_APP_IF, "WriteMemSts", datamover_sts.to_string());
 
@@ -422,9 +419,9 @@ void                 TxAppRspHandler(stream<ap_uint<1> > &    mem_buffer_double_
       }
       break;
     case READ_STATUS_2:
-      if (!mover_to_tx_app_sts.empty()) {
+      if (!mover_to_tx_app_write_status.empty()) {
         // wait for another write status
-        mover_to_tx_app_sts.read(datamover_sts);
+        mover_to_tx_app_write_status.read(datamover_sts);
 
         if (datamover_sts.okay) {
           // App pointer update, pointer is released
@@ -537,9 +534,9 @@ void tx_app_intf(
     stream<TcpSessionID> &tx_app_to_sttable_lup_req,
     stream<SessionState> &sttable_to_tx_app_lup_rsp,
     // datamover req/rsp
-    stream<DataMoverCmd> &   tx_app_to_mem_write_cmd,
-    stream<NetAXIS> &        tx_app_to_mem_write_data,
-    stream<DataMoverStatus> &mem_to_tx_app_write_status,
+    stream<DataMoverCmd> &   tx_app_to_mover_write_cmd,
+    stream<NetAXIS> &        tx_app_to_mover_write_data,
+    stream<DataMoverStatus> &mover_to_tx_app_write_status,
     // in big endian
     IpAddr &my_ip_addr) {
 //#pragma HLS          INLINE
@@ -553,9 +550,9 @@ void tx_app_intf(
 #pragma HLS INTERFACE axis register both port = net_app_to_tx_app_trans_data_req
 #pragma HLS INTERFACE axis register both port = tx_app_to_net_app_trans_data_rsp
 #pragma HLS INTERFACE axis register both port = net_app_trans_data
-#pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_cmd
-#pragma HLS INTERFACE axis register both port = tx_app_to_mem_write_data
-#pragma HLS INTERFACE axis register both port = mem_to_tx_app_write_status
+#pragma HLS INTERFACE axis register both port = tx_app_to_mover_write_cmd
+#pragma HLS INTERFACE axis register both port = tx_app_to_mover_write_data
+#pragma HLS INTERFACE axis register both port = mover_to_tx_app_write_status
 
   // Fifos
   static stream<TxAppToTxAppTableReq> tx_app_to_tx_app_table_req_fifo(
@@ -635,8 +632,8 @@ void tx_app_intf(
 
   WriteDataToMem<0>(tx_app_to_mem_write_cmd_fifo,
                     tx_app_to_mem_write_data_fifo,
-                    tx_app_to_mem_write_cmd,
-                    tx_app_to_mem_write_data,
+                    tx_app_to_mover_write_cmd,
+                    tx_app_to_mover_write_data,
                     tx_app_to_mem_double_access_fifo);
 
   TxAppEventMerger(tx_app_conn_handler_to_event_engine_fifo,
@@ -644,7 +641,7 @@ void tx_app_intf(
                    tx_app_to_event_eng_cache);
 
   TxAppRspHandler(tx_app_to_mem_double_access_fifo,
-                  mem_to_tx_app_write_status,
+                  mover_to_tx_app_write_status,
                   tx_app_to_event_eng_cache,
                   tx_app_to_event_eng_set_event,
                   tx_app_to_tx_sar_upd_req);

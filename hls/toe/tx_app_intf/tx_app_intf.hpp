@@ -108,11 +108,11 @@ void TxAppDataHandler(
     // to event eng
     stream<Event> &tx_app_to_event_eng_set_event,
     // to datamover
-    stream<MemBufferRWCmd> &tx_app_to_mem_write_cmd,
-    stream<NetAXISWord> & tx_app_to_mem_write_data);
+    stream<MemBufferRWCmd> &tx_app_to_mover_write_cmd,
+    stream<NetAXISWord> &   tx_app_to_mover_write_data);
 
 void TxAppRspHandler(stream<ap_uint<1> > &    mem_buffer_double_access_flag,
-                     stream<DataMoverStatus> &mover_to_tx_app_sts,
+                     stream<DataMoverStatus> &mover_to_tx_app_write_status,
                      stream<Event> &          tx_app_to_event_eng_cache,
                      stream<Event> &          tx_app_to_event_eng_set_event,
                      stream<TxAppToTxSarReq> &tx_app_to_tx_sar_upd_req);
@@ -160,9 +160,9 @@ void tx_app_intf(
     stream<TcpSessionID> &tx_app_to_sttable_lup_req,
     stream<SessionState> &sttable_to_tx_app_lup_rsp,
     // datamover req/rsp
-    stream<DataMoverCmd> &   tx_app_to_mem_write_cmd,
-    stream<NetAXIS> &        tx_app_to_mem_write_data,
-    stream<DataMoverStatus> &mem_to_tx_app_write_status,
+    stream<DataMoverCmd> &   tx_app_to_mover_write_cmd,
+    stream<NetAXIS> &        tx_app_to_mover_write_data,
+    stream<DataMoverStatus> &mover_to_tx_app_write_status,
     // in big endian
     IpAddr &my_ip_addr);
 
