@@ -36,7 +36,7 @@ void TxEngTcpFsm(
     // to construct the tcp pseudo full header
     stream<TxEngFsmMetaData> &tx_eng_fsm_meta_data_out,
     // to read mem
-    stream<MemBufferRWCmd> &tx_eng_to_mem_cmd,
+    stream<MemBufferRWCmd> &tx_eng_to_mem_read_cmd,
 #if (TCP_NODELAY)
     stream<bool> &tx_eng_is_ddr_bypass,
 #endif
@@ -238,7 +238,7 @@ void TxEngTcpFsm(
 
             if (tcp_tx_meta_reg.length != 0) {
               to_mem_cmd = MemBufferRWCmd(payload_mem_addr, tcp_tx_meta_reg.length);
-              tx_eng_to_mem_cmd.write(to_mem_cmd);
+              tx_eng_to_mem_read_cmd.write(to_mem_cmd);
               tx_tcp_payload_length_out.write(tcp_tx_meta_reg.length);
               tx_eng_fsm_meta_data_out.write(tcp_tx_meta_reg);
               tx_four_tuple_source.write(true);
@@ -346,7 +346,7 @@ void TxEngTcpFsm(
             if (tcp_tx_meta_reg.length != 0) {
               to_mem_cmd = MemBufferRWCmd(payload_mem_addr, tcp_tx_meta_reg.length);
 
-              tx_eng_to_mem_cmd.write(to_mem_cmd);
+              tx_eng_to_mem_read_cmd.write(to_mem_cmd);
               tx_tcp_payload_length_out.write(tcp_tx_meta_reg.length);
               tx_eng_fsm_meta_data_out.write(tcp_tx_meta_reg);
               tx_four_tuple_source.write(true);
@@ -436,7 +436,7 @@ void TxEngTcpFsm(
           // Only send a packet if there is data
           if (tcp_tx_meta_reg.length != 0) {
             to_mem_cmd = MemBufferRWCmd(payload_mem_addr, tcp_tx_meta_reg.length);
-            tx_eng_to_mem_cmd.write(to_mem_cmd);
+            tx_eng_to_mem_read_cmd.write(to_mem_cmd);
             tx_tcp_payload_length_out.write(tcp_tx_meta_reg.length);
             tx_eng_fsm_meta_data_out.write(tcp_tx_meta_reg);
             tx_four_tuple_source.write(true);
@@ -1141,9 +1141,9 @@ void tx_engine(
     stream<ap_uint<16> > &          tx_eng_to_slookup_rev_table_req,
     stream<ReverseTableToTxEngRsp> &slookup_rev_table_to_tx_eng_rsp,
     // to datamover cmd
-    stream<DataMoverCmd> &mover_read_mem_cmd_out,
-    // read data from data mem
-    stream<NetAXIS> &mover_read_mem_data_in,
+    stream<DataMoverCmd> &tx_eng_to_mover_read_cmd,
+    // read data from mem
+    stream<NetAXIS> &mover_to_tx_eng_read_data,
 #if (TCP_NODELAY)
     stream<NetAXIS> &tx_app_to_tx_eng_data,
 #endif
@@ -1154,10 +1154,10 @@ void tx_engine(
 #pragma HLS DATAFLOW
 #pragma HLS INLINE
 
-#pragma HLS INTERFACE axis port = mover_read_mem_cmd_out
-#pragma HLS aggregate variable = mover_read_mem_cmd_out compact = bit
+#pragma HLS INTERFACE axis port = tx_eng_to_mover_read_cmd
+#pragma HLS aggregate variable = tx_eng_to_mover_read_cmd compact = bit
 
-#pragma HLS INTERFACE axis port = mover_read_mem_data_in
+#pragma HLS INTERFACE axis port = mover_to_tx_eng_read_data
 #if (TCP_NODELAY)
 #pragma HLS INTERFACE axis port = tx_app_to_tx_eng_data
 #endif
@@ -1173,9 +1173,9 @@ void tx_engine(
 #pragma HLS stream variable = tx_tcp_payload_length_fifo depth = 16
 #pragma HLS aggregate variable = tx_tcp_payload_length_fifo compact = bit
 
-  static stream<MemBufferRWCmd> tx_eng_to_mem_cmd_fifo("tx_eng_to_mem_cmd_fifo");
-#pragma HLS stream variable = tx_eng_to_mem_cmd_fifo depth = 16
-#pragma HLS aggregate variable = tx_eng_to_mem_cmd_fifo compact = bit
+  static stream<MemBufferRWCmd> tx_eng_to_mem_read_cmd_fifo("tx_eng_to_mem_read_cmd_fifo");
+#pragma HLS stream variable = tx_eng_to_mem_read_cmd_fifo depth = 16
+#pragma HLS aggregate variable = tx_eng_to_mem_read_cmd_fifo compact = bit
 
   static stream<bool> tx_eng_is_ddr_bypass_fifo("tx_eng_is_ddr_bypass_fifo");
 #pragma HLS stream variable = tx_eng_is_ddr_bypass_fifo depth = 16
@@ -1195,10 +1195,10 @@ void tx_engine(
 #pragma HLS stream variable = tx_ip_pair_for_ip_header_fifo depth = 16
 #pragma HLS aggregate variable = tx_ip_pair_for_ip_header_fifo compact = bit
 
-  static stream<MemBufferRWCmdDoubleAccess> mem_buffer_double_access_fifo(
-      "mem_buffer_double_access_fifo");
-#pragma HLS stream variable = mem_buffer_double_access_fifo depth = 16
-#pragma HLS aggregate variable = mem_buffer_double_access_fifo compact = bit
+  static stream<MemBufferRWCmdDoubleAccess> tx_eng_mem_double_access_fifo(
+      "tx_eng_mem_double_access_fifo");
+#pragma HLS stream variable = tx_eng_mem_double_access_fifo depth = 16
+#pragma HLS aggregate variable = tx_eng_mem_double_access_fifo compact = bit
 
   // read from memory
   static stream<NetAXISWord> tx_eng_read_tcp_payload_fifo("tx_eng_read_tcp_payload_fifo");
@@ -1249,14 +1249,15 @@ void tx_engine(
               tx_eng_to_slookup_rev_table_req,
               tx_tcp_payload_length_fifo,
               tx_eng_fsm_meta_data_fifo,
-              tx_eng_to_mem_cmd_fifo,
+              tx_eng_to_mem_read_cmd_fifo,
               tx_four_tuple_source_fifo,
               tx_eng_fsm_four_tuple_fifo);
 
-  ReadDataSendCmd<0>(tx_eng_to_mem_cmd_fifo, mover_read_mem_cmd_out, mem_buffer_double_access_fifo);
+  ReadDataSendCmd<0>(
+      tx_eng_to_mem_read_cmd_fifo, tx_eng_to_mover_read_cmd, tx_eng_mem_double_access_fifo);
 
   ReadDataFromMem<0>(
-      mover_read_mem_data_in, mem_buffer_double_access_fifo, tx_eng_read_tcp_payload_fifo);
+      mover_to_tx_eng_read_data, tx_eng_mem_double_access_fifo, tx_eng_read_tcp_payload_fifo);
 
   TxEngFourTupleHandler(slookup_rev_table_to_tx_eng_rsp,
                         tx_four_tuple_source_fifo,

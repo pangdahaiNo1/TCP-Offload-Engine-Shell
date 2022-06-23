@@ -113,15 +113,15 @@ void EmptyTxEngFsmFifo(MockLogger &                    logger,
 
 void EmptyTxEngDataFifo(MockLogger &logger,
                         // to datamover cmd
-                        stream<DataMoverCmd> &mover_read_mem_cmd_out,
+                        stream<DataMoverCmd> &tx_eng_to_mover_read_cmd,
                         // to outer
                         stream<NetAXIS> &tx_ip_pkt_out,
                         stream<NetAXIS> &tx_ip_pkt_to_save) {
   NetAXISWord  ip_pkt_out;
   DataMoverCmd cmd_out;
 
-  while (!mover_read_mem_cmd_out.empty()) {
-    mover_read_mem_cmd_out.read(cmd_out);
+  while (!tx_eng_to_mover_read_cmd.empty()) {
+    tx_eng_to_mover_read_cmd.read(cmd_out);
     logger.Info(TX_ENGINE, DATA_MVER, "ReadMem Cmd", cmd_out.to_string());
   }
   while (!tx_ip_pkt_out.empty()) {
@@ -147,9 +147,9 @@ void TestTxEngine() {
   stream<ap_uint<16> >           tx_eng_to_slookup_rev_table_req;
   stream<ReverseTableToTxEngRsp> slookup_rev_table_to_tx_eng_rsp;
   // to datamover cmd
-  stream<DataMoverCmd> mover_read_mem_cmd_out;
+  stream<DataMoverCmd> tx_eng_to_mover_read_cmd;
   // read data from data mem
-  stream<NetAXIS> mover_read_mem_data_in;
+  stream<NetAXIS> mover_to_tx_eng_read_data;
   // to outer
   stream<NetAXIS> tx_ip_pkt_out;
   // save output
@@ -240,7 +240,7 @@ void TestTxEngine() {
         tx_sar_to_tx_eng_rsp.write(tx_sar_rsp);
         break;
       case 18:
-        GenRandStream(0xF1, mover_read_mem_data_in);
+        GenRandStream(0xF1, mover_to_tx_eng_read_data);
         break;
       case 20:
         // test 5 transmit a ACK to mock tuple
@@ -307,12 +307,12 @@ void TestTxEngine() {
               tx_eng_to_timer_set_ptimer,
               tx_eng_to_slookup_rev_table_req,
               slookup_rev_table_to_tx_eng_rsp,
-              mover_read_mem_cmd_out,
-              mover_read_mem_data_in,
+              tx_eng_to_mover_read_cmd,
+              mover_to_tx_eng_read_data,
               tx_ip_pkt_out
 
     );
-    EmptyTxEngDataFifo(top_logger, mover_read_mem_cmd_out, tx_ip_pkt_out, tx_ip_pkt_out_to_save);
+    EmptyTxEngDataFifo(top_logger, tx_eng_to_mover_read_cmd, tx_ip_pkt_out, tx_ip_pkt_out_to_save);
     EmptyTxEngFsmFifo(top_logger,
                       tx_eng_read_count_fifo,
                       tx_eng_to_rx_sar_lup_req,

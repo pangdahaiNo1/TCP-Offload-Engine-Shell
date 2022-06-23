@@ -178,14 +178,12 @@ void tx_engine(
     stream<ap_uint<16> > &          tx_eng_to_slookup_rev_table_req,
     stream<ReverseTableToTxEngRsp> &slookup_rev_table_to_tx_eng_rsp,
     // to datamover cmd
-    stream<DataMoverCmd> &mover_read_mem_cmd_out,
-    // read data from data mem
-    stream<NetAXIS> &mover_read_mem_data_in,
+    stream<DataMoverCmd> &tx_eng_to_mover_read_cmd,
+    // read data from mem
+    stream<NetAXIS> &mover_to_tx_eng_read_data,
 #if (TCP_NODELAY)
     stream<NetAXIS> &tx_app_to_tx_eng_data,
 #endif
     // to outer
-    stream<NetAXIS> &tx_ip_pkt_out
-
-);
+    stream<NetAXIS> &tx_ip_pkt_out);
 #endif  // TX_ENGINE_HPP
