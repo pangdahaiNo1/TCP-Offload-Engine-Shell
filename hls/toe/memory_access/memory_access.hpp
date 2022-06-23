@@ -15,14 +15,14 @@ extern MockLogger logger;
 template <int is_rx>
 void ReadDataSendCmd(
     // inner read mem cmd, from rx app intf or tx engine
-    stream<MemBufferRWCmd> &            to_mover_read_mem_cmd_in,
-    stream<DataMoverCmd> &              mover_read_mem_cmd_out,
+    stream<MemBufferRWCmd> &            rx_or_tx_to_mem_read_cmd,
+    stream<DataMoverCmd> &              rx_or_tx_to_mover_read_cmd,
     stream<MemBufferRWCmdDoubleAccess> &mem_buffer_double_access) {
 #pragma HLS pipeline II = 1
 #pragma HLS INLINE   off
 
-#pragma HLS INTERFACE axis port = mover_read_mem_cmd_out
-#pragma HLS aggregate variable = mover_read_mem_cmd_out compact = bit
+#pragma HLS INTERFACE axis port = rx_or_tx_to_mover_read_cmd
+#pragma HLS aggregate variable = rx_or_tx_to_mover_read_cmd compact = bit
 
   static bool                read_cmd_is_breakdown = false;
   static MemBufferRWCmd      inner_cmd;
@@ -33,8 +33,8 @@ void ReadDataSendCmd(
   ToeModule LOG_MODULE = is_rx == 1 ? RX_APP_IF : TX_ENGINE;
 
   if (read_cmd_is_breakdown == false) {
-    if (!to_mover_read_mem_cmd_in.empty()) {
-      to_mover_read_mem_cmd_in.read(inner_cmd);
+    if (!rx_or_tx_to_mem_read_cmd.empty()) {
+      rx_or_tx_to_mem_read_cmd.read(inner_cmd);
       data_mver_cmd = DataMoverCmd(inner_cmd.addr, inner_cmd.length);
       // Check for overflow
       if (inner_cmd.next_addr.bit(WINDOW_BITS)) {
@@ -47,7 +47,7 @@ void ReadDataSendCmd(
         // Offset of MSB byte valid in the last beat of the first trans
         double_access_cmd.byte_offset = first_cmd_bbt(5, 0);
       }
-      mover_read_mem_cmd_out.write(data_mver_cmd);
+      rx_or_tx_to_mover_read_cmd.write(data_mver_cmd);
       mem_buffer_double_access.write(double_access_cmd);
       logger.Info(LOG_MODULE, "ReadMem Req", inner_cmd.to_string());
       logger.Info(LOG_MODULE, DATA_MVER, "ReadMem Cmd0", data_mver_cmd.to_string());
@@ -57,7 +57,7 @@ void ReadDataSendCmd(
     // Clear the least significant bits of the address
     inner_cmd.addr.range(WINDOW_BITS - 1, 0) = 0;
     data_mver_cmd = DataMoverCmd(inner_cmd.addr, inner_cmd.length - first_cmd_bbt);
-    mover_read_mem_cmd_out.write(data_mver_cmd);
+    rx_or_tx_to_mover_read_cmd.write(data_mver_cmd);
     logger.Info(LOG_MODULE, DATA_MVER, "ReadMem Cmd1", data_mver_cmd.to_string());
     read_cmd_is_breakdown = false;
   }
@@ -71,13 +71,13 @@ void ReadDataSendCmd(
 template <int is_rx>
 void ReadDataFromMem(
     // datamover read data
-    stream<NetAXIS> &                   mover_read_mem_data_in,
+    stream<NetAXIS> &                   mover_to_rx_or_tx_read_data,
     stream<MemBufferRWCmdDoubleAccess> &mem_buffer_double_access,
-    stream<NetAXISWord> &               to_rx_or_tx_read_data) {
+    stream<NetAXISWord> &               mem_to_rx_or_tx_read_data) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
-#pragma HLS INTERFACE axis port = mover_read_mem_data_in
+#pragma HLS INTERFACE axis port = mover_to_rx_or_tx_read_data
 
   enum TxEngReadDataFsmState {
     READ_ACCESS,
@@ -124,9 +124,9 @@ void ReadDataFromMem(
       break;
     case NO_BREAKDOWN:
     case BREAKDOWN_ALIGNED:
-      if (!mover_read_mem_data_in.empty() && !to_rx_or_tx_read_data.full()) {
-        cur_beat_word = mover_read_mem_data_in.read();
-        to_rx_or_tx_read_data.write(cur_beat_word);
+      if (!mover_to_rx_or_tx_read_data.empty() && !mem_to_rx_or_tx_read_data.full()) {
+        cur_beat_word = mover_to_rx_or_tx_read_data.read();
+        mem_to_rx_or_tx_read_data.write(cur_beat_word);
         logger.Info(MOCK_MEMY, DATA_MVER, "ReadMemData ALIGNED", cur_beat_word.to_string());
         logger.Info(LOG_MODULE, "PayloadData ALIGNED", cur_beat_word.to_string());
 
@@ -136,8 +136,8 @@ void ReadDataFromMem(
       }
       break;
     case BREAKDOWN_BLOCK_0:
-      if (!mover_read_mem_data_in.empty() && !to_rx_or_tx_read_data.full()) {
-        cur_beat_word = mover_read_mem_data_in.read();
+      if (!mover_to_rx_or_tx_read_data.empty() && !mem_to_rx_or_tx_read_data.full()) {
+        cur_beat_word = mover_to_rx_or_tx_read_data.read();
         logger.Info(MOCK_MEMY, DATA_MVER, "ReadMemData BREAK0", cur_beat_word.to_string());
 
         send_beat_word.data = cur_beat_word.data;
@@ -153,7 +153,7 @@ void ReadDataFromMem(
           }
         }
         if (!to_rx_or_tx_word_need_to_align) {
-          to_rx_or_tx_read_data.write(send_beat_word);
+          mem_to_rx_or_tx_read_data.write(send_beat_word);
           logger.Info(LOG_MODULE, "PayloadData BREAK0", send_beat_word.to_string());
         }
 
@@ -161,8 +161,8 @@ void ReadDataFromMem(
       }
       break;
     case FIRST_MERGE:
-      if (!mover_read_mem_data_in.empty() && !to_rx_or_tx_read_data.full()) {
-        cur_beat_word = mover_read_mem_data_in.read();
+      if (!mover_to_rx_or_tx_read_data.empty() && !mem_to_rx_or_tx_read_data.full()) {
+        cur_beat_word = mover_to_rx_or_tx_read_data.read();
         logger.Info(MOCK_MEMY, DATA_MVER, "ReadMemData MERGE", cur_beat_word.to_string());
 
         MergeTwoWordsHead(cur_beat_word, prev_beat_word, offset_block0, send_beat_word);
@@ -180,13 +180,13 @@ void ReadDataFromMem(
         }
         prev_beat_word = cur_beat_word;
 
-        to_rx_or_tx_read_data.write(send_beat_word);
+        mem_to_rx_or_tx_read_data.write(send_beat_word);
         logger.Info(DATA_MVER, LOG_MODULE, "PayloadData MERGE", send_beat_word.to_string());
       }
       break;
     case BREAKDOWN_BLOCK_1:
-      if (!mover_read_mem_data_in.empty() && !to_rx_or_tx_read_data.full()) {
-        cur_beat_word = mover_read_mem_data_in.read();
+      if (!mover_to_rx_or_tx_read_data.empty() && !mem_to_rx_or_tx_read_data.full()) {
+        cur_beat_word = mover_to_rx_or_tx_read_data.read();
         logger.Info(DATA_MVER, LOG_MODULE, "PayloadData BREAK1", send_beat_word.to_string());
 
         ConcatTwoWords(cur_beat_word, prev_beat_word, offset_block1, send_beat_word);
@@ -202,16 +202,16 @@ void ReadDataFromMem(
         }
 
         prev_beat_word = cur_beat_word;
-        to_rx_or_tx_read_data.write(send_beat_word);
+        mem_to_rx_or_tx_read_data.write(send_beat_word);
         logger.Info(DATA_MVER, LOG_MODULE, "PayloadData BREAK1", send_beat_word.to_string());
       }
       break;
     case EXTRA_DATA:
-      if (!to_rx_or_tx_read_data.full()) {
+      if (!mem_to_rx_or_tx_read_data.full()) {
         ConcatTwoWords(NetAXISWord(), prev_beat_word, offset_block1, send_beat_word);
         send_beat_word.last = 1;
 
-        to_rx_or_tx_read_data.write(send_beat_word);
+        mem_to_rx_or_tx_read_data.write(send_beat_word);
         logger.Info(DATA_MVER, LOG_MODULE, "PayloadData EXTRA", send_beat_word.to_string());
 
         fsm_state = INITIAL_STATE;
@@ -226,12 +226,12 @@ void ReadDataFromMem(
  * the data is aligned properly, the realignment if is necessary is done in the
  * second access.
  *
- * @param      tx_app_to_mem_data_in   Packet payload if any
- * @param      tx_app_to_mem_cmd_in    Internal command to write data into the memory. It does
+ * @param      rx_or_tx_to_mem_write_data   Packet payload if any
+ * @param      rx_or_tx_to_mem_write_cmd    Internal command to write data into the memory. It does
  * not take into account buffer overflow
- * @param      mover_write_mem_data_out  Data to memory. If the buffer overflows, the second part
+ * @param      rx_or_tx_to_mover_write_data  Data to memory. If the buffer overflows, the second part
  * of the data has to be realigned
- * @param      mover_write_mem_cmd_out   Command to the data mover. It takes into account buffer
+ * @param      rx_or_tx_to_mover_write_cmd   Command to the data mover. It takes into account buffer
  * overflow. Two write commands when buffer overflows
  *
  *
@@ -242,20 +242,20 @@ void ReadDataFromMem(
 template <int is_rx>
 void WriteDataToMem(
     // inner write mem cmd, from rx engine or tx app intf
-    stream<MemBufferRWCmd> &to_mover_write_mem_cmd_in,
-    stream<NetAXISWord> &   from_rx_or_tx_write_data,
-    stream<DataMoverCmd> &  mover_write_mem_cmd_out,
-    stream<NetAXIS> &       mover_write_mem_data_out,
+    stream<MemBufferRWCmd> &rx_or_tx_to_mem_write_cmd,
+    stream<NetAXISWord> &   rx_or_tx_to_mem_write_data,
+    stream<DataMoverCmd> &  rx_or_tx_to_mover_write_cmd,
+    stream<NetAXIS> &       rx_or_tx_to_mover_write_data,
     // if mem access break down, write true to this fifo
     stream<ap_uint<1> > &mem_buffer_double_access_flag) {
 #pragma HLS pipeline II = 1
 #pragma HLS INLINE   off
 
-#pragma HLS aggregate variable = to_mover_write_mem_cmd_in compact = bit
-#pragma HLS aggregate variable = mover_write_mem_cmd_out compact = bit
+#pragma HLS aggregate variable = rx_or_tx_to_mem_write_cmd compact = bit
+#pragma HLS aggregate variable = rx_or_tx_to_mover_write_cmd compact = bit
 // out data + cmd
-#pragma HLS INTERFACE axis port = mover_write_mem_data_out
-#pragma HLS INTERFACE axis port = mover_write_mem_cmd_out
+#pragma HLS INTERFACE axis port = rx_or_tx_to_mover_write_data
+#pragma HLS INTERFACE axis port = rx_or_tx_to_mover_write_cmd
 
   enum WriteDataFsmState {
     WAIT_CMD,
@@ -289,8 +289,8 @@ void WriteDataToMem(
 
   switch (fsm_state) {
     case WAIT_CMD:
-      if (!to_mover_write_mem_cmd_in.empty()) {
-        inner_cmd = to_mover_write_mem_cmd_in.read();
+      if (!rx_or_tx_to_mem_write_cmd.empty()) {
+        inner_cmd = rx_or_tx_to_mem_write_cmd.read();
         logger.Info(LOG_MODULE, "WriteMem Req", inner_cmd.to_string());
         // Compute the address of the last byte to write
         data_mver_cmd = DataMoverCmd(inner_cmd.addr, inner_cmd.length);
@@ -320,27 +320,29 @@ void WriteDataToMem(
         }
         // set the breakdown flag
         mem_buffer_double_access_flag.write(rx_or_tx_write_break_down);
+        logger.Info(LOG_MODULE, "WriteMem Breakdown?", rx_or_tx_write_break_down ? "Yes" : "No");
+
         // issue the first command
-        mover_write_mem_cmd_out.write(data_mver_cmd);
+        rx_or_tx_to_mover_write_cmd.write(data_mver_cmd);
         logger.Info(LOG_MODULE, DATA_MVER, "WriteMem Cmd1", data_mver_cmd.to_string());
       }
       break;
     case FWD_NO_BREAKDOWN:
-      if (!from_rx_or_tx_write_data.empty()) {
-        from_rx_or_tx_write_data.read(cur_beat_word);
+      if (!rx_or_tx_to_mem_write_data.empty()) {
+        rx_or_tx_to_mem_write_data.read(cur_beat_word);
 
         if (cur_beat_word.last) {
           fsm_state = WAIT_CMD;
         }
-        mover_write_mem_data_out.write(cur_beat_word.to_net_axis());
+        rx_or_tx_to_mover_write_data.write(cur_beat_word.to_net_axis());
         logger.Info(LOG_MODULE, DATA_MVER, "Transfer Data ALIGNED", cur_beat_word.to_string());
         logger.Info(DATA_MVER, MOCK_MEMY, "WriteMem Data ALIGNED", cur_beat_word.to_string());
       }
       break;
     case FWD_BREAKDOWN_0:
       // the first cmd write state
-      if (!from_rx_or_tx_write_data.empty()) {
-        from_rx_or_tx_write_data.read(cur_beat_word);
+      if (!rx_or_tx_to_mem_write_data.empty()) {
+        rx_or_tx_to_mem_write_data.read(cur_beat_word);
         logger.Info(LOG_MODULE, DATA_MVER, "Transfer Data BREAK0", cur_beat_word.to_string());
         send_beat_word.last = 0;
         if (first_cmd_trans_beats_cnt == first_cmd_trans_beats) {
@@ -356,7 +358,7 @@ void WriteDataToMem(
           data_mver_cmd.bbt = inner_cmd.length - first_cmd_bbt;
           // Issue the second command
 
-          mover_write_mem_cmd_out.write(data_mver_cmd);
+          rx_or_tx_to_mover_write_cmd.write(data_mver_cmd);
           logger.Info(LOG_MODULE, DATA_MVER, "WriteMem Cmd2", data_mver_cmd.to_string());
           if (cur_beat_word.last) {
             fsm_state = FWD_EXTRA;
@@ -368,14 +370,14 @@ void WriteDataToMem(
         }
         first_cmd_trans_beats_cnt++;
         prev_beat_word = cur_beat_word;
-        mover_write_mem_data_out.write(send_beat_word.to_net_axis());
+        rx_or_tx_to_mover_write_data.write(send_beat_word.to_net_axis());
         logger.Info(DATA_MVER, MOCK_MEMY, "WriteMem Data BREAK0", send_beat_word.to_string());
       }
       break;
     case FWD_BREAKDOWN_1:
       // the second cmd write state
-      if (!from_rx_or_tx_write_data.empty()) {
-        from_rx_or_tx_write_data.read(cur_beat_word);
+      if (!rx_or_tx_to_mem_write_data.empty()) {
+        rx_or_tx_to_mem_write_data.read(cur_beat_word);
         logger.Info(LOG_MODULE, DATA_MVER, "Transfer Data BREAK1", cur_beat_word.to_string());
 
         ConcatTwoWords(cur_beat_word, prev_beat_word, byte_offset, send_beat_word);
@@ -390,7 +392,7 @@ void WriteDataToMem(
           }
         }
         prev_beat_word = cur_beat_word;
-        mover_write_mem_data_out.write(send_beat_word.to_net_axis());
+        rx_or_tx_to_mover_write_data.write(send_beat_word.to_net_axis());
         logger.Info(DATA_MVER, MOCK_MEMY, "WriteMem Data BREAK1", send_beat_word.to_string());
       }
       break;
@@ -398,7 +400,7 @@ void WriteDataToMem(
       // The EXTRA part of the memory write has less than 64 bytes
       ConcatTwoWords(NetAXISWord(), prev_beat_word, byte_offset, send_beat_word);
       send_beat_word.last = 1;
-      mover_write_mem_data_out.write(send_beat_word.to_net_axis());
+      rx_or_tx_to_mover_write_data.write(send_beat_word.to_net_axis());
       logger.Info(DATA_MVER, MOCK_MEMY, "WriteMem Data EXTRA", send_beat_word.to_string());
 
       fsm_state = WAIT_CMD;
