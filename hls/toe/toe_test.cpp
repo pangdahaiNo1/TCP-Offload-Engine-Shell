@@ -3,6 +3,7 @@
 #include "mock/mock_memory.hpp"
 #include "mock/mock_net_app.hpp"
 #include "mock/mock_toe.hpp"
+#include "mock/mock_toe_conn.hpp"
 #include "net_app/echo_server/echo_server.hpp"
 #include "toe/toe.hpp"
 #include "utils/axi_utils_test.hpp"

@@ -5,8 +5,8 @@
 
 using namespace hls;
 
-const uint16_t ARP_REQUEST = 0x0100;
-const uint16_t ARP_REPLY   = 0x0200;
+const ap_uint<16> ARP_REQUEST = 0x0100;
+const ap_uint<16> ARP_REPLY   = 0x0200;
 
 const ap_uint<48> BROADCAST_MAC = 0xFFFFFFFFFFFF;  // Broadcast MAC Address
 

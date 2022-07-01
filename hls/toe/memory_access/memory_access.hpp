@@ -229,8 +229,8 @@ void ReadDataFromMem(
  * @param      rx_or_tx_to_mem_write_data   Packet payload if any
  * @param      rx_or_tx_to_mem_write_cmd    Internal command to write data into the memory. It does
  * not take into account buffer overflow
- * @param      rx_or_tx_to_mover_write_data  Data to memory. If the buffer overflows, the second part
- * of the data has to be realigned
+ * @param      rx_or_tx_to_mover_write_data  Data to memory. If the buffer overflows, the second
+ * part of the data has to be realigned
  * @param      rx_or_tx_to_mover_write_cmd   Command to the data mover. It takes into account buffer
  * overflow. Two write commands when buffer overflows
  *

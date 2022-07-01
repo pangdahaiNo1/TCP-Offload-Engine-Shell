@@ -1,0 +1,108 @@
+stages:
+  - csim
+  - synth
+  - cosim
+  - export-ip
+
+variables:
+    GIT_DEPTH: "1"
+    GIT_STRATEGY: clone
+
+
+default:
+  image: gitlab.agileserve.org.cn:15050/zelin/vivado-ci-tools/ucas-cod-2022:v0.8
+  tags:
+    - node36-vivado
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - unknown_failure
+
+
+#=============================================================
+Simulation:
+  stage: csim
+  script:
+    - make project=$TOE_MODULE  HLS_ACT=csim hls_prj 
+  parallel:
+    matrix:
+      - TOE_MODULE: [arp_server,
+                    hash_table,
+                    ethernet_header_inserter,
+                    icmp_server,
+                    packet_handler,
+                    ack_delay,
+                    close_timer,
+                    event_engine,
+                    port_table,
+                    probe_timer,
+                    retransmit_timer,
+                    rx_app_intf,
+                    rx_engine,
+                    rx_sar_table,
+                    session_lookup_controller,
+                    state_table,
+                    tx_app_intf,
+                    tx_engine,
+                    tx_sar_table,
+                    timer_wrapper,
+                    toe]
+
+Synthesis:
+  stage: synth
+  needs: []
+  script:
+    - make project=$TOE_MODULE  HLS_ACT=synth hls_prj 
+  parallel:
+    matrix:
+      - TOE_MODULE: [arp_server,
+                    hash_table,
+                    ethernet_header_inserter,
+                    icmp_server,
+                    packet_handler,
+                    ack_delay,
+                    close_timer,
+                    event_engine,
+                    port_table,
+                    probe_timer,
+                    retransmit_timer,
+                    rx_app_intf,
+                    rx_engine,
+                    rx_sar_table,
+                    session_lookup_controller,
+                    state_table,
+                    tx_app_intf,
+                    tx_engine,
+                    tx_sar_table,
+                    timer_wrapper,
+                    toe]
+
+Cosim:
+  stage: cosim
+  script:
+    - make project=$TOE_MODULE  HLS_ACT=cosim hls_prj 
+  parallel:
+    matrix:
+      - TOE_MODULE: [arp_server,
+                    hash_table,
+                    ethernet_header_inserter,
+                    icmp_server,
+                    packet_handler,
+                    ack_delay,
+                    close_timer,
+                    event_engine,
+                    port_table,
+                    probe_timer,
+                    retransmit_timer,
+                    rx_app_intf,
+                    rx_engine,
+                    rx_sar_table,
+                    session_lookup_controller,
+                    state_table,
+                    tx_app_intf,
+                    tx_engine,
+                    tx_sar_table,
+                    timer_wrapper,
+                    toe]

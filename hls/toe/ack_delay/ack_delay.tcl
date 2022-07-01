@@ -15,12 +15,12 @@ open_project ${prj_name}
 open_solution solution1
 set_part ${fpga_part} 
 create_clock -period 3.1 -name default
-set_clock_uncertainty 0.2
+set_clock_uncertainty 0.2 
 
 set_top ack_delay
 
 add_files "${prj_src_dir}/${prj_name}.cpp \
-             ${src_top_dir}/utils/axi_utils.hpp" -cflags "-I${src_top_dir} -DDEBUG"
+             ${src_top_dir}/utils/axi_utils.cpp" -cflags "-I${src_top_dir} -DDEBUG"
 
 add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
                ${src_top_dir}/toe/mock/mock_toe.hpp \
@@ -30,8 +30,9 @@ add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
 if {$hls_act == "csim"} {
    csim_design -clean  
 }
-csynth_design
-
+if {$hls_act == "synth"} {
+   csynth_design
+}
 if {$hls_act == "cosim"} {
    cosim_design -rtl verilog  
 }

@@ -3,6 +3,7 @@
 #define _PACKET_HANDLER_HPP_
 
 #include "utils/axi_intf.hpp"
+#include "utils/axi_utils.hpp"
 
 using namespace hls;
 

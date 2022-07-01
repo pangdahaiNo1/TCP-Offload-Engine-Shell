@@ -5,9 +5,9 @@
 using namespace hls;
 using namespace std;
 
-const uint8_t ECHO_REQUEST  = 0x08;
-const uint8_t ECHO_REPLY    = 0x00;
-const uint8_t ICMP_PROTOCOL = 0x01;
+const ap_uint<8> ECHO_REQUEST  = 0x08;
+const ap_uint<8> ECHO_REPLY    = 0x00;
+const ap_uint<8> ICMP_PROTOCOL = 0x01;
 
 /** @defgroup icmp_server ICMP(Ping) Server
  *
