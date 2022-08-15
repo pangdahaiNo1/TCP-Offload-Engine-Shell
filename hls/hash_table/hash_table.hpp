@@ -107,8 +107,8 @@ struct HTEntry {
 };
 
 template <int K, int V>
-void HashTable(hls::stream<HTLookupReq<K> > &    s_axis_lup_req,
-               hls::stream<HTUpdateReq<K, V> > & s_axis_upd_req,
+void HashTable(hls::stream<HTLookupReq<K> >     &s_axis_lup_req,
+               hls::stream<HTUpdateReq<K, V> >  &s_axis_upd_req,
                hls::stream<HTLookupResp<K, V> > &m_axis_lup_rsp,
                hls::stream<HTUpdateResp<K, V> > &m_axis_upd_rsp,
-               ap_uint<16> &                     regInsertFailureCount);
+               ap_uint<16>                      &regInsertFailureCount);

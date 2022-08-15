@@ -5,7 +5,7 @@
 #include "toe/mock/mock_toe.hpp"
 using namespace hls;
 
-void EmptyFifos(MockLogger &             logger,
+void EmptyFifos(MockLogger              &logger,
                 stream<TxSarToRxEngRsp> &tx_sar_to_rx_eng_rsp,
                 stream<TxSarToTxEngRsp> &tx_sar_to_tx_eng_rsp,
                 stream<TxSarToTxAppReq> &tx_sar_to_tx_app_upd_req) {

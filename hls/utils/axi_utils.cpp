@@ -78,8 +78,8 @@ ap_uint<64> DataLengthToAxisKeep(ap_uint<6> length) {
  */
 void        ConcatTwoWords(const NetAXISWord &cur_word,
                            const NetAXISWord &prev_word,
-                           const ap_uint<6> & byte_offset,
-                           NetAXISWord &      send_word) {
+                           const ap_uint<6>  &byte_offset,
+                           NetAXISWord       &send_word) {
 #pragma HLS INLINE
   switch (byte_offset) {
     case 0:
@@ -354,7 +354,7 @@ void        ConcatTwoWords(const NetAXISWord &cur_word,
 void MergeTwoWordsHead(const NetAXISWord &cur_word,
                        const NetAXISWord &prev_word,
                        ap_uint<6>         byte_offset,
-                       NetAXISWord &      send_word) {
+                       NetAXISWord       &send_word) {
   switch (byte_offset) {
     case 0:
       send_word.data = cur_word.data;
@@ -626,8 +626,8 @@ void MergeTwoWordsHead(const NetAXISWord &cur_word,
  *
  */
 void        RightShiftWord(const NetAXISWord &cur_word,
-                           const ap_uint<6> & shift_byte,
-                           NetAXISWord &      send_word) {
+                           const ap_uint<6>  &shift_byte,
+                           NetAXISWord       &send_word) {
 #pragma HLS INLINE
 
   send_word.data = 0;

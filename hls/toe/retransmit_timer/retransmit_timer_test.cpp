@@ -5,11 +5,11 @@
 
 using namespace hls;
 
-void EmptyFifos(MockLogger &                    logger,
-                stream<Event> &                 rtimer_to_event_eng_set_event,
-                stream<TcpSessionID> &          rtimer_to_sttable_release_state,
+void EmptyFifos(MockLogger                     &logger,
+                stream<Event>                  &rtimer_to_event_eng_set_event,
+                stream<TcpSessionID>           &rtimer_to_sttable_release_state,
                 stream<AppNotificationNoTDEST> &rtimer_to_rx_app_notification,
-                stream<OpenConnRspNoTDEST> &    rtimer_to_tx_app_notification) {
+                stream<OpenConnRspNoTDEST>     &rtimer_to_tx_app_notification) {
   Event                  out_event;
   TcpSessionID           out_id;
   AppNotificationNoTDEST out_rx_app_notify;

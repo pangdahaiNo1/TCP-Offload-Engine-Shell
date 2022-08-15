@@ -8,10 +8,10 @@
 using namespace hls;
 MockLogger logger("./echo_server_inner.log", NET_APP);
 
-void EmptyEchoFifos(MockLogger &                    logger,
-                    stream<NetAXISListenPortReq> &  net_app_listen_port_req,
-                    stream<NetAXISAppReadReq> &     net_app_read_data_req,
-                    stream<NetAXISAppOpenConnReq> & net_app_open_conn_req,
+void EmptyEchoFifos(MockLogger                     &logger,
+                    stream<NetAXISListenPortReq>   &net_app_listen_port_req,
+                    stream<NetAXISAppReadReq>      &net_app_read_data_req,
+                    stream<NetAXISAppOpenConnReq>  &net_app_open_conn_req,
                     stream<NetAXISAppCloseConnReq> &net_app_close_conn_req,
                     stream<NetAXISAppTransDataReq> &net_app_trans_data_req) {
   while (!net_app_listen_port_req.empty()) {

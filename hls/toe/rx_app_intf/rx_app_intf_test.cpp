@@ -8,9 +8,9 @@ using namespace hls;
 using std::to_string;
 MockLogger logger("./rx_app_intf_inner.log", RX_APP_IF);
 
-void EmptyPortHandlerFifos(MockLogger &                  logger,
+void EmptyPortHandlerFifos(MockLogger                   &logger,
                            stream<NetAXISListenPortRsp> &rx_app_to_net_app_listen_port_rsp,
-                           stream<ListenPortReq> &       rx_app_to_ptable_listen_port_req) {
+                           stream<ListenPortReq>        &rx_app_to_ptable_listen_port_req) {
   NetAXISListenPortRsp to_net_app_rsp;
   ListenPortRsp        to_net_app_rsp_inner;
   ListenPortReq        to_ptable_req;
@@ -79,10 +79,10 @@ int TestPortHandler() {
   return 0;
 }
 
-void EmptyDataHandlerFifos(MockLogger &               logger,
+void EmptyDataHandlerFifos(MockLogger                &logger,
                            stream<NetAXISAppReadRsp> &net_app_read_data_rsp,
-                           stream<RxSarAppReqRsp> &   rx_app_to_rx_sar_req,
-                           stream<NetAXIS> &          rx_app_to_net_app_data) {
+                           stream<RxSarAppReqRsp>    &rx_app_to_rx_sar_req,
+                           stream<NetAXIS>           &rx_app_to_net_app_data) {
   NetAXISAppReadRsp to_net_app_read_rsp;
   AppReadRsp        to_net_app_read_rsp_inner;
   RxSarAppReqRsp    to_rx_sar_req;
@@ -289,7 +289,7 @@ int main(int argc, char **argv) {
     std::cerr << "[ERROR] missing arguments " __FILE__ << " <INPUT_PCAP_FILE>" << endl;
     return -1;
   }
-  char *          input_tcp_pcap_file = argv[1];
+  char           *input_tcp_pcap_file = argv[1];
   stream<NetAXIS> input_tcp_packets("input_tcp_packets");
   stream<NetAXIS> input_tcp_packets2("input_tcp_packets2");
   PcapToStream(input_tcp_pcap_file, true, input_tcp_packets);

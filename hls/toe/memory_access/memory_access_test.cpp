@@ -6,8 +6,8 @@
 #include "utils/pcap/pcap_to_stream.hpp"
 using namespace hls;
 
-void EmptyTxWriteDataFifos(MockLogger &          logger,
-                           stream<NetAXIS> &     mover_mem_data_out,
+void EmptyTxWriteDataFifos(MockLogger           &logger,
+                           stream<NetAXIS>      &mover_mem_data_out,
                            stream<DataMoverCmd> &mover_mem_cmd_out) {
   DataMoverCmd cmd_out;
   NetAXISWord  data_out;
@@ -22,9 +22,9 @@ void EmptyTxWriteDataFifos(MockLogger &          logger,
   }
 }
 
-void EmptyTxReadCmdFifos(MockLogger &                        logger,
+void EmptyTxReadCmdFifos(MockLogger                         &logger,
                          stream<MemBufferRWCmdDoubleAccess> &mem_buffer_double_access,
-                         stream<DataMoverCmd> &              mover_mem_cmd_out) {
+                         stream<DataMoverCmd>               &mover_mem_cmd_out) {
   DataMoverCmd               cmd_out;
   MemBufferRWCmdDoubleAccess double_access;
 
@@ -263,7 +263,7 @@ int main(int argc, char **argv) {
     std::cerr << "[ERROR] missing arguments " __FILE__ << " <INPUT_PCAP_FILE>" << endl;
     return -1;
   }
-  char *              input_tcp_pcap_file = argv[1];
+  char               *input_tcp_pcap_file = argv[1];
   stream<NetAXIS>     input_tcp_packets("input_tcp_packets");
   stream<NetAXIS>     input_tcp_packets2("input_tcp_packets2");
   stream<NetAXIS>     input_tcp_packets3("input_tcp_packets3");

@@ -13,7 +13,7 @@ class MockCam {
 public:
   std::map<ThreeTuple, TcpSessionID> _mock_cam;
   MockCam() { _mock_cam = std::map<ThreeTuple, TcpSessionID>(); }
-  void MockCamIntf(MockLogger &                   logger,
+  void MockCamIntf(MockLogger                    &logger,
                    stream<RtlSLookupToCamLupReq> &slookup_to_cam_lup_req,
                    stream<RtlCamToSlookupLupRsp> &cam_to_slookup_lup_rsp,
                    stream<RtlSlookupToCamUpdReq> &slookup_to_cam_upd_req,

@@ -35,8 +35,8 @@ void                 TxAppEventMerger(stream<Event> &tx_app_conn_handler_to_even
  */
 void TxAppConnectionHandler(
     // net app
-    stream<NetAXISAppOpenConnReq> & net_app_to_tx_app_open_conn_req,
-    stream<NetAXISAppOpenConnRsp> & tx_app_to_net_app_open_conn_rsp,
+    stream<NetAXISAppOpenConnReq>  &net_app_to_tx_app_open_conn_req,
+    stream<NetAXISAppOpenConnRsp>  &tx_app_to_net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_to_tx_app_close_conn_req,
     // rx eng -> net app
     stream<NewClientNotificationNoTDEST> &rx_eng_to_tx_app_new_client_notification,
@@ -47,18 +47,18 @@ void TxAppConnectionHandler(
     stream<OpenConnRspNoTDEST> &rtimer_to_tx_app_notification,
     // session lookup, also for TDEST
     stream<TxAppToSlookupReq> &tx_app_to_slookup_req,
-    stream<SessionLookupRsp> & slookup_to_tx_app_rsp,
-    stream<TcpSessionID> &     tx_app_to_slookup_check_tdest_req,
-    stream<NetAXISDest> &      slookup_to_tx_app_check_tdest_rsp,
+    stream<SessionLookupRsp>  &slookup_to_tx_app_rsp,
+    stream<TcpSessionID>      &tx_app_to_slookup_check_tdest_req,
+    stream<NetAXISDest>       &slookup_to_tx_app_check_tdest_rsp,
     // port table req/rsp
-    stream<NetAXISDest> &  tx_app_to_ptable_req,
+    stream<NetAXISDest>   &tx_app_to_ptable_req,
     stream<TcpPortNumber> &ptable_to_tx_app_rsp,
     // state table read/write req/rsp
     stream<StateTableReq> &tx_app_to_sttable_req,
-    stream<SessionState> & sttable_to_tx_app_rsp,
+    stream<SessionState>  &sttable_to_tx_app_rsp,
     // event engine
     stream<Event> &tx_app_conn_handler_to_event_engine,
-    IpAddr &       my_ip_addr) {
+    IpAddr        &my_ip_addr) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -220,7 +220,7 @@ void TxAppDataHandler(
     // net app
     stream<NetAXISAppTransDataReq> &net_app_to_tx_app_trans_data_req,
     stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_trans_data_rsp,
-    stream<NetAXIS> &               net_app_trans_data,
+    stream<NetAXIS>                &net_app_trans_data,
     // tx app table
     stream<TxAppToTxAppTableReq> &tx_app_to_tx_app_table_req,
     stream<TxAppTableToTxAppRsp> &tx_app_table_to_tx_app_rsp,
@@ -231,7 +231,7 @@ void TxAppDataHandler(
     stream<Event> &tx_app_to_event_eng_set_event,
     // to datamover
     stream<MemBufferRWCmd> &tx_app_to_mover_write_cmd,
-    stream<NetAXISWord> &   tx_app_to_mover_write_data) {
+    stream<NetAXISWord>    &tx_app_to_mover_write_data) {
 #pragma HLS PIPELINE off
 
 #pragma HLS INTERFACE axis register both port = net_app_to_tx_app_trans_data_req
@@ -365,10 +365,10 @@ void TxAppDataHandler(
  * filter all TX event in @p tx_app_to_event_eng_cache, the TX event will write to
  * @p tx_app_to_event_eng_set_event iff the Datamover returned OKAY
  */
-void                 TxAppRspHandler(stream<ap_uint<1> > &    mem_buffer_double_access_flag,
+void                 TxAppRspHandler(stream<ap_uint<1> >     &mem_buffer_double_access_flag,
                                      stream<DataMoverStatus> &mover_to_tx_app_write_status,
-                                     stream<Event> &          tx_app_to_event_eng_cache,
-                                     stream<Event> &          tx_app_to_event_eng_set_event,
+                                     stream<Event>           &tx_app_to_event_eng_cache,
+                                     stream<Event>           &tx_app_to_event_eng_set_event,
                                      stream<TxAppToTxSarReq> &tx_app_to_tx_sar_upd_req) {
 #pragma HLS PIPELINE II = 1
 
@@ -499,8 +499,8 @@ void TxAppTableInterface(
 
 void tx_app_intf(
     // net app connection request
-    stream<NetAXISAppOpenConnReq> & net_app_to_tx_app_open_conn_req,
-    stream<NetAXISAppOpenConnRsp> & tx_app_to_net_app_open_conn_rsp,
+    stream<NetAXISAppOpenConnReq>  &net_app_to_tx_app_open_conn_req,
+    stream<NetAXISAppOpenConnRsp>  &tx_app_to_net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_to_tx_app_close_conn_req,
     // rx eng -> net app
     stream<NewClientNotificationNoTDEST> &rx_eng_to_tx_app_new_client_notification,
@@ -511,20 +511,20 @@ void tx_app_intf(
     stream<OpenConnRspNoTDEST> &rtimer_to_tx_app_notification,
     // session lookup, also for TDEST
     stream<TxAppToSlookupReq> &tx_app_to_slookup_req,
-    stream<SessionLookupRsp> & slookup_to_tx_app_rsp,
-    stream<TcpSessionID> &     tx_app_to_slookup_check_tdest_req,
-    stream<NetAXISDest> &      slookup_to_tx_app_check_tdest_rsp,
+    stream<SessionLookupRsp>  &slookup_to_tx_app_rsp,
+    stream<TcpSessionID>      &tx_app_to_slookup_check_tdest_req,
+    stream<NetAXISDest>       &slookup_to_tx_app_check_tdest_rsp,
     // port table req/rsp
-    stream<NetAXISDest> &  tx_app_to_ptable_req,
+    stream<NetAXISDest>   &tx_app_to_ptable_req,
     stream<TcpPortNumber> &ptable_to_tx_app_rsp,
     // state table read/write req/rsp
     stream<StateTableReq> &tx_app_to_sttable_req,
-    stream<SessionState> & sttable_to_tx_app_rsp,
+    stream<SessionState>  &sttable_to_tx_app_rsp,
 
     // net app data request
     stream<NetAXISAppTransDataReq> &net_app_to_tx_app_trans_data_req,
     stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_trans_data_rsp,
-    stream<NetAXIS> &               net_app_trans_data,
+    stream<NetAXIS>                &net_app_trans_data,
     // to/from tx sar upd req
     stream<TxAppToTxSarReq> &tx_app_to_tx_sar_upd_req,
     stream<TxSarToTxAppReq> &tx_sar_to_tx_app_upd_req,
@@ -534,13 +534,13 @@ void tx_app_intf(
     stream<TcpSessionID> &tx_app_to_sttable_lup_req,
     stream<SessionState> &sttable_to_tx_app_lup_rsp,
     // datamover req/rsp
-    stream<DataMoverCmd> &   tx_app_to_mover_write_cmd,
-    stream<NetAXIS> &        tx_app_to_mover_write_data,
+    stream<DataMoverCmd>    &tx_app_to_mover_write_cmd,
+    stream<NetAXIS>         &tx_app_to_mover_write_data,
     stream<DataMoverStatus> &mover_to_tx_app_write_status,
     // in big endian
     IpAddr &my_ip_addr) {
-//#pragma HLS          INLINE
-//#pragma HLS PIPELINE II = 1
+// #pragma HLS          INLINE
+// #pragma HLS PIPELINE II = 1
 #pragma HLS DATAFLOW
 
 #pragma HLS INTERFACE axis register both port = net_app_to_tx_app_open_conn_req

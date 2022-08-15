@@ -16,9 +16,9 @@ void EmptyTcpPayloadFifos(MockLogger &logger, stream<NetAXISWord> &tcp_payload_f
   }
 }
 
-void EmptyTcpPayloadWithMemFifos(MockLogger &          logger,
+void EmptyTcpPayloadWithMemFifos(MockLogger           &logger,
                                  stream<DataMoverCmd> &rx_eng_to_mover_write_cmd,
-                                 stream<NetAXIS> &     rx_eng_to_mover_write_data) {
+                                 stream<NetAXIS>      &rx_eng_to_mover_write_data) {
   NetAXISWord  to_mem_data;
   DataMoverCmd to_mem_cmd;
 
@@ -32,9 +32,9 @@ void EmptyTcpPayloadWithMemFifos(MockLogger &          logger,
   }
 }
 
-void EmptyTcpRxPseudoHeaderFifos(MockLogger &                 logger,
+void EmptyTcpRxPseudoHeaderFifos(MockLogger                  &logger,
                                  stream<TcpPseudoHeaderMeta> &tcp_pseudo_header_meta_parsed,
-                                 stream<ap_uint<16> > &       tcp_pseudo_packet_checksum) {
+                                 stream<ap_uint<16> >        &tcp_pseudo_packet_checksum) {
   TcpPseudoHeaderMeta meta_header;
 
   ap_uint<16> tcp_checksum;
@@ -69,9 +69,9 @@ void EmptyTcpRxEngFSMFifo(
     // state table
     stream<StateTableReq> &rx_eng_to_sttable_req,
     // update timer state
-    stream<TcpSessionID> &          rx_eng_to_timer_set_ctimer,
+    stream<TcpSessionID>           &rx_eng_to_timer_set_ctimer,
     stream<RxEngToRetransTimerReq> &rx_eng_to_timer_clear_rtimer,
-    stream<TcpSessionID> &          rx_eng_to_timer_clear_ptimer,
+    stream<TcpSessionID>           &rx_eng_to_timer_clear_ptimer,
     // to app connection notify, when net app active open a connection
     stream<OpenConnRspNoTDEST> &rx_eng_to_tx_app_notification,
     // to app connection notify, when net app passive open a conection

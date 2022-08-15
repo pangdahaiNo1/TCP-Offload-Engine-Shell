@@ -12,10 +12,10 @@
  * @param      arp_table_insert_out Insert a new element in the ARP table
  * @param      my_ip_addr           My IP address
  */
-void                 ArpPkgReceiver(stream<NetAXIS> &      arp_data_in,
-                                    stream<ArpMetaRsp> &   arp_rsp_out,
+void                 ArpPkgReceiver(stream<NetAXIS>       &arp_data_in,
+                                    stream<ArpMetaRsp>    &arp_rsp_out,
                                     stream<ArpTableEntry> &arp_table_insert_out,
-                                    ap_uint<32> &          my_ip_addr) {
+                                    ap_uint<32>           &my_ip_addr) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -66,13 +66,13 @@ void                 ArpPkgReceiver(stream<NetAXIS> &      arp_data_in,
  * @param      gateway_ip_addr    My gateway ip
  * @param      subnet_mask  Network mask
  */
-void                 ArpPkgSender(stream<ArpMetaRsp> &  arp_rsp_in,
+void                 ArpPkgSender(stream<ArpMetaRsp>   &arp_rsp_in,
                                   stream<ap_uint<32> > &arp_request_ip_addr,
-                                  stream<NetAXIS> &     arp_data_out,
-                                  ap_uint<48> &         my_mac_addr,
-                                  ap_uint<32> &         my_ip_addr,
-                                  ap_uint<32> &         gateway_ip_addr,
-                                  ap_uint<32> &         subnet_mask) {
+                                  stream<NetAXIS>      &arp_data_out,
+                                  ap_uint<48>          &my_mac_addr,
+                                  ap_uint<32>          &my_ip_addr,
+                                  ap_uint<32>          &gateway_ip_addr,
+                                  ap_uint<32>          &subnet_mask) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -170,13 +170,13 @@ void                 ArpPkgSender(stream<ArpMetaRsp> &  arp_rsp_in,
  * @param      subnet_mask         Network mask
  */
 void                 ArpTableHandler(stream<ArpTableEntry> &arp_table_insert_in,
-                                     stream<ap_uint<32> > & mac_ip_encode_req,
-                                     stream<ArpTableRsp> &  mac_ip_encode_rsp,
-                                     stream<ap_uint<32> > & arp_requested_ip,
+                                     stream<ap_uint<32> >  &mac_ip_encode_req,
+                                     stream<ArpTableRsp>   &mac_ip_encode_rsp,
+                                     stream<ap_uint<32> >  &arp_requested_ip,
                                      ArpTableEntry          arp_cache_table[256],
-                                     ap_uint<32> &          my_ip_addr,
-                                     ap_uint<32> &          gateway_ip_addr,
-                                     ap_uint<32> &          subnet_mask) {
+                                     ap_uint<32>           &my_ip_addr,
+                                     ap_uint<32>           &gateway_ip_addr,
+                                     ap_uint<32>           &subnet_mask) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -219,11 +219,11 @@ void                 ArpTableHandler(stream<ArpTableEntry> &arp_table_insert_in,
  * @param      my_ip_addr        My ip address
  */
 void                 GenArpScan(stream<ap_uint<32> > &mac_ip_encode_req_in,
-                                stream<ArpTableRsp> & mac_ip_encode_rsp_in,
-                                stream<ArpTableRsp> & mac_ip_encode_rsp_out,
+                                stream<ArpTableRsp>  &mac_ip_encode_rsp_in,
+                                stream<ArpTableRsp>  &mac_ip_encode_rsp_out,
                                 stream<ap_uint<32> > &mac_ip_encode_req_out,
-                                ap_uint<1> &          arp_scan,
-                                ap_uint<32> &         my_ip_addr) {
+                                ap_uint<1>           &arp_scan,
+                                ap_uint<32>          &my_ip_addr) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -310,16 +310,16 @@ void                 GenArpScan(stream<ap_uint<32> > &mac_ip_encode_req_in,
  * @param gateway_ip_addr  My gateway IP
  * @param subnet_mask      network mask
  */
-void                               arp_server(stream<NetAXIS> &     arp_data_in,
+void                               arp_server(stream<NetAXIS>      &arp_data_in,
                                               stream<ap_uint<32> > &mac_ip_encode_req,
-                                              stream<NetAXIS> &     arp_data_out,
-                                              stream<ArpTableRsp> & mac_ip_encode_rsp,
+                                              stream<NetAXIS>      &arp_data_out,
+                                              stream<ArpTableRsp>  &mac_ip_encode_rsp,
                                               ArpTableEntry         arp_cache_table[256],
-                                              ap_uint<1> &          arp_scan,
-                                              ap_uint<48> &         my_mac_addr,
-                                              ap_uint<32> &         my_ip_addr,
-                                              ap_uint<32> &         gateway_ip_addr,
-                                              ap_uint<32> &         subnet_mask) {
+                                              ap_uint<1>           &arp_scan,
+                                              ap_uint<48>          &my_mac_addr,
+                                              ap_uint<32>          &my_ip_addr,
+                                              ap_uint<32>          &gateway_ip_addr,
+                                              ap_uint<32>          &subnet_mask) {
 #pragma HLS INTERFACE ap_ctrl_none port = return
 #pragma HLS                        DATAFLOW
 

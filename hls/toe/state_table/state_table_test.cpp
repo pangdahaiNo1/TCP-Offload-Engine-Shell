@@ -5,7 +5,7 @@
 #include <string>
 using namespace hls;
 
-void EmptyFifos(MockLogger &          logger,
+void EmptyFifos(MockLogger           &logger,
                 stream<SessionState> &sttable_to_rx_eng_rsp,
                 stream<SessionState> &sttable_to_tx_app_lup_rsp,
                 stream<SessionState> &sttable_to_tx_app_rsp,

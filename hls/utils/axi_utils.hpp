@@ -122,11 +122,11 @@ ap_uint<64> DataLengthToAxisKeep(ap_uint<6> length);
 
 void ConcatTwoWords(const NetAXISWord &cur_word,
                     const NetAXISWord &prev_word,
-                    const ap_uint<6> & byte_offset,
-                    NetAXISWord &      send_word);
+                    const ap_uint<6>  &byte_offset,
+                    NetAXISWord       &send_word);
 
 void MergeTwoWordsHead(const NetAXISWord &cur_word,
                        const NetAXISWord &prev_word,
                        ap_uint<6>         byte_offset,
-                       NetAXISWord &      send_word);
+                       NetAXISWord       &send_word);
 #endif

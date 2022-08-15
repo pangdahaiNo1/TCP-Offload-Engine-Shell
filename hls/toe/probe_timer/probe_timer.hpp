@@ -16,4 +16,4 @@ struct ProbeTimerEntry {
  */
 void probe_timer(stream<TcpSessionID> &rx_eng_to_timer_clear_ptimer,
                  stream<TcpSessionID> &tx_eng_to_timer_set_ptimer,
-                 stream<Event> &       ptimer_to_event_eng_set_event);
+                 stream<Event>        &ptimer_to_event_eng_set_event);

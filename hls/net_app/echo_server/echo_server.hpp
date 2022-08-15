@@ -24,13 +24,13 @@ void echo_server(
     // read data
     stream<NetAXIS> &net_app_recv_data,
     // open/close conn
-    stream<NetAXISAppOpenConnReq> & net_app_open_conn_req,
-    stream<NetAXISAppOpenConnRsp> & net_app_open_conn_rsp,
+    stream<NetAXISAppOpenConnReq>  &net_app_open_conn_req,
+    stream<NetAXISAppOpenConnRsp>  &net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_close_conn_req,
     // transmit data
     stream<NetAXISAppTransDataReq> &net_app_trans_data_req,
     stream<NetAXISAppTransDataRsp> &net_app_trans_data_rsp,
-    stream<NetAXIS> &               net_app_trans_data,
+    stream<NetAXIS>                &net_app_trans_data,
     // tdest constant
     NetAXISDest &tdest_const);
 #endif

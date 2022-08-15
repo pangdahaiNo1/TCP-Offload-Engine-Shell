@@ -18,16 +18,16 @@ extern MockLogger logger;
 void TxEngTcpFsm(
     // from ack delay to tx engine req
     stream<EventWithTuple> &ack_delay_to_tx_eng_event,
-    stream<ap_uint<1> > &   tx_eng_read_count_fifo,
+    stream<ap_uint<1> >    &tx_eng_read_count_fifo,
     // rx sar read req
-    stream<TcpSessionID> &  tx_eng_to_rx_sar_lup_req,
+    stream<TcpSessionID>   &tx_eng_to_rx_sar_lup_req,
     stream<RxSarLookupRsp> &rx_sar_to_tx_eng_lup_rsp,
     // tx sar r/w req
     stream<TxEngToTxSarReq> &tx_eng_to_tx_sar_req,
     stream<TxSarToTxEngRsp> &tx_sar_to_tx_eng_rsp,
     // timer
     stream<TxEngToRetransTimerReq> &tx_eng_to_timer_set_rtimer,
-    stream<TcpSessionID> &          tx_eng_to_timer_set_ptimer,
+    stream<TcpSessionID>           &tx_eng_to_timer_set_ptimer,
     // to session lookup req
     stream<ap_uint<16> > &tx_eng_to_slookup_rev_table_req,
     // inner connect
@@ -738,9 +738,9 @@ void TxEngFourTupleHandler(
  */
 
 void                 TxEngPseudoFullHeaderConstruct(stream<TxEngFsmMetaData> &tx_eng_fsm_meta_data,
-                                                    stream<FourTuple> &       tx_four_tuple_for_tcp_header,
-                                                    stream<bool> &            tx_tcp_packet_contains_payload,
-                                                    stream<NetAXISWord> &     tx_tcp_pseudo_full_header_out) {
+                                                    stream<FourTuple>        &tx_four_tuple_for_tcp_header,
+                                                    stream<bool>             &tx_tcp_packet_contains_payload,
+                                                    stream<NetAXISWord>      &tx_tcp_pseudo_full_header_out) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -839,7 +839,7 @@ void                 TxEngPseudoFullHeaderConstruct(stream<TxEngFsmMetaData> &tx
  * @param[in] tx_tcp_pseudo_full_header = tcp pseudo header + tcp header
  */
 void                 TxEngConstructPseudoPacket(stream<NetAXISWord> &tx_tcp_pseudo_full_header,
-                                                stream<bool> &       tx_tcp_packet_contains_payload,
+                                                stream<bool>        &tx_tcp_packet_contains_payload,
                                                 stream<NetAXISWord> &tx_tcp_packet_payload,
                                                 stream<NetAXISWord> &tx_tcp_pseudo_packet_for_tx_eng,
                                                 stream<NetAXISWord> &tx_tcp_pseudo_packet_for_checksum) {
@@ -978,8 +978,8 @@ void                 TxEngRemovePseudoHeader(stream<NetAXISWord> &tx_tcp_pseudo_
  *  @param[out]		tx_ipv4_header
  */
 void                 TxEngConstructIpv4Header(stream<ap_uint<16> > &tx_tcp_payload_length,
-                                              stream<IpAddrPair> &  tx_tcp_ip_pair,
-                                              stream<NetAXISWord> & tx_ipv4_header) {
+                                              stream<IpAddrPair>   &tx_tcp_ip_pair,
+                                              stream<NetAXISWord>  &tx_ipv4_header) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -1041,10 +1041,10 @@ void                 TxEngConstructIpv4Header(stream<ap_uint<16> > &tx_tcp_paylo
  *
  * insert TCP checksum, no insert ip checksum!
  */
-void                 TxEngConstructIpv4Packet(stream<NetAXISWord> & tx_ipv4_header,
+void                 TxEngConstructIpv4Packet(stream<NetAXISWord>  &tx_ipv4_header,
                                               stream<ap_uint<16> > &tx_tcp_checksum,
-                                              stream<NetAXISWord> & tx_tcp_packet,
-                                              stream<NetAXIS> &     tx_ip_pkt_out) {
+                                              stream<NetAXISWord>  &tx_tcp_packet,
+                                              stream<NetAXIS>      &tx_ip_pkt_out) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -1127,18 +1127,18 @@ void                 TxEngConstructIpv4Packet(stream<NetAXISWord> & tx_ipv4_head
 void tx_engine(
     // from ack delay to tx engine req
     stream<EventWithTuple> &ack_delay_to_tx_eng_event,
-    stream<ap_uint<1> > &   tx_eng_read_count_fifo,
+    stream<ap_uint<1> >    &tx_eng_read_count_fifo,
     // rx sar
-    stream<TcpSessionID> &  tx_eng_to_rx_sar_lup_req,
+    stream<TcpSessionID>   &tx_eng_to_rx_sar_lup_req,
     stream<RxSarLookupRsp> &rx_sar_to_tx_eng_lup_rsp,
     // tx sar
     stream<TxEngToTxSarReq> &tx_eng_to_tx_sar_req,
     stream<TxSarToTxEngRsp> &tx_sar_to_tx_eng_rsp,
     // timer
     stream<TxEngToRetransTimerReq> &tx_eng_to_timer_set_rtimer,
-    stream<TcpSessionID> &          tx_eng_to_timer_set_ptimer,
+    stream<TcpSessionID>           &tx_eng_to_timer_set_ptimer,
     // to session lookup req/rsp
-    stream<ap_uint<16> > &          tx_eng_to_slookup_rev_table_req,
+    stream<ap_uint<16> >           &tx_eng_to_slookup_rev_table_req,
     stream<ReverseTableToTxEngRsp> &slookup_rev_table_to_tx_eng_rsp,
     // to datamover cmd
     stream<DataMoverCmd> &tx_eng_to_mover_read_cmd,

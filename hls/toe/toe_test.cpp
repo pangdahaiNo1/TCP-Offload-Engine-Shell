@@ -11,8 +11,8 @@
 
 void EmptyToeRxAppFifo(MockLogger &logger,
                        // rx app
-                       stream<NetAXISListenPortRsp> &  rx_app_to_net_app_listen_port_rsp,
-                       stream<NetAXISAppReadRsp> &     net_app_read_data_rsp,
+                       stream<NetAXISListenPortRsp>   &rx_app_to_net_app_listen_port_rsp,
+                       stream<NetAXISAppReadRsp>      &net_app_read_data_rsp,
                        stream<NetAXISAppNotification> &net_app_notification) {
   ListenPortRsp   listen_port_rsp;
   AppReadRsp      read_data_rsp;
@@ -34,9 +34,9 @@ void EmptyToeRxAppFifo(MockLogger &logger,
 
 void EmptyToeTxAppFifo(MockLogger &logger,
                        // tx app
-                       stream<NetAXISAppOpenConnRsp> &       tx_app_to_net_app_open_conn_rsp,
+                       stream<NetAXISAppOpenConnRsp>        &tx_app_to_net_app_open_conn_rsp,
                        stream<NetAXISNewClientNotification> &net_app_new_client_notification,
-                       stream<NetAXISAppTransDataRsp> &      tx_app_to_net_app_trans_data_rsp) {
+                       stream<NetAXISAppTransDataRsp>       &tx_app_to_net_app_trans_data_rsp) {
   AppOpenConnRsp        open_conn_rsp;
   NewClientNotification new_client_notify;
   AppTransDataRsp       trans_data_rsp;
@@ -449,8 +449,8 @@ int main(int argc, char **argv) {
     std::cerr << "[ERROR] missing arguments " __FILE__ << " <INPUT_PCAP_FILE>*" << endl;
     return -1;
   }
-  char *          input_tcp_pcap_file        = argv[1];
-  char *          input_syn_and_ack_pkt_file = argv[2];
+  char           *input_tcp_pcap_file        = argv[1];
+  char           *input_syn_and_ack_pkt_file = argv[2];
   stream<NetAXIS> input_tcp_ip_pkt("input_tcp_ip_pkt");
   PcapToStream(input_tcp_pcap_file, true, input_tcp_ip_pkt);
 

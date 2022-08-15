@@ -15,8 +15,8 @@ extern MockLogger logger;
 template <int is_rx>
 void ReadDataSendCmd(
     // inner read mem cmd, from rx app intf or tx engine
-    stream<MemBufferRWCmd> &            rx_or_tx_to_mem_read_cmd,
-    stream<DataMoverCmd> &              rx_or_tx_to_mover_read_cmd,
+    stream<MemBufferRWCmd>             &rx_or_tx_to_mem_read_cmd,
+    stream<DataMoverCmd>               &rx_or_tx_to_mover_read_cmd,
     stream<MemBufferRWCmdDoubleAccess> &mem_buffer_double_access) {
 #pragma HLS pipeline II = 1
 #pragma HLS INLINE   off
@@ -71,9 +71,9 @@ void ReadDataSendCmd(
 template <int is_rx>
 void ReadDataFromMem(
     // datamover read data
-    stream<NetAXIS> &                   mover_to_rx_or_tx_read_data,
+    stream<NetAXIS>                    &mover_to_rx_or_tx_read_data,
     stream<MemBufferRWCmdDoubleAccess> &mem_buffer_double_access,
-    stream<NetAXISWord> &               mem_to_rx_or_tx_read_data) {
+    stream<NetAXISWord>                &mem_to_rx_or_tx_read_data) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -243,9 +243,9 @@ template <int is_rx>
 void WriteDataToMem(
     // inner write mem cmd, from rx engine or tx app intf
     stream<MemBufferRWCmd> &rx_or_tx_to_mem_write_cmd,
-    stream<NetAXISWord> &   rx_or_tx_to_mem_write_data,
-    stream<DataMoverCmd> &  rx_or_tx_to_mover_write_cmd,
-    stream<NetAXIS> &       rx_or_tx_to_mover_write_data,
+    stream<NetAXISWord>    &rx_or_tx_to_mem_write_data,
+    stream<DataMoverCmd>   &rx_or_tx_to_mover_write_cmd,
+    stream<NetAXIS>        &rx_or_tx_to_mover_write_data,
     // if mem access break down, write true to this fifo
     stream<ap_uint<1> > &mem_buffer_double_access_flag) {
 #pragma HLS pipeline II = 1
@@ -409,9 +409,9 @@ void WriteDataToMem(
 }
 // rx=1, tx=0
 template <int is_rx>
-void        GetSessionMemAddr(const TcpSessionID &    id,
+void        GetSessionMemAddr(const TcpSessionID     &id,
                               const TcpSessionBuffer &app_rw,
-                              ap_uint<32> &           session_mem_addr) {
+                              ap_uint<32>            &session_mem_addr) {
 #pragma HLS INLINE
   session_mem_addr[31] = (is_rx == 1) ? 0 : (!TCP_RX_DDR_BYPASS);
   // only use the least significant bits in session id

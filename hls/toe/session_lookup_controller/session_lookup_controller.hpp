@@ -50,17 +50,17 @@ void session_lookup_controller(
     stream<TcpSessionID> &sttable_to_slookup_release_req,
     // rx app
     stream<TcpSessionID> &rx_app_to_slookup_tdest_lookup_req,
-    stream<NetAXISDest> & slookup_to_rx_app_tdest_lookup_rsp,
+    stream<NetAXISDest>  &slookup_to_rx_app_tdest_lookup_rsp,
     // rx eng
     stream<RxEngToSlookupReq> &rx_eng_to_slookup_req,
-    stream<SessionLookupRsp> & slookup_to_rx_eng_rsp,
+    stream<SessionLookupRsp>  &slookup_to_rx_eng_rsp,
     // tx app
     stream<TxAppToSlookupReq> &tx_app_to_slookup_req,
-    stream<SessionLookupRsp> & slookup_to_tx_app_rsp,
-    stream<TcpSessionID> &     tx_app_to_slookup_check_tdest_req,
-    stream<NetAXISDest> &      slookup_to_tx_app_check_tdest_rsp,
+    stream<SessionLookupRsp>  &slookup_to_tx_app_rsp,
+    stream<TcpSessionID>      &tx_app_to_slookup_check_tdest_req,
+    stream<NetAXISDest>       &slookup_to_tx_app_check_tdest_rsp,
     // tx eng
-    stream<ap_uint<16> > &          tx_eng_to_slookup_rev_table_req,
+    stream<ap_uint<16> >           &tx_eng_to_slookup_rev_table_req,
     stream<ReverseTableToTxEngRsp> &slookup_rev_table_to_tx_eng_rsp,
     // CAM
     stream<RtlSLookupToCamLupReq> &rtl_slookup_to_cam_lookup_req,
@@ -71,4 +71,4 @@ void session_lookup_controller(
     stream<TcpPortNumber> &slookup_to_ptable_release_port_req,
     // registers
     ap_uint<16> &reg_session_cnt,
-    IpAddr &     my_ip_addr);
+    IpAddr      &my_ip_addr);

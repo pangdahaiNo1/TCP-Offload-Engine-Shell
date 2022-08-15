@@ -9,9 +9,9 @@ stream<NetAXIS> input_data("data_read_from_pcap");
 stream<NetAXIS> packet_without_ethernet("packet_without_ethernet");
 NetAXIS         transaction;
 
-void PcapPacketHandler(unsigned char *     user_data,
+void PcapPacketHandler(unsigned char      *user_data,
                        struct pcap_pkthdr *packet_header,
-                       unsigned char *     packet) {
+                       unsigned char      *packet) {
   ap_uint<16>                  bytes_sent = 0, bytes_to_send, last_trans;
   ap_uint<NET_TDATA_WIDTH / 8> aux_keep;
   ap_uint<NET_TDATA_WIDTH>     data_value;
@@ -194,7 +194,7 @@ int PcapToStream(char *file_to_load,                 // pcapfilename
 void PcapToStreamStep(char *file_to_load,                 // pcapfilename
                       bool  remove_file_ethernet_header,  // 0: No ethernet in the packet, 1:
                                                           // ethernet include
-                      bool &           end_of_data,
+                      bool            &end_of_data,
                       stream<NetAXIS> &output_data  // output data
 ) {
   static bool error_opening_file = false;

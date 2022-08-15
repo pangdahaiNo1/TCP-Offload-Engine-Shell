@@ -7,7 +7,7 @@ void timer_wrapper(
     stream<RxEngToRetransTimerReq> &rx_eng_to_timer_clear_rtimer,
     stream<TxEngToRetransTimerReq> &tx_eng_to_timer_set_rtimer,
     stream<AppNotificationNoTDEST> &rtimer_to_rx_app_notification,
-    stream<OpenConnRspNoTDEST> &    rtimer_to_tx_app_notification,
+    stream<OpenConnRspNoTDEST>     &rtimer_to_tx_app_notification,
     // probe_timer
     stream<TcpSessionID> &rx_eng_to_timer_clear_ptimer,
     stream<TcpSessionID> &tx_eng_to_timer_set_ptimer,

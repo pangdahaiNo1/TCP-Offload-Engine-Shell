@@ -12,13 +12,13 @@ extern MockLogger logger;
  *  @param[in]		timer_to_event_eng_set_event
  *  @param[out]		event_eng_to_ack_delay_event
  */
-void                 event_engine(stream<Event> &         tx_app_to_event_eng_set_event,
+void                 event_engine(stream<Event>          &tx_app_to_event_eng_set_event,
                                   stream<EventWithTuple> &rx_eng_to_event_eng_set_event,
-                                  stream<Event> &         timer_to_event_eng_set_event,
+                                  stream<Event>          &timer_to_event_eng_set_event,
                                   stream<EventWithTuple> &event_eng_to_ack_delay_event,
-                                  stream<ap_uint<1> > &   ack_delay_read_count_fifo,
-                                  stream<ap_uint<1> > &   ack_delay_write_count_fifo,
-                                  stream<ap_uint<1> > &   tx_eng_read_count_fifo) {
+                                  stream<ap_uint<1> >    &ack_delay_read_count_fifo,
+                                  stream<ap_uint<1> >    &ack_delay_write_count_fifo,
+                                  stream<ap_uint<1> >    &tx_eng_read_count_fifo) {
 #pragma HLS PIPELINE II = 1
 
 #pragma HLS aggregate variable = tx_app_to_event_eng_set_event compact = bit

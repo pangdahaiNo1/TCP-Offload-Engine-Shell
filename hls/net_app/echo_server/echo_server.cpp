@@ -5,7 +5,7 @@ extern MockLogger logger;
 
 void                 OpenPortHandler(stream<NetAXISListenPortReq> &net_app_listen_port_req,
                                      stream<NetAXISListenPortRsp> &net_app_listen_port_rsp,
-                                     NetAXISDest &                 tdest_const) {
+                                     NetAXISDest                  &tdest_const) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -62,11 +62,11 @@ void EchoServerReceiveData(
     stream<NetAXISAppReadReq> &net_app_recv_data_req,
     stream<NetAXISAppReadRsp> &net_app_recv_data_rsp,
     // data in/out
-    stream<NetAXIS> &    net_app_recv_data,
+    stream<NetAXIS>     &net_app_recv_data,
     stream<NetAXISWord> &net_app_rx_data_out,
     // echo server meta
     stream<EchoServerMeta> &echo_server_meta,
-    NetAXISDest &           tdest_const) {
+    NetAXISDest            &tdest_const) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -130,12 +130,12 @@ void EchoServerReceiveData(
   }
 }
 
-void                 EchoServerTransmitData(stream<EchoServerMeta> &        echo_server_meta,
+void                 EchoServerTransmitData(stream<EchoServerMeta>         &echo_server_meta,
                                             stream<NetAXISAppTransDataReq> &net_app_trans_data_req,
                                             stream<NetAXISAppTransDataRsp> &net_app_trans_data_rsp,
-                                            stream<NetAXISWord> &           net_app_tx_data_in,
-                                            stream<NetAXIS> &               net_app_trans_data,
-                                            NetAXISDest &                   tdest_const) {
+                                            stream<NetAXISWord>            &net_app_tx_data_in,
+                                            stream<NetAXIS>                &net_app_trans_data,
+                                            NetAXISDest                    &tdest_const) {
 #pragma HLS INLINE   off
 #pragma HLS PIPELINE II = 1
 
@@ -198,10 +198,10 @@ void                 EchoServerTransmitData(stream<EchoServerMeta> &        echo
   }
 }
 
-void                 EchoServerDummy(stream<NetAXISAppOpenConnReq> & net_app_open_conn_req,
-                                     stream<NetAXISAppOpenConnRsp> & net_app_open_conn_rsp,
+void                 EchoServerDummy(stream<NetAXISAppOpenConnReq>  &net_app_open_conn_req,
+                                     stream<NetAXISAppOpenConnRsp>  &net_app_open_conn_rsp,
                                      stream<NetAXISAppCloseConnReq> &net_app_close_conn_req,
-                                     NetAXISDest &                   tdest_const) {
+                                     NetAXISDest                    &tdest_const) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -238,19 +238,19 @@ void echo_server(
     // read data
     stream<NetAXIS> &net_app_recv_data,
     // open/close conn
-    stream<NetAXISAppOpenConnReq> & net_app_open_conn_req,
-    stream<NetAXISAppOpenConnRsp> & net_app_open_conn_rsp,
+    stream<NetAXISAppOpenConnReq>  &net_app_open_conn_req,
+    stream<NetAXISAppOpenConnRsp>  &net_app_open_conn_rsp,
     stream<NetAXISAppCloseConnReq> &net_app_close_conn_req,
     // transmit data
     stream<NetAXISAppTransDataReq> &net_app_trans_data_req,
     stream<NetAXISAppTransDataRsp> &net_app_trans_data_rsp,
-    stream<NetAXIS> &               net_app_trans_data,
-    NetAXISDest &                   tdest_const) {
+    stream<NetAXIS>                &net_app_trans_data,
+    NetAXISDest                    &tdest_const) {
 #pragma HLS                        DATAFLOW
 #pragma HLS INTERFACE ap_ctrl_none port = return
 
 #pragma HLS stable variable = tdest_const
-  //#pragma HLS INTERFACE mode = ap_stable register port = tdest_const
+  // #pragma HLS INTERFACE mode = ap_stable register port = tdest_const
 
 #pragma HLS INTERFACE axis register both port = net_app_listen_port_req
 #pragma HLS aggregate variable = net_app_listen_port_req compact = bit

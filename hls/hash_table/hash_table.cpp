@@ -180,11 +180,11 @@ HTUpdateResp<K, V> remove(HTUpdateReq<K, V> request) {
 }
 
 template <int K, int V>
-void HashTable(hls::stream<HTLookupReq<K> > &    s_axis_lup_req,
-               hls::stream<HTUpdateReq<K, V> > & s_axis_upd_req,
+void HashTable(hls::stream<HTLookupReq<K> >     &s_axis_lup_req,
+               hls::stream<HTUpdateReq<K, V> >  &s_axis_upd_req,
                hls::stream<HTLookupResp<K, V> > &m_axis_lup_rsp,
                hls::stream<HTUpdateResp<K, V> > &m_axis_upd_rsp,
-               ap_uint<16> &                     reg_insert_fail_count)
+               ap_uint<16>                      &reg_insert_fail_count)
 
 {
 #pragma HLS INLINE
@@ -211,11 +211,11 @@ void HashTable(hls::stream<HTLookupReq<K> > &    s_axis_lup_req,
   }
 }
 
-void hash_table_top(hls::stream<HTLookupReq<kKeySize> > &             s_axis_lup_req,
-                    hls::stream<HTUpdateReq<kKeySize, kValueSize> > & s_axis_upd_req,
+void hash_table_top(hls::stream<HTLookupReq<kKeySize> >              &s_axis_lup_req,
+                    hls::stream<HTUpdateReq<kKeySize, kValueSize> >  &s_axis_upd_req,
                     hls::stream<HTLookupResp<kKeySize, kValueSize> > &m_axis_lup_rsp,
                     hls::stream<HTUpdateResp<kKeySize, kValueSize> > &m_axis_upd_rsp,
-                    ap_uint<16> &                                     reg_insert_fail_count) {
+                    ap_uint<16>                                      &reg_insert_fail_count) {
 #pragma HLS INTERFACE ap_ctrl_none port = return
 #pragma HLS INTERFACE ap_none      port = reg_insert_fail_count
 

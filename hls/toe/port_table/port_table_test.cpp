@@ -3,10 +3,10 @@
 #include "toe/mock/mock_toe.hpp"
 using namespace hls;
 
-void EmptyFifos(MockLogger &              logger,
+void EmptyFifos(MockLogger               &logger,
                 stream<PtableToRxEngRsp> &ptable_to_rx_eng_check_rsp,
-                stream<ListenPortRsp> &   ptable_to_rx_app_listen_port_rsp,
-                stream<TcpPortNumber> &   ptable_to_tx_app_rsp) {
+                stream<ListenPortRsp>    &ptable_to_rx_app_listen_port_rsp,
+                stream<TcpPortNumber>    &ptable_to_tx_app_rsp) {
   PtableToRxEngRsp to_rx_eng_rsp;
   ListenPortRsp    to_rx_app_rsp;
   TcpPortNumber    to_tx_app_free_port;

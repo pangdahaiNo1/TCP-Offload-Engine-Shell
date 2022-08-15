@@ -18,9 +18,9 @@ using namespace hls;
  *  @param[out]		ptable_to_rx_app_listen_port_rsp
  *  @param[out]		ptable_check_listening_rsp_fifo
  */
-void                 ListeningPortTable(stream<ListenPortReq> &   rx_app_to_ptable_listen_port_req,
-                                        stream<ap_uint<15> > &    ptable_check_listening_req_fifo,
-                                        stream<ListenPortRsp> &   ptable_to_rx_app_listen_port_rsp,
+void                 ListeningPortTable(stream<ListenPortReq>    &rx_app_to_ptable_listen_port_req,
+                                        stream<ap_uint<15> >     &ptable_check_listening_req_fifo,
+                                        stream<ListenPortRsp>    &ptable_to_rx_app_listen_port_rsp,
                                         stream<PtableToRxEngRsp> &ptable_check_listening_rsp_fifo) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
@@ -72,11 +72,11 @@ void                 ListeningPortTable(stream<ListenPortReq> &   rx_app_to_ptab
  *  @param[out]		ptable_check_used_rsp_fifo
  *  @param[out]		ptable_to_tx_app_rsp
  */
-void                 FreePortTable(stream<TcpPortNumber> &   slookup_to_ptable_release_port_req_req,
-                                   stream<ap_uint<15> > &    ptable_check_used_req_fifo,
-                                   stream<NetAXISDest> &     tx_app_to_ptable_req,
+void                 FreePortTable(stream<TcpPortNumber>    &slookup_to_ptable_release_port_req_req,
+                                   stream<ap_uint<15> >     &ptable_check_used_req_fifo,
+                                   stream<NetAXISDest>      &tx_app_to_ptable_req,
                                    stream<PtableToRxEngRsp> &ptable_check_used_rsp_fifo,
-                                   stream<TcpPortNumber> &   ptable_to_tx_app_rsp) {
+                                   stream<TcpPortNumber>    &ptable_to_tx_app_rsp) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -119,9 +119,9 @@ void                 FreePortTable(stream<TcpPortNumber> &   slookup_to_ptable_r
 }
 
 void                 CheckInMultiplexer(stream<TcpPortNumber> &rx_eng_to_ptable_check_req,
-                                        stream<ap_uint<15> > & ptable_check_listening_req_fifo,
-                                        stream<ap_uint<15> > & ptable_check_used_req_fifo,
-                                        stream<bool> &         ptable_check_dst_fifo_out) {
+                                        stream<ap_uint<15> >  &ptable_check_listening_req_fifo,
+                                        stream<ap_uint<15> >  &ptable_check_used_req_fifo,
+                                        stream<bool>          &ptable_check_dst_fifo_out) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -151,7 +151,7 @@ void                 CheckInMultiplexer(stream<TcpPortNumber> &rx_eng_to_ptable_
 /** @ingroup port_table
  *
  */
-void                 CheckOutMultiplexer(stream<bool> &            ptable_check_dst_fifo_in,
+void                 CheckOutMultiplexer(stream<bool>             &ptable_check_dst_fifo_in,
                                          stream<PtableToRxEngRsp> &ptable_check_listening_rsp_fifo,
                                          stream<PtableToRxEngRsp> &ptable_check_used_rsp_fifo,
                                          stream<PtableToRxEngRsp> &ptable_to_rx_eng_check_rsp) {
@@ -215,10 +215,10 @@ void port_table(
     stream<ListenPortReq> &rx_app_to_ptable_listen_port_req,
     stream<ListenPortRsp> &ptable_to_rx_app_listen_port_rsp,
     // rx eng check req/rsp
-    stream<TcpPortNumber> &   rx_eng_to_ptable_check_req,
+    stream<TcpPortNumber>    &rx_eng_to_ptable_check_req,
     stream<PtableToRxEngRsp> &ptable_to_rx_eng_check_rsp,
     // tx app get avail port req/rsp
-    stream<NetAXISDest> &  tx_app_to_ptable_req,
+    stream<NetAXISDest>   &tx_app_to_ptable_req,
     stream<TcpPortNumber> &ptable_to_tx_app_rsp) {
 #pragma HLS DATAFLOW
   /*

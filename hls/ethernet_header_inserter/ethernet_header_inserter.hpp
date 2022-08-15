@@ -28,7 +28,7 @@ void ethernet_header_inserter(
     stream<NetAXIS> &ip_seg_in,      // Input packet (ip aligned)
     stream<NetAXIS> &eth_frame_out,  // Output packet (ethernet aligned)
 
-    stream<ArpTableRsp> & arp_table_rsp,  // ARP cache replay
+    stream<ArpTableRsp>  &arp_table_rsp,  // ARP cache replay
     stream<ap_uint<32> > &arp_table_req,  // ARP cache request
 
     ap_uint<48> &my_mac_addr,       // Server MAC address

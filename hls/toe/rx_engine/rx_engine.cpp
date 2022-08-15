@@ -11,7 +11,7 @@ extern MockLogger logger;
  * the output @p tcp_pseudo_packet_* are same: tcp pseudo header + tcp header + tcp payload
  * one for validating checksum, the other one for rx eng fsm parse the meta data
  */
-void                 RxEngTcpPseudoHeaderInsert(stream<NetAXIS> &    rx_ip_pkt_in,
+void                 RxEngTcpPseudoHeaderInsert(stream<NetAXIS>     &rx_ip_pkt_in,
                                                 stream<NetAXISWord> &tcp_pseudo_packet_for_checksum,
                                                 stream<NetAXISWord> &tcp_pseudo_packet_for_rx_eng) {
 #pragma HLS INLINE   off
@@ -107,9 +107,9 @@ void                 RxEngTcpPseudoHeaderInsert(stream<NetAXIS> &    rx_ip_pkt_i
  *  @param[out]		tcp_meta_data
  *  @param[out]		tcp_payload
  */
-void                 RxEngParseTcpHeader(stream<NetAXISWord> &        tcp_pseudo_packet,
+void                 RxEngParseTcpHeader(stream<NetAXISWord>         &tcp_pseudo_packet,
                                          stream<TcpPseudoHeaderMeta> &tcp_meta_data,
-                                         stream<NetAXISWord> &        tcp_payload) {
+                                         stream<NetAXISWord>         &tcp_payload) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -310,11 +310,11 @@ void                 RxEngParseTcpHeaderOptions(stream<TcpPseudoHeaderMeta> &tcp
  * @param[out] tcp_meta_data_out
  * @param[out] rx_eng_to_ptable_check_req
  */
-void                 RxEngVerifyChecksumAndPort(stream<ap_uint<16> > &       tcp_checksum_in,
+void                 RxEngVerifyChecksumAndPort(stream<ap_uint<16> >        &tcp_checksum_in,
                                                 stream<TcpPseudoHeaderMeta> &tcp_meta_data_in,
-                                                stream<bool> &               tcp_payload_dropped_by_checksum,
+                                                stream<bool>                &tcp_payload_dropped_by_checksum,
                                                 stream<TcpPseudoHeaderMeta> &tcp_meta_data_out,
-                                                stream<TcpPortNumber> &      rx_eng_to_ptable_check_req) {
+                                                stream<TcpPortNumber>       &rx_eng_to_ptable_check_req) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
   enum RxVerifyFsmState { READ_META_INFO, READ_CHECKSUM };
@@ -368,13 +368,13 @@ void                 RxEngVerifyChecksumAndPort(stream<ap_uint<16> > &       tcp
  *
  * */
 void                 RxEngTcpMetaHandler(stream<TcpPseudoHeaderMeta> &tcp_meta_data_in,
-                                         stream<PtableToRxEngRsp> &   ptable_to_rx_eng_check_rsp,
-                                         stream<RxEngToSlookupReq> &  rx_eng_to_slookup_req,
-                                         stream<SessionLookupRsp> &   slookup_to_rx_eng_rsp,
-                                         stream<RxEngFsmMetaData> &   rx_eng_fsm_meta_data_out,
-                                         stream<bool> &               tcp_payload_dropped_by_port_or_session,
-                                         stream<NetAXISDest> &        tcp_payload_tdest,
-                                         stream<EventWithTuple> &     rx_eng_meta_to_event_eng_set_event) {
+                                         stream<PtableToRxEngRsp>    &ptable_to_rx_eng_check_rsp,
+                                         stream<RxEngToSlookupReq>   &rx_eng_to_slookup_req,
+                                         stream<SessionLookupRsp>    &slookup_to_rx_eng_rsp,
+                                         stream<RxEngFsmMetaData>    &rx_eng_fsm_meta_data_out,
+                                         stream<bool>                &tcp_payload_dropped_by_port_or_session,
+                                         stream<NetAXISDest>         &tcp_payload_tdest,
+                                         stream<EventWithTuple>      &rx_eng_meta_to_event_eng_set_event) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -456,10 +456,10 @@ void                 RxEngTcpMetaHandler(stream<TcpPseudoHeaderMeta> &tcp_meta_d
  * the output payload is valid, should be delivery to Memory or App
  */
 void RxEngTcpPayloadDropper(stream<NetAXISWord> &tcp_payload_in,
-                            stream<bool> &       tcp_payload_dropped_by_checksum,
-                            stream<bool> &       tcp_payload_dropped_by_port_or_session,
+                            stream<bool>        &tcp_payload_dropped_by_checksum,
+                            stream<bool>        &tcp_payload_dropped_by_port_or_session,
                             stream<NetAXISDest> &tcp_payload_tdest,
-                            stream<bool> &       tcp_payload_dropped_by_rx_fsm,
+                            stream<bool>        &tcp_payload_dropped_by_rx_fsm,
 #if !TCP_RX_DDR_BYPASS
                             // send data to datamover
                             stream<NetAXISWord> &tcp_payload_out
@@ -548,11 +548,11 @@ void RxEngTcpFsm(
     stream<TxSarToRxEngRsp> &tx_sar_to_rx_eng_rsp,
     // state table
     stream<StateTableReq> &rx_eng_to_sttable_req,
-    stream<SessionState> & sttable_to_rx_eng_rsp,
+    stream<SessionState>  &sttable_to_rx_eng_rsp,
     // update timer state
-    stream<TcpSessionID> &          rx_eng_to_timer_set_ctimer,
+    stream<TcpSessionID>           &rx_eng_to_timer_set_ctimer,
     stream<RxEngToRetransTimerReq> &rx_eng_to_timer_clear_rtimer,
-    stream<TcpSessionID> &          rx_eng_to_timer_clear_ptimer,
+    stream<TcpSessionID>           &rx_eng_to_timer_clear_ptimer,
     // set event engine
     stream<Event> &rx_eng_fsm_to_event_eng_set_event,
     // to app connection notify, when net app active open a connection
@@ -1109,7 +1109,7 @@ void RxEngTcpFsm(
 void RxEngNotificaionHandler(
     // from  datamover status
     stream<DataMoverStatus> &mover_to_rx_eng_write_status,
-    stream<ap_uint<1> > &    mem_buffer_double_access_flag,
+    stream<ap_uint<1> >     &mem_buffer_double_access_flag,
     // from rx eng fsm
     stream<AppNotificationNoTDEST> &rx_eng_to_rx_app_notification_cache,
     // to rx app intf
@@ -1177,7 +1177,7 @@ void RxEngNotificaionHandler(
 }
 
 void                 RxEngEventMerger(stream<EventWithTuple> &in1,
-                                      stream<Event> &         in2,
+                                      stream<Event>          &in2,
                                       stream<EventWithTuple> &out) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
@@ -1193,11 +1193,11 @@ void rx_engine(
     // ip packet
     stream<NetAXIS> &rx_ip_pkt_in,
     // port table check open and TDEST
-    stream<TcpPortNumber> &   rx_eng_to_ptable_check_req,
+    stream<TcpPortNumber>    &rx_eng_to_ptable_check_req,
     stream<PtableToRxEngRsp> &ptable_to_rx_eng_check_rsp,
     // to session lookup R/W
     stream<RxEngToSlookupReq> &rx_eng_to_slookup_req,
-    stream<SessionLookupRsp> & slookup_to_rx_eng_rsp,
+    stream<SessionLookupRsp>  &slookup_to_rx_eng_rsp,
     // FSM
     // Rx SAR R/W
     stream<RxEngToRxSarReq> &rx_eng_to_rx_sar_req,
@@ -1207,11 +1207,11 @@ void rx_engine(
     stream<TxSarToRxEngRsp> &tx_sar_to_rx_eng_rsp,
     // state table
     stream<StateTableReq> &rx_eng_to_sttable_req,
-    stream<SessionState> & sttable_to_rx_eng_rsp,
+    stream<SessionState>  &sttable_to_rx_eng_rsp,
     // update timer state
-    stream<TcpSessionID> &          rx_eng_to_timer_set_ctimer,
+    stream<TcpSessionID>           &rx_eng_to_timer_set_ctimer,
     stream<RxEngToRetransTimerReq> &rx_eng_to_timer_clear_rtimer,
-    stream<TcpSessionID> &          rx_eng_to_timer_clear_ptimer,
+    stream<TcpSessionID>           &rx_eng_to_timer_clear_ptimer,
     // to app connection notify, when net app active open a connection
     stream<OpenConnRspNoTDEST> &rx_eng_to_tx_app_notification,
     // to app connection notify, when net app passive open a conection
@@ -1223,8 +1223,8 @@ void rx_engine(
     stream<EventWithTuple> &rx_eng_to_event_eng_set_event,
 #if !TCP_RX_DDR_BYPASS
     // tcp payload to mem
-    stream<DataMoverCmd> &   rx_eng_to_mover_write_cmd,
-    stream<NetAXIS> &        rx_eng_to_mover_write_data,
+    stream<DataMoverCmd>    &rx_eng_to_mover_write_cmd,
+    stream<NetAXIS>         &rx_eng_to_mover_write_data,
     stream<DataMoverStatus> &mover_to_rx_eng_write_status
 #else
     // tcp payload to rx app
@@ -1234,7 +1234,7 @@ void rx_engine(
 #pragma HLS DATAFLOW
 #pragma HLS INLINE
 
-//#pragma HLS INTERFACE ap_ctrl_none       port = return
+// #pragma HLS INTERFACE ap_ctrl_none       port = return
 #pragma HLS INTERFACE axis register both port = rx_ip_pkt_in
 #if !TCP_RX_DDR_BYPASS
 #pragma HLS INTERFACE axis register both port = rx_eng_to_mover_write_cmd

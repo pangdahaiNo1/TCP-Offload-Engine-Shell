@@ -7,11 +7,11 @@
 using namespace hls;
 MockLogger logger("./tx_app_intf_inner.log", TX_APP_IF);
 
-void EmptyTxAppConnFifos(MockLogger &                   logger,
-                         stream<NetAXISDest> &          tx_app_to_ptable_req,
-                         stream<TxAppToSlookupReq> &    tx_app_to_slookup_req,
-                         stream<StateTableReq> &        tx_app_to_sttable_req,
-                         stream<TcpSessionID> &         tx_app_to_slookup_check_tdest_req,
+void EmptyTxAppConnFifos(MockLogger                    &logger,
+                         stream<NetAXISDest>           &tx_app_to_ptable_req,
+                         stream<TxAppToSlookupReq>     &tx_app_to_slookup_req,
+                         stream<StateTableReq>         &tx_app_to_sttable_req,
+                         stream<TcpSessionID>          &tx_app_to_slookup_check_tdest_req,
                          stream<NetAXISAppOpenConnRsp> &tx_app_to_net_app_open_conn_rsp) {
   NetAXISDest           role_id;
   TxAppToSlookupReq     to_slookup_req;
@@ -42,11 +42,11 @@ void EmptyTxAppConnFifos(MockLogger &                   logger,
   }
 }
 
-void EmptyTxAppDataFifos(MockLogger &                    logger,
+void EmptyTxAppDataFifos(MockLogger                     &logger,
                          stream<NetAXISAppTransDataRsp> &tx_app_to_net_app_trans_data_rsp,
 
                          stream<TcpSessionID> &tx_app_to_sttable_lup_req,
-                         stream<Event> &       tx_app_to_event_eng_set_event) {
+                         stream<Event>        &tx_app_to_event_eng_set_event) {
   NetAXISAppTransDataRsp to_net_app_rsp;
 
   TcpSessionID to_sttable;
@@ -66,9 +66,9 @@ void EmptyTxAppDataFifos(MockLogger &                    logger,
   }
 }
 
-void EmptyDataMoverFifos(MockLogger &          logger,
+void EmptyDataMoverFifos(MockLogger           &logger,
                          stream<DataMoverCmd> &tx_app_to_mover_write_cmd,
-                         stream<NetAXIS> &     tx_app_to_mover_write_data) {
+                         stream<NetAXIS>      &tx_app_to_mover_write_data) {
   DataMoverCmd cmd_out;
   NetAXISWord  data_out;
 
@@ -90,7 +90,7 @@ void EmptyTxAppStsFifos(MockLogger &logger, stream<TxAppToTxSarReq> &tx_app_to_t
   }
 }
 
-void EmptyTxAppTableFifos(MockLogger &                  logger,
+void EmptyTxAppTableFifos(MockLogger                   &logger,
                           stream<TxAppToTxAppTableReq> &tx_app_to_tx_app_table_req) {
   TxAppToTxAppTableReq to_app_table;
   while (!tx_app_to_tx_app_table_req.empty()) {
@@ -489,7 +489,7 @@ int main(int argc, char **argv) {
     std::cerr << "[ERROR] missing arguments " __FILE__ << " <INPUT_PCAP_FILE>" << endl;
     return -1;
   }
-  char *          input_tcp_pcap_file = argv[1];
+  char           *input_tcp_pcap_file = argv[1];
   stream<NetAXIS> input_tcp_packets("input_tcp_packets");
   PcapToStream(input_tcp_pcap_file, true, input_tcp_packets);
 

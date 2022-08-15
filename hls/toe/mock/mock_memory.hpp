@@ -32,12 +32,12 @@ public:
     _s2mm_cmd_fifo = queue<DataMoverCmd>();
     _mm2s_cmd_fifo = queue<DataMoverCmd>();
   }
-  void MockMemIntf(MockLogger &          logger,
+  void MockMemIntf(MockLogger           &logger,
                    stream<DataMoverCmd> &mover_read_mem_cmd,
-                   stream<NetAXIS> &     mover_read_mem_data,
+                   stream<NetAXIS>      &mover_read_mem_data,
 
-                   stream<DataMoverCmd> &   mover_write_mem_cmd,
-                   stream<NetAXIS> &        mover_write_mem_data,
+                   stream<DataMoverCmd>    &mover_write_mem_cmd,
+                   stream<NetAXIS>         &mover_write_mem_data,
                    stream<DataMoverStatus> &mover_write_mem_status) {
     DataMoverCmd    cur_cmd;
     NetAXISWord     cur_word;

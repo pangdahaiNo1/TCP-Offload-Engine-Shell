@@ -25,7 +25,7 @@ PKT_SRC=$(HLS_SRC_DIR)/packet_handler
 
 # net app
 APP_SRC=$(HLS_SRC_DIR)/net_app
-IPERF_SRC=$(APP_SRC)/iperf2_client
+IPERF_SRC=$(APP_SRC)/iperf
 ECHO_SRC=$(APP_SRC)/echo_server
 
 
@@ -39,7 +39,7 @@ VIVADO_HLS_ARGS ?= $(HLS_SRC_DIR) $@ $(FPGA_PART) $(HLS_ACT) $(IP_REPO_DIR)
 # 		echo_server \
 
 
-	project =	arp_server \
+project = arp_server \
 		hash_table \
 		ethernet_header_inserter \
 		icmp_server \
@@ -179,7 +179,7 @@ echo_server: $(shell find $(ECHO_SRC) -type f)
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(APP_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
-iperf2_client: $(shell find $(IPERF_SRC) -type f) 
+iperf: $(shell find $(IPERF_SRC) -type f) 
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(APP_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
@@ -197,4 +197,4 @@ help:
 	@echo "    \e[94mmake help\e[39m"
 
 format:
-	@find . -regex '.*\.\(cpp\|h\|hpp\|cxx\)' | xargs clang-format -i
+	@find . -regex '.*\.\(cpp\|h\|hpp\|cxx\)' | xargs clang-format-15 -i

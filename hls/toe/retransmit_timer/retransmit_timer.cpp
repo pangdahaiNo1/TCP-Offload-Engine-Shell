@@ -22,10 +22,10 @@ extern MockLogger logger;
  */
 void                 retransmit_timer(stream<RxEngToRetransTimerReq> &rx_eng_to_timer_clear_rtimer,
                                       stream<TxEngToRetransTimerReq> &tx_eng_to_timer_set_rtimer,
-                                      stream<Event> &                 rtimer_to_event_eng_set_event,
-                                      stream<TcpSessionID> &          rtimer_to_state_table_release_state,
+                                      stream<Event>                  &rtimer_to_event_eng_set_event,
+                                      stream<TcpSessionID>           &rtimer_to_state_table_release_state,
                                       stream<AppNotificationNoTDEST> &rtimer_to_rx_app_notification,
-                                      stream<OpenConnRspNoTDEST> &    rtimer_to_tx_app_notification) {
+                                      stream<OpenConnRspNoTDEST>     &rtimer_to_tx_app_notification) {
 #pragma HLS PIPELINE II = 1
 
 #pragma HLS aggregate variable = rx_eng_to_timer_clear_rtimer compact = bit

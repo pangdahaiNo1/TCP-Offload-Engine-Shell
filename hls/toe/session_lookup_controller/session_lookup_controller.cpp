@@ -39,10 +39,10 @@ void CamLookupRspHandler(
     stream<ap_uint<14> > &slookup_available_id_in,
     // rx eng
     stream<RxEngToSlookupReq> &rx_eng_to_slookup_req,
-    stream<SessionLookupRsp> & slookup_to_rx_eng_rsp,
+    stream<SessionLookupRsp>  &slookup_to_rx_eng_rsp,
     // tx app
     stream<TxAppToSlookupReq> &tx_app_to_slookup_req,
-    stream<SessionLookupRsp> & slookup_to_tx_app_rsp,
+    stream<SessionLookupRsp>  &slookup_to_tx_app_rsp,
     // cam
     stream<RtlSLookupToCamLupReq> &slookup_to_cam_lup_req,
     stream<RtlCamToSlookupLupRsp> &cam_to_slookup_lup_rsp,
@@ -163,8 +163,8 @@ void CamLookupRspHandler(
 void                 CamUpdateReqSender(stream<RtlSlookupToCamUpdReq> &slookup_to_cam_insert_req,
                                         stream<RtlSlookupToCamUpdReq> &slookup_to_cam_delete_req,
                                         stream<RtlSlookupToCamUpdReq> &rtl_slookup_to_cam_update_req,
-                                        stream<ap_uint<14> > &         slookup_released_id,
-                                        ap_uint<16> &                  reg_session_cnt) {
+                                        stream<ap_uint<14> >          &slookup_released_id,
+                                        ap_uint<16>                   &reg_session_cnt) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -224,18 +224,18 @@ void CamUpdateRspHandler(stream<RtlCamToSlookupUpdRsp> &rtl_cam_to_slookup_updat
 void SlookupReverseTableInterface(
     // insert req
     stream<SlookupToRevTableUpdReq> &reverse_table_insert_req,
-    stream<TcpSessionID> &           sttable_to_slookup_release_req,
+    stream<TcpSessionID>            &sttable_to_slookup_release_req,
     // rx app
     stream<TcpSessionID> &rx_app_to_slookup_tdest_lookup_req,
-    stream<NetAXISDest> & slookup_to_rx_app_tdest_lookup_rsp,
+    stream<NetAXISDest>  &slookup_to_rx_app_tdest_lookup_rsp,
     // tx app
     stream<TcpSessionID> &tx_app_to_slookup_check_tdest_req,
-    stream<NetAXISDest> & slookup_to_tx_app_check_tdest_rsp,
+    stream<NetAXISDest>  &slookup_to_tx_app_check_tdest_rsp,
     // tx eng
-    stream<TcpSessionID> &          tx_eng_to_slookup_rev_table_req,
+    stream<TcpSessionID>           &tx_eng_to_slookup_rev_table_req,
     stream<ReverseTableToTxEngRsp> &slookup_rev_table_to_tx_eng_rsp,
     // to other req
-    stream<TcpSessionID> &         slookup_to_ptable_release_port_req,
+    stream<TcpSessionID>          &slookup_to_ptable_release_port_req,
     stream<RtlSlookupToCamUpdReq> &slookup_to_cam_delete_req,
     // register
     IpAddr my_ip_addr) {
@@ -318,17 +318,17 @@ void session_lookup_controller(
     stream<TcpSessionID> &sttable_to_slookup_release_req,
     // rx app
     stream<TcpSessionID> &rx_app_to_slookup_tdest_lookup_req,
-    stream<NetAXISDest> & slookup_to_rx_app_tdest_lookup_rsp,
+    stream<NetAXISDest>  &slookup_to_rx_app_tdest_lookup_rsp,
     // rx eng
     stream<RxEngToSlookupReq> &rx_eng_to_slookup_req,
-    stream<SessionLookupRsp> & slookup_to_rx_eng_rsp,
+    stream<SessionLookupRsp>  &slookup_to_rx_eng_rsp,
     // tx app
     stream<TxAppToSlookupReq> &tx_app_to_slookup_req,
-    stream<SessionLookupRsp> & slookup_to_tx_app_rsp,
-    stream<TcpSessionID> &     tx_app_to_slookup_check_tdest_req,
-    stream<NetAXISDest> &      slookup_to_tx_app_check_tdest_rsp,
+    stream<SessionLookupRsp>  &slookup_to_tx_app_rsp,
+    stream<TcpSessionID>      &tx_app_to_slookup_check_tdest_req,
+    stream<NetAXISDest>       &slookup_to_tx_app_check_tdest_rsp,
     // tx eng
-    stream<ap_uint<16> > &          tx_eng_to_slookup_rev_table_req,
+    stream<ap_uint<16> >           &tx_eng_to_slookup_rev_table_req,
     stream<ReverseTableToTxEngRsp> &slookup_rev_table_to_tx_eng_rsp,
     // CAM
     stream<RtlSLookupToCamLupReq> &rtl_slookup_to_cam_lookup_req,
@@ -339,9 +339,9 @@ void session_lookup_controller(
     stream<TcpPortNumber> &slookup_to_ptable_release_port_req,
     // registers
     ap_uint<16> &reg_session_cnt,
-    IpAddr &     my_ip_addr) {
+    IpAddr      &my_ip_addr) {
 #pragma HLS DATAFLOW
-  //#pragma HLS INLINE
+  // #pragma HLS INLINE
 
 #pragma HLS INTERFACE axis register port = rtl_slookup_to_cam_lookup_req
 #pragma HLS INTERFACE axis register port = rtl_cam_to_slookup_lookup_rsp

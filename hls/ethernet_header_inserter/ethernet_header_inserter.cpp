@@ -2,12 +2,12 @@
 
 #include "ethernet_header_inserter.hpp"
 
-void                 BroadcastMacRequest(stream<NetAXIS> &     ip_seg_in,
+void                 BroadcastMacRequest(stream<NetAXIS>      &ip_seg_in,
                                          stream<ap_uint<32> > &arp_table_req,
-                                         stream<NetAXISWord> & ip_header_out,
-                                         stream<NetAXISWord> & no_ip_header_out,
-                                         ap_uint<32> &         subnet_mask,
-                                         ap_uint<32> &         gateway_ip_addr) {
+                                         stream<NetAXISWord>  &ip_header_out,
+                                         stream<NetAXISWord>  &no_ip_header_out,
+                                         ap_uint<32>          &subnet_mask,
+                                         ap_uint<32>          &gateway_ip_addr) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -50,8 +50,8 @@ void                 BroadcastMacRequest(stream<NetAXIS> &     ip_seg_in,
 void                 EthernetHandleOutput(stream<ArpTableRsp> &arp_table_rsp,
                                           stream<NetAXISWord> &ip_header_with_checksum,
                                           stream<NetAXISWord> &no_ip_header_out,
-                                          ap_uint<48> &        my_mac_addr,
-                                          stream<NetAXIS> &    eth_frame_out) {
+                                          ap_uint<48>         &my_mac_addr,
+                                          stream<NetAXIS>     &eth_frame_out) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -268,7 +268,7 @@ void ethernet_header_inserter(
     stream<NetAXIS> &ip_seg_in,      // Input packet (ip aligned)
     stream<NetAXIS> &eth_frame_out,  // Output packet (ethernet aligned)
 
-    stream<ArpTableRsp> & arp_table_rsp,  // ARP cache replay
+    stream<ArpTableRsp>  &arp_table_rsp,  // ARP cache replay
     stream<ap_uint<32> > &arp_table_req,  // ARP cache request
 
     ap_uint<48> &my_mac_addr,      // Server MAC address

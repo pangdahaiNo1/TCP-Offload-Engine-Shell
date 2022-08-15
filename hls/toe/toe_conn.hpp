@@ -95,7 +95,7 @@ INLINE std::string state_to_string(SessionState state) {
   }
 }
 #else
-INLINE char *            state_to_string(SessionState state) {
+INLINE char             *state_to_string(SessionState state) {
   _AP_UNUSED_PARAM(state);
   return 0;
 }

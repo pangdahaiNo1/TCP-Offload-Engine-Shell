@@ -49,15 +49,15 @@ struct ArpMetaRsp {
   ArpMetaRsp() {}
 };
 
-void arp_server(stream<NetAXIS> &     arp_data_in,
+void arp_server(stream<NetAXIS>      &arp_data_in,
                 stream<ap_uint<32> > &mac_ip_encode_req,
-                stream<NetAXIS> &     arp_data_out,
-                stream<ArpTableRsp> & mac_ip_encode_rsp,
+                stream<NetAXIS>      &arp_data_out,
+                stream<ArpTableRsp>  &mac_ip_encode_rsp,
                 ArpTableEntry         arp_cache_table[256],
-                ap_uint<1> &          arp_scan,
-                ap_uint<48> &         my_mac_addr,
-                ap_uint<32> &         my_ip_addr,
-                ap_uint<32> &         gateway_ip_addr,
-                ap_uint<32> &         subnet_mask);
+                ap_uint<1>           &arp_scan,
+                ap_uint<48>          &my_mac_addr,
+                ap_uint<32>          &my_ip_addr,
+                ap_uint<32>          &gateway_ip_addr,
+                ap_uint<32>          &subnet_mask);
 
 #endif

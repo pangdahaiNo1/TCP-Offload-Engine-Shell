@@ -4,10 +4,10 @@
 #include "toe/mock/mock_toe.hpp"
 using namespace hls;
 
-void EmptyFifos(MockLogger &             logger,
-                stream<RxSarAppReqRsp> & rx_sar_to_rx_app_rsp,
+void EmptyFifos(MockLogger              &logger,
+                stream<RxSarAppReqRsp>  &rx_sar_to_rx_app_rsp,
                 stream<RxSarTableEntry> &rx_sar_to_rx_eng_rsp,
-                stream<RxSarLookupRsp> & rx_sar_to_tx_eng_lup_rsp) {
+                stream<RxSarLookupRsp>  &rx_sar_to_tx_eng_lup_rsp) {
   RxSarAppReqRsp  to_rx_app_rsp;
   RxSarTableEntry to_rx_eng_rsp;
   RxSarLookupRsp  to_tx_eng_rsp;

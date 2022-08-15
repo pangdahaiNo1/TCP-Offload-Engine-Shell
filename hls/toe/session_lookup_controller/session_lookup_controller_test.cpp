@@ -5,13 +5,13 @@
 
 using namespace hls;
 
-void EmptyFifos(MockLogger &                    logger,
-                stream<NetAXISDest> &           slookup_to_rx_app_check_tdset_rsp,
-                stream<SessionLookupRsp> &      slookup_to_rx_eng_rsp,
-                stream<SessionLookupRsp> &      slookup_to_tx_app_rsp,
-                stream<NetAXISDest> &           slookup_to_tx_app_check_tdest_rsp,
+void EmptyFifos(MockLogger                     &logger,
+                stream<NetAXISDest>            &slookup_to_rx_app_check_tdset_rsp,
+                stream<SessionLookupRsp>       &slookup_to_rx_eng_rsp,
+                stream<SessionLookupRsp>       &slookup_to_tx_app_rsp,
+                stream<NetAXISDest>            &slookup_to_tx_app_check_tdest_rsp,
                 stream<ReverseTableToTxEngRsp> &slookup_rev_table_to_tx_eng_rsp,
-                stream<TcpPortNumber> &         slookup_to_ptable_release_port_req) {
+                stream<TcpPortNumber>          &slookup_to_ptable_release_port_req) {
   NetAXISDest            rx_or_tx_app_tdest;
   SessionLookupRsp       slookup_rsp;
   ReverseTableToTxEngRsp tx_eng_rsp;

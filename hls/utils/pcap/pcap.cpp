@@ -16,20 +16,20 @@
 #include <unistd.h>
 
 static int         file_read           = 0;    /**< File descriptor of the pcap file to read*/
-static FILE *      file_write          = NULL; /**< File descriptor of the pcap file to write */
+static FILE       *file_write          = NULL; /**< File descriptor of the pcap file to write */
 static uint64_t    file_proc_size_read = 0;
-static void *      memfile;
+static void       *memfile;
 static struct stat sr;
 static struct stat sw;
 
 static bool read_ethernet = true;
 
 struct pcap_file {
-  FILE *      pcap_file;
+  FILE       *pcap_file;
   bool        read_only;
   bool        write_only;
   uint64_t    file_proc_size_read;
-  void *      memfile;
+  void       *memfile;
   struct stat pcap_file_stat;
   bool        remove_pcap_ethernet_header;
   bool        insert_stream_ethernet_header;
@@ -129,7 +129,7 @@ condition occurs.
 int PcapLoop(int cnt, pcap_handler callback, unsigned char *user) {
   uint32_t           i;
   struct pcap_pkthdr hdr;
-  uint8_t *          data;
+  uint8_t           *data;
 
   readHeader();
   if (cnt == 0) {

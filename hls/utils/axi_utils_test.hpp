@@ -115,7 +115,7 @@ int ComparePacpPacketsWithGolden(stream<NetAXIS> &dut_packets,
   ;
 }
 
-void NetAXIStreamToNetAXIStreamWord(stream<NetAXIS> &    net_axis_stream_in,
+void NetAXIStreamToNetAXIStreamWord(stream<NetAXIS>     &net_axis_stream_in,
                                     stream<NetAXISWord> &net_axis_word_stream_out) {
   stream<NetAXISWord> ret_stream;
   while (!net_axis_stream_in.empty()) {
@@ -124,7 +124,7 @@ void NetAXIStreamToNetAXIStreamWord(stream<NetAXIS> &    net_axis_stream_in,
 }
 
 void NetAXIStreamWordToNetAXIStream(stream<NetAXISWord> &net_axis_word_stream_in,
-                                    stream<NetAXIS> &    net_axis_stream_out) {
+                                    stream<NetAXIS>     &net_axis_stream_out) {
   stream<NetAXISWord> ret_stream;
   while (!net_axis_word_stream_in.empty()) {
     net_axis_stream_out.write(net_axis_word_stream_in.read().to_net_axis());

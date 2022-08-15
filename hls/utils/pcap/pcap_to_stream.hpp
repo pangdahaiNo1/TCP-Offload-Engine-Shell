@@ -21,7 +21,7 @@ int PcapToStream(char *file2load,                    // pcapfilename
 void PcapToStreamStep(char *file2load,               // pcapfilename
                       bool  remove_ethernet_header,  // 0: No ethernet in the packet, 1: ethernet
                                                      // include
-                      bool &           end_of_data,
+                      bool            &end_of_data,
                       stream<NetAXIS> &output_data  // output data
 );
 

@@ -13,7 +13,7 @@ extern MockLogger logger;
  */
 void                  probe_timer(stream<TcpSessionID> &rx_eng_to_timer_clear_ptimer,
                                   stream<TcpSessionID> &tx_eng_to_timer_set_ptimer,
-                                  stream<Event> &       ptimer_to_event_eng_set_event) {
+                                  stream<Event>        &ptimer_to_event_eng_set_event) {
 #pragma HLS aggregate variable = ptimer_to_event_eng_set_event compact = bit
 
 #pragma HLS PIPELINE II = 1

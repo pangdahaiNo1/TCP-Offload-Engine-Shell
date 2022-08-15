@@ -77,12 +77,12 @@ void TestRandom() {
   return;
 }
 
-void EmptyTxEngFsmFifo(MockLogger &                    logger,
-                       stream<ap_uint<1> > &           tx_eng_read_count_fifo,
-                       stream<TcpSessionID> &          tx_eng_to_rx_sar_lup_req,
-                       stream<TxEngToTxSarReq> &       tx_eng_to_tx_sar_req,
+void EmptyTxEngFsmFifo(MockLogger                     &logger,
+                       stream<ap_uint<1> >            &tx_eng_read_count_fifo,
+                       stream<TcpSessionID>           &tx_eng_to_rx_sar_lup_req,
+                       stream<TxEngToTxSarReq>        &tx_eng_to_tx_sar_req,
                        stream<TxEngToRetransTimerReq> &tx_eng_to_timer_set_rtimer,
-                       stream<TcpSessionID> &          tx_eng_to_timer_set_ptimer,
+                       stream<TcpSessionID>           &tx_eng_to_timer_set_ptimer,
                        // to session lookup req
                        stream<ap_uint<16> > &tx_eng_to_slookup_rev_table_req) {
   while (!tx_eng_read_count_fifo.empty()) {
@@ -332,7 +332,7 @@ int main(int argc, char **argv) {
     std::cerr << "[ERROR] missing arguments " __FILE__ << " <INPUT_PCAP_FILE>" << endl;
     return -1;
   }
-  char *              input_tcp_pcap_file = argv[1];
+  char               *input_tcp_pcap_file = argv[1];
   stream<NetAXIS>     input_tcp_ip_pkt_read_in("input_tcp_ip_pkt_read_in");
   stream<NetAXISWord> input_tcp_ip_pkt("input_tcp_ip_pkt");
   // PcapToStream(input_tcp_pcap_file, true, input_tcp_ip_pkt_read_in);
