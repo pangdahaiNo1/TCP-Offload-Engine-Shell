@@ -1,4 +1,5 @@
-
+#ifndef _TOE_HPP_
+#define _TOE_HPP_
 #include "toe/toe_conn.hpp"
 
 void toe_top(
@@ -48,3 +49,5 @@ void toe_top(
     ap_uint<16> &reg_session_cnt,
     // in big endian
     IpAddr &my_ip_addr);
+
+#endif  // _TOE_HPP_

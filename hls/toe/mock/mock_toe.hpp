@@ -1,7 +1,7 @@
 #ifndef _MOCK_TOE_HPP_
 #define _MOCK_TOE_HPP_
-#pragma once
 
+#include "toe/toe.hpp"
 #include "utils/axi_utils.hpp"
 /**
  * NOTE: all varibles are in big endian
@@ -114,6 +114,71 @@ struct ToeIntf {
     rtl_cam_to_slookup_lookup_rsp.set_name(("rtl_cam_to_slookup_lookup_rsp" + fifo_suffix).c_str());
     rtl_slookup_to_cam_update_req.set_name(("rtl_slookup_to_cam_update_req" + fifo_suffix).c_str());
     rtl_cam_to_slookup_update_rsp.set_name(("rtl_cam_to_slookup_update_rsp" + fifo_suffix).c_str());
+  }
+
+  void ConnectToeIntfWithToe() {
+    toe_top(this->rx_ip_pkt_in,
+#if !TCP_RX_DDR_BYPASS
+            this->rx_eng_to_mover_write_cmd,
+            this->rx_eng_to_mover_write_data,
+            this->mover_to_rx_eng_write_status,
+#endif
+            this->tx_eng_to_mover_read_cmd,
+            this->mover_to_tx_eng_read_data,
+            this->tx_ip_pkt_out,
+            this->net_app_to_rx_app_listen_port_req,
+            this->rx_app_to_net_app_listen_port_rsp,
+            this->net_app_to_rx_app_recv_data_req,
+            this->rx_app_to_net_app_recv_data_rsp,
+            this->net_app_recv_data,
+            this->net_app_notification,
+#if !(TCP_RX_DDR_BYPASS)
+            this->rx_app_to_mover_read_cmd,
+            this->mover_to_rx_app_read_data,
+#endif
+            this->net_app_to_tx_app_open_conn_req,
+            this->tx_app_to_net_app_open_conn_rsp,
+            this->net_app_to_tx_app_close_conn_req,
+            this->net_app_new_client_notification,
+            this->net_app_to_tx_app_trans_data_req,
+            this->tx_app_to_net_app_trans_data_rsp,
+            this->net_app_trans_data,
+            this->tx_app_to_mover_write_cmd,
+            this->tx_app_to_mover_write_data,
+            this->mover_to_tx_app_write_status,
+            this->rtl_slookup_to_cam_lookup_req,
+            this->rtl_cam_to_slookup_lookup_rsp,
+            this->rtl_slookup_to_cam_update_req,
+            this->rtl_cam_to_slookup_update_rsp,
+            this->reg_session_cnt,
+            this->my_ip_addr);
+    return;
+  }
+
+  void ConnectToeIntfWithMockCam(MockLogger &logger, MockCam &mock_cam) {
+    mock_cam.MockCamIntf(logger,
+                         this->rtl_slookup_to_cam_lookup_req,
+                         this->rtl_cam_to_slookup_lookup_rsp,
+                         this->rtl_slookup_to_cam_update_req,
+                         this->rtl_cam_to_slookup_update_rsp);
+  }
+
+  void ConnectToeTxIntfWithMockMem(MockLogger &logger, MockMem &mock_mem) {
+    mock_mem.MockMemIntf(logger,
+                         this->tx_eng_to_mover_read_cmd,
+                         this->mover_to_tx_eng_read_data,
+                         this->tx_app_to_mover_write_cmd,
+                         this->tx_app_to_mover_write_data,
+                         this->mover_to_tx_app_write_status);
+  }
+
+  void ConnectToeRxIntfWithMockMem(MockLogger &logger, MockMem &mock_mem) {
+    mock_mem.MockMemIntf(logger,
+                         this->rx_app_to_mover_read_cmd,
+                         this->mover_to_rx_app_read_data,
+                         this->rx_eng_to_mover_write_cmd,
+                         this->rx_eng_to_mover_write_data,
+                         this->mover_to_rx_eng_write_status);
   }
 };
 
