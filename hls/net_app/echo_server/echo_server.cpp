@@ -219,7 +219,6 @@ void                 EchoServerDummy(stream<NetAXISAppOpenConnReq>  &net_app_ope
     if (open_conn_rsp.data.success) {
       net_app_close_conn_req.write(
           AppCloseConnReq(open_conn_rsp.data.session_id, tdest_const).to_net_axis());
-      // closePort.write(tuple.ip_port);
     }
   }
 }
