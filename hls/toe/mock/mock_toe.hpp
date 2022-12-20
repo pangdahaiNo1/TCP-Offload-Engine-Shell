@@ -1,6 +1,8 @@
 #ifndef _MOCK_TOE_HPP_
 #define _MOCK_TOE_HPP_
 
+#include "mock/mock_cam.hpp"
+#include "mock/mock_memory.hpp"
 #include "toe/toe.hpp"
 #include "utils/axi_utils.hpp"
 /**

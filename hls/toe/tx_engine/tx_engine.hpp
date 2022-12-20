@@ -74,7 +74,7 @@ struct TxEngFsmMetaData {
 
 INLINE ap_uint<32> RandomVal() {
 #ifndef __SYNTHESIS__
-  return 0xFF73CE98;  // just for simulation
+  return INIT_SEQ_NUMBER;  // just for simulation
 #else
   // init value
   static ap_uint<32> ramdom_val = 0x562301af;
