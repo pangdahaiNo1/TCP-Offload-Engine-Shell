@@ -35,7 +35,7 @@ const uint64_t TCP_DDR_BASE_ADDR    = 0x4800000000;
 const uint64_t TCP_DDR_RX_BASE_ADDR = TCP_DDR_BASE_ADDR + 0x300000000;
 const uint64_t TCP_DDR_TX_BASE_ADDR = TCP_DDR_BASE_ADDR + 0x350000000;
 
-//The sequence number of the first packet being sent, Simulation ONLY
+// The sequence number of the first packet being sent, Simulation ONLY
 #define INIT_SEQ_NUMBER 0xFF73CE98
 
 #endif  // _TOE_CONFIG_HPP_

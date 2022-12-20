@@ -25,7 +25,7 @@ PKT_SRC=$(HLS_SRC_DIR)/packet_handler
 
 # net app
 APP_SRC=$(HLS_SRC_DIR)/net_app
-IPERF_SRC=$(APP_SRC)/iperf
+IPERF2_SRC=$(APP_SRC)/iperf2
 ECHO_SRC=$(APP_SRC)/echo_server
 
 
@@ -179,7 +179,7 @@ echo_server: $(shell find $(ECHO_SRC) -type f)
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(APP_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
-iperf: $(shell find $(IPERF_SRC) -type f) 
+iperf2: $(shell find $(IPERF2_SRC) -type f) 
 	mkdir -p $(HLS_PRJ_DIR)/$@
 	$(VIVADO_HLS) -f $(APP_SRC)/$@/$@.tcl -tclargs $(VIVADO_HLS_ARGS)
 
