@@ -5,3 +5,4 @@ test_port/
 .vscode/
 hls/pcap/*
 *.log
+*.out

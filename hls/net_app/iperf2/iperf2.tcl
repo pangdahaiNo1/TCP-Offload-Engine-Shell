@@ -53,13 +53,13 @@ add_files -tb " ${prj_src_dir}/${prj_name}_test.cpp \
 
 
 if {$hls_act == "csim"} {
-   csim_design -clean -argv "${pcap_input_dir}/iperf2_bandwidth_1m.pcap"
+   csim_design -clean -argv "${pcap_input_dir}/iperf2_client_golden.pcap ${pcap_input_dir}/iperf2_server_golden.pcap "
    exit
 }
 csynth_design
 
 if {$hls_act == "cosim"} {
-   cosim_design -rtl verilog -argv "${pcap_input_dir}/iperf2_bandwidth_1m.pcap"
+   cosim_design -rtl verilog -argv "${pcap_input_dir}/iperf2_client_golden.pcap ${pcap_input_dir}/iperf2_server_golden.pcap "
    exit
 }
 

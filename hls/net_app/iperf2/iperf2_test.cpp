@@ -40,12 +40,13 @@ void EmptyIperf2Fifos(MockLogger                     &logger,
   }
 }
 
+// unit test
 void TestIperf2() {
   // iperf config
   IperfRegs       iperf_reg;
   stream<NetAXIS> rand_data;
   stream<NetAXIS> rand_data_copy;
-  NetAppIntf      app(0x1, "_unit_test");
+  NetAppIntf      app(0x2, "_unit_test");
 
   MockLogger top_logger("./iperf2_top.log", NET_APP);
 
@@ -120,9 +121,88 @@ void TestIperf2() {
   }
 }
 
+/**
+ * @brief Integration Test
+ */
+void TestIperf2ServerWithToe(stream<NetAXIS> &client_golden_pkt,
+                             stream<NetAXIS> &server_golden_pkt) {
+  // output stream
+  stream<NetAXIS> output_tcp_packet;
+
+  // iperf2 server ip in big endian
+  IperfRegs iperf_reg;
+  IpAddr    my_ip_addr = 0x29131e0a;  // 10.19.0.41
+  ToeIntf   toe_intf(my_ip_addr, "_iperf_test");
+  // mock cam
+  MockCam mock_cam;
+  // mock mem
+  MockMem    tx_mock_mem;
+  MockMem    rx_mock_mem;
+  MockLogger top_logger("toe_top_with_echo.log", TOE_TOP);
+  // current tdest
+  NetAXISDest mock_tdest = 0x2;
+
+  logger.SetSimCycle(0);
+  logger.NewLine("TOE with Iperf");
+
+  NetAXIS cur_word;
+  int     sim_cycle = 0;
+  while (sim_cycle < 20000) {
+    if ((sim_cycle % 100) == 0 && !client_golden_pkt.empty()) {
+      do {
+        cur_word = client_golden_pkt.read();
+
+        toe_intf.rx_ip_pkt_in.write(cur_word);
+        output_tcp_packet.write(cur_word);
+
+      } while (cur_word.last != 1);
+    }
+    toe_intf.ConnectToeIntfWithToe();
+    toe_intf.ConnectToeIntfWithMockCam(top_logger, mock_cam);
+#if !(TCP_RX_DDR_BYPASS)
+    toe_intf.ConnectToeRxIntfWithMockMem(top_logger, rx_mock_mem);
+#endif
+    toe_intf.ConnectToeTxIntfWithMockMem(top_logger, tx_mock_mem);
+
+    iperf2(iperf_reg,
+           toe_intf.net_app_to_rx_app_listen_port_req,
+           toe_intf.rx_app_to_net_app_listen_port_rsp,
+           toe_intf.net_app_new_client_notification,
+           toe_intf.net_app_notification,
+           toe_intf.net_app_to_rx_app_recv_data_req,
+           toe_intf.rx_app_to_net_app_recv_data_rsp,
+           toe_intf.net_app_recv_data,
+           toe_intf.net_app_to_tx_app_open_conn_req,
+           toe_intf.tx_app_to_net_app_open_conn_rsp,
+           toe_intf.net_app_to_tx_app_close_conn_req,
+           toe_intf.net_app_to_tx_app_trans_data_req,
+           toe_intf.tx_app_to_net_app_trans_data_rsp,
+           toe_intf.net_app_trans_data,
+           mock_tdest);
+    while (!toe_intf.tx_ip_pkt_out.empty()) {
+      output_tcp_packet.write(toe_intf.tx_ip_pkt_out.read());
+    }
+
+    sim_cycle++;
+    top_logger.SetSimCycle(sim_cycle);
+    logger.SetSimCycle(sim_cycle);
+  }
+
+  StreamToPcap("iperf_server_integration.pcap", true, true, output_tcp_packet, true);
+}
+
 int main(int argc, char **argv) {
-  char           *input_tcp_pcap_file = argv[1];
-  stream<NetAXIS> input_tcp_ip_pkt("input_tcp_ip_pkt");
-  PcapToStream(input_tcp_pcap_file, true, input_tcp_ip_pkt);
-  TestIperf2();
+  if (argc < 3) {
+    cerr << "[ERROR] missing arguments " __FILE__ << " <INPUT_PCAP_FILE> <GOLDEN_PCAP_FILE> "
+         << endl;
+    return -1;
+  }
+  char           *client_golden_file = argv[1];
+  char           *server_golden_file = argv[2];
+  stream<NetAXIS> client_golden_tcp_pkt("client_golden_tcp_pkt");
+  stream<NetAXIS> server_golden_tcp_pkt("server_golden_tcp_pkt");
+  PcapToStream(client_golden_file, true, client_golden_tcp_pkt);
+  PcapToStream(server_golden_file, true, server_golden_tcp_pkt);
+  // TestIperf2();
+  TestIperf2ServerWithToe(client_golden_tcp_pkt, server_golden_tcp_pkt);
 }

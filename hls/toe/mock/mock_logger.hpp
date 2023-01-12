@@ -50,7 +50,8 @@ public:
   ofstream  output_stream;
   bool      enable_recv_log;  // receive signals from other modules
   bool      enable_send_log;  // send signals to other modules
-  ToeModule log_module;       // current log module
+  bool      is_toe_inner_module;
+  ToeModule log_module;  // current log module
 
   MockLogger(string log_file, ToeModule cur_log_module) {
     sim_cycle = 0;
@@ -61,6 +62,12 @@ public:
     enable_send_log = true;
     enable_recv_log = true;
     log_module      = cur_log_module;
+    if (log_module == NET_APP || log_module == TOE_TOP || log_module == DATA_MVER ||
+        log_module == MOCK_MEMY) {
+      is_toe_inner_module = false;
+    } else {
+      is_toe_inner_module = true;
+    }
   }
 
   std::string replace(std::string str, const std::string &substr1, const std::string &substr2) {
@@ -83,8 +90,10 @@ public:
       if (state_in_new_line) {
         signal_state_str = replace(signal_state_str, "\n", delimiter);
       }
-      if ((enable_recv_log && to_module == log_module) ||
-          (enable_send_log && from_module == log_module) || (log_module == TOE_TOP)) {
+
+      if ((is_toe_inner_module && (enable_recv_log && to_module == log_module) ||
+           (enable_send_log && from_module == log_module)) ||
+          !is_toe_inner_module) {
         output_stream << "C/" << sim_cycle << ":\t";
         output_stream << from_module_str << "->" << to_module_str << "{" << signal_name << "}"
                       << delimiter << signal_state_str << endl;

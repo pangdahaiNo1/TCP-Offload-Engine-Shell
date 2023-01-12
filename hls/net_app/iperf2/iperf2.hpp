@@ -17,6 +17,20 @@ struct IperfRegs {
   ap_uint<16> max_connections;
   ap_uint<16> current_state;
   ap_uint<1>  error_openning_connection;
+  IperfRegs() {
+    run_experiment            = 0;
+    dual_mode_en              = 0;
+    use_timer                 = 0;
+    run_time                  = 0;
+    num_connections           = 0;
+    transfer_size             = 0;
+    packet_mss                = 0;
+    dst_ip                    = 0;
+    dst_port                  = 0;
+    max_connections           = 0;
+    current_state             = 0;
+    error_openning_connection = 0;
+  }
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
