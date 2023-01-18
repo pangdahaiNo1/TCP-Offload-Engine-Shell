@@ -17,7 +17,7 @@ void                 OpenPortHandler(stream<NetAXISListenPortReq> &net_app_liste
   ListenPortRsp net_listen_rsp;
 
   static ap_uint<16> listen_port;
-  listen_port = 15000;
+  listen_port = 12333;
 
   switch (fsm_state) {
     /* Open/Listen on Port at start-up */

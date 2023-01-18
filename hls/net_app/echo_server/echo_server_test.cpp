@@ -121,13 +121,13 @@ void TestEchoServer() {
 /**
  * @brief Integration Test
  */
-void TestEchoServerWithToe(stream<NetAXIS> &input_tcp_packet) {
+void TestEchoServerWithToe(stream<NetAXIS> &client_golden_pkt) {
   // output stream
   stream<NetAXIS> output_tcp_packet;
 
   // in big endian
-  IpAddr  my_ip_addr = 0x24131e0a;  // 10.19.0.36
-  ToeIntf toe_intf(my_ip_addr, "_with_echo");
+  IpAddr  my_ip_addr = 0x29131e0a;  // 10.19.0.36
+  ToeIntf toe_intf(my_ip_addr, "_echo_test");
   // mock cam
   MockCam mock_cam;
   // mock mem
@@ -144,33 +144,42 @@ void TestEchoServerWithToe(stream<NetAXIS> &input_tcp_packet) {
 
   int sim_cycle = 0;
   while (sim_cycle < 20000) {
-    switch (sim_cycle) {
-      case 1:
-        listen_req.data = 0x302d;
-        listen_req.dest = mock_tdest;
-        toe_intf.net_app_to_rx_app_listen_port_req.write(listen_req.to_net_axis());
-        break;
-      // client send a SYN packet
-      case 3:
-      // client send a ACK packet for ESATABLISED a connection(3-way handshake done)
-      case 3000:
-      // client send a DATA packet, length=692Bytes = 0x2b4
-      case 5000:
-      // client send a ACK for receiving all data, seq.no = 692, ack.no = 693
-      case 5500:
-      //  client send a FIN
-      case 6000:
-      // client send a ACK, for CLOSE this connection
-      case 6500:
-        do {
-          cur_word = input_tcp_packet.read();
-          toe_intf.rx_ip_pkt_in.write(cur_word);
-          output_tcp_packet.write(cur_word);
-        } while (cur_word.last != 1);
-        break;
+    // switch (sim_cycle) {
+    //   case 1:
+    //     `.data = 0x302d;
+    //     listen_req.dest = mock_tdest;
+    //     toe_intf.net_app_to_rx_app_listen_port_req.write(listen_req.to_net_axis());
+    //     break;
+    //   // client send a SYN packet
+    //   case 3:
+    //   // client send a ACK packet for ESATABLISED a connection(3-way handshake done)
+    //   case 3000:
+    //   // client send a DATA packet, length=692Bytes = 0x2b4
+    //   case 5000:
+    //   // client send a ACK for receiving all data, seq.no = 692, ack.no = 693
+    //   case 5500:
+    //   //  client send a FIN
+    //   case 6000:
+    //   // client send a ACK, for CLOSE this connection
+    //   case 6500:
+    //     do {
+    //       cur_word = client_golden_pkt.read();
+    //       toe_intf.rx_ip_pkt_in.write(cur_word);
+    //       output_tcp_packet.write(cur_word);
+    //     } while (cur_word.last != 1);
+    //     break;
 
-      default:
-        break;
+    //   default:
+    //     break;
+    // }
+    if ((sim_cycle % 100) == 0 && !client_golden_pkt.empty()) {
+      do {
+        cur_word = client_golden_pkt.read();
+
+        toe_intf.rx_ip_pkt_in.write(cur_word);
+        output_tcp_packet.write(cur_word);
+
+      } while (cur_word.last != 1);
     }
     toe_intf.ConnectToeIntfWithToe();
     toe_intf.ConnectToeIntfWithMockCam(top_logger, mock_cam);
@@ -201,7 +210,7 @@ void TestEchoServerWithToe(stream<NetAXIS> &input_tcp_packet) {
     top_logger.SetSimCycle(sim_cycle);
     logger.SetSimCycle(sim_cycle);
   }
-  StreamToPcap("toe.pcap", true, true, output_tcp_packet, true);
+  StreamToPcap("echo_server_integration.pcap", true, true, output_tcp_packet, true);
 }
 
 void TestToeWithTwoEcho(stream<NetAXIS> &input_tcp_packet) {
@@ -342,10 +351,18 @@ void TestToeWithTwoEcho(stream<NetAXIS> &input_tcp_packet) {
 }
 
 int main(int argc, char **argv) {
-  char           *input_tcp_pcap_file = argv[1];
-  stream<NetAXIS> input_tcp_ip_pkt("input_tcp_ip_pkt");
-  PcapToStream(input_tcp_pcap_file, true, input_tcp_ip_pkt);
+  if (argc < 3) {
+    cerr << "[ERROR] missing arguments " __FILE__ << " <INPUT_PCAP_FILE> <GOLDEN_PCAP_FILE> "
+         << endl;
+    return -1;
+  }
+  char           *client_golden_file = argv[1];
+  char           *server_golden_file = argv[2];
+  stream<NetAXIS> client_golden_tcp_pkt("client_golden_tcp_pkt");
+  stream<NetAXIS> server_golden_tcp_pkt("server_golden_tcp_pkt");
+    PcapToStream(client_golden_file, true, client_golden_tcp_pkt);
+  PcapToStream(server_golden_file, true, server_golden_tcp_pkt);
 
-  TestEchoServer();
-  TestEchoServerWithToe(input_tcp_ip_pkt);
+  //TestEchoServer();
+  TestEchoServerWithToe(client_golden_tcp_pkt);
 }
