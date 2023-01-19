@@ -138,7 +138,7 @@ void TestIperf2ServerWithToe(stream<NetAXIS> &client_golden_pkt,
   // mock mem
   MockMem    tx_mock_mem;
   MockMem    rx_mock_mem;
-  MockLogger top_logger("toe_top_with_echo.log", TOE_TOP);
+  MockLogger top_logger("toe_top_with_iperf.log", TOE_TOP);
   // current tdest
   NetAXISDest mock_tdest = 0x2;
 

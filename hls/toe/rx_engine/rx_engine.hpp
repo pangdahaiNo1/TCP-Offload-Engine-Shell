@@ -27,7 +27,7 @@ struct RxEngFsmMetaData {
     std::stringstream sstream;
     sstream << "Rx FSM State: \n" << std::hex;
     sstream << "Session ID: " << this->session_id << "\n";
-    sstream << "Source IP: " << this->src_ip << "Dest Port: " << this->dst_port << "\n";
+    sstream << "Source IP: " << this->src_ip << " Dest Port: " << this->dst_port << "\n";
     sstream << header.to_string() << endl;
     sstream << "Role ID: " << this->role_id;
     return sstream.str();
