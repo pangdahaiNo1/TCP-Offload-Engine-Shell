@@ -46,7 +46,7 @@ add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
   ${src_top_dir}/net_app/echo_server/echo_server.cpp"  -cflags "-I${src_top_dir} -DDEBUG"
 
 if {$hls_act == "csim"} {
-  csim_design -clean   -argv "${pcap_input_dir}/echo_client_golden_syn_ack.pcap"
+  csim_design -clean   -argv "${pcap_input_dir}/echo_client_golden_tiny.pcap"
   exit
 }
 
@@ -56,7 +56,7 @@ if {$hls_act == "synth"} {
 }
 
 if {$hls_act == "cosim"} {
-  csim_design -clean   -argv "${pcap_input_dir}/echo_client_golden_syn_ack.pcap"
+  csim_design -clean   -argv "${pcap_input_dir}/echo_client_golden_tiny.pcap"
 }
 
 if {$hls_act == "install_ip"} {

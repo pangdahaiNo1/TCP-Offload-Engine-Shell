@@ -31,7 +31,7 @@ add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
 
 
 if {$hls_act == "csim"} {
-  csim_design -clean -argv "${pcap_input_dir}/icmp_in.pcap ${pcap_output_dir}/icmp_golden_with_ipv4_checksum.pcap"
+  csim_design -clean  -argv  "${pcap_input_dir}/icmp_request.pcap ${pcap_input_dir}/icmp_response_golden_with_ipv4_checksum.pcap"
 }
 
 if {$hls_act == "synth"} {
@@ -40,7 +40,7 @@ if {$hls_act == "synth"} {
 }
 
 if {$hls_act == "cosim"} {
-  cosim_design -rtl verilog -argv "${pcap_input_dir}/icmp_in.pcap ${pcap_output_dir}/icmp_golden_with_ipv4_checksum.pcap"
+  csim_design -clean  -argv  "${pcap_input_dir}/icmp_request.pcap ${pcap_input_dir}/icmp_response_golden_with_ipv4_checksum.pcap"
 }
 
 if {$hls_act == "install_ip"} {

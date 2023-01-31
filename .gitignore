@@ -1,8 +1,9 @@
 *hls_prj*/
-*.pcap
 ip_repo/
 test_port/
 .vscode/
-hls/pcap/*
+hls/pcap/output/
+hls/pcap/temp/
+*.dat
 *.log
 *.out

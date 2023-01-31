@@ -26,7 +26,7 @@ add_files -tb  "${prj_src_dir}/packet_handler_test.cpp \
   ${src_top_dir}/utils/pcap/pcap.cpp " -csimflags "-I${src_top_dir} -DDEBUG "
 
 if {$hls_act == "csim"} {
-  csim_design -clean -argv "${pcap_input_dir}/packet_handler_input.pcap \
+  csim_design -clean -argv "${pcap_input_dir}/packet_handler_input_golden.pcap \
     ${pcap_input_dir}/packet_handler_input_arp.pcap \
     ${pcap_input_dir}/packet_handler_input_icmp.pcap \
     ${pcap_input_dir}/packet_handler_input_tcp.pcap \
@@ -41,7 +41,7 @@ if {$hls_act == "synth"} {
 }
 
 if {$hls_act == "cosim"} {
-  cosim_design -rtl verilog -argv "${pcap_input_dir}/packet_handler_input.pcap \
+  cosim_design -rtl verilog -argv "${pcap_input_dir}/packet_handler_input_golden.pcap \
     ${pcap_input_dir}/packet_handler_input_arp.pcap \
     ${pcap_input_dir}/packet_handler_input_icmp.pcap \
     ${pcap_input_dir}/packet_handler_input_tcp.pcap \

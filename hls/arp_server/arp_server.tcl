@@ -30,7 +30,7 @@ add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
   ${src_top_dir}/utils/axi_utils.cpp"   -csimflags "-I${src_top_dir} -DDEBUG -DEBUG_PCAP"
 
 if {$hls_act == "csim"} {
-  csim_design -clean -argv "${pcap_input_dir}/arp_in.pcap ${pcap_output_dir}/arp_golden.pcap"
+  csim_design -clean -argv "${pcap_input_dir}/arp_requset.pcap ${pcap_input_dir}/arp_response_golden.pcap"
 }
 
 if {$hls_act == "synth"} {
@@ -39,7 +39,7 @@ if {$hls_act == "synth"} {
 }
 
 if {$hls_act == "cosim"} {
-  cosim_design -rtl verilog -argv "${pcap_input_dir}/arp_in.pcap ${pcap_output_dir}/arp_golden.pcap"
+  cosim_design -rtl verilog -argv "${pcap_input_dir}/arp_requset.pcap ${pcap_input_dir}/arp_response_golden.pcap"
 }
 
 if {$hls_act == "install_ip"} {
