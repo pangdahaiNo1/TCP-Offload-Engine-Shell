@@ -12,7 +12,7 @@ set pcap_output_dir ${prj_src_dir}/output
 open_project ${prj_name}
 
 open_solution "solution1"
-set_part ${fpga_part} 
+set_part ${fpga_part}
 create_clock -period 3.1 -name default
 set_clock_uncertainty 0.2
 
@@ -25,20 +25,22 @@ add_files -tb ${prj_src_dir}/hash_table_test.cpp -cflags "-std=c++11 -I${src_top
 
 
 if {$hls_act == "csim"} {
-   csim_design -clean 
+  csim_design -clean
 }
 
-csynth_design
+if {$hls_act == "synth"} {
+  csynth_design
+  export_design -format ip_catalog -ipname "hash_table" -display_name "Hash Table (cuckoo)"
+}
 
-# if {$hls_act == "cosim"} {
-#    cosim_design -rtl verilog 
-#    exit
-# }
+if {$hls_act == "cosim"} {
+  cosim_design -rtl verilog
+  exit
+}
 
-export_design -rtl verilog -format ip_catalog -ipname "hash_table" -display_name "Hash Table (cuckoo)" -description "" -vendor "ethz.systems.fpga" -version "1.0"
 if {$hls_act == "install_ip"} {
-   file delete -force ${ip_repo}/${prj_name}
-   exec unzip ${prj_name}/solution1/impl/ip/*.zip -d ${ip_repo}/${prj_name}/
-} 
+  file delete -force ${ip_repo}/${prj_name}
+  exec unzip ${prj_name}/solution1/impl/ip/*.zip -d ${ip_repo}/${prj_name}/
+}
 
 exit

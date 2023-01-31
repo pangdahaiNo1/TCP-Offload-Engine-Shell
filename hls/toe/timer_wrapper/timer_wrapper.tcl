@@ -13,28 +13,29 @@ set pcap_output_dir ${src_top_dir}/pcap/output
 open_project ${prj_name}
 
 open_solution solution1
-set_part ${fpga_part} 
+set_part ${fpga_part}
 create_clock -period 3.1 -name default
 set_clock_uncertainty 0.2
 
 set_top timer_wrapper
 
 add_files "${prj_src_dir}/${prj_name}.cpp \
-           ${src_top_dir}/utils/axi_utils.hpp \
-           ${src_top_dir}/toe/close_timer/close_timer.cpp \
-           ${src_top_dir}/toe/probe_timer/probe_timer.cpp \
-           ${src_top_dir}/toe/retransmit_timer/retransmit_timer.cpp " -cflags "-I${src_top_dir} -DDEBUG"
+  ${src_top_dir}/utils/axi_utils.hpp \
+  ${src_top_dir}/toe/close_timer/close_timer.cpp \
+  ${src_top_dir}/toe/probe_timer/probe_timer.cpp \
+  ${src_top_dir}/toe/retransmit_timer/retransmit_timer.cpp " -cflags "-I${src_top_dir} -DDEBUG"
 
 add_files -tb " ${src_top_dir}/toe/toe_conn.hpp"  -cflags "-I${src_top_dir} -DDEBUG"
 
 
 if {$hls_act == "csim"} {
-   csim_design -clean 
+  csim_design -clean
 }
-csynth_design
-
+if {$hls_act == "synth"} {
+  csynth_design
+}
 if {$hls_act == "cosim"} {
-   cosim_design -rtl verilog
+  cosim_design -rtl verilog
 }
 
 exit

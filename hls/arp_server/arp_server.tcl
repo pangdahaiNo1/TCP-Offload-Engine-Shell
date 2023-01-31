@@ -20,25 +20,31 @@ set_clock_uncertainty 0.2
 set_top arp_server
 
 
-add_files "${prj_src_dir}/${prj_name}.cpp 
-			${src_top_dir}/utils/axi_utils.hpp \
-            ${src_top_dir}/utils/axi_utils.cpp " -cflags "-I${src_top_dir} -DDEBUG"
+add_files "${prj_src_dir}/${prj_name}.cpp
+  ${src_top_dir}/utils/axi_utils.hpp \
+  ${src_top_dir}/utils/axi_utils.cpp " -cflags "-I${src_top_dir} -DDEBUG"
 
 add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
-            ${src_top_dir}/utils/pcap/pcap_to_stream.cpp \
-        	${src_top_dir}/utils/pcap/pcap.cpp \   
-            ${src_top_dir}/utils/axi_utils.cpp"   -csimflags "-I${src_top_dir} -DDEBUG -DEBUG_PCAP" 
+  ${src_top_dir}/utils/pcap/pcap_to_stream.cpp \
+  ${src_top_dir}/utils/pcap/pcap.cpp \
+  ${src_top_dir}/utils/axi_utils.cpp"   -csimflags "-I${src_top_dir} -DDEBUG -DEBUG_PCAP"
 
 if {$hls_act == "csim"} {
-   csim_design -clean -argv "${pcap_input_dir}/arp_in.pcap ${pcap_output_dir}/arp_golden.pcap"
+  csim_design -clean -argv "${pcap_input_dir}/arp_in.pcap ${pcap_output_dir}/arp_golden.pcap"
 }
 
-csynth_design
-export_design -format ip_catalog -ipname "arp_server" -display_name "ARP Subnet Server" -description "Replies to ARP queries and resolves IP addresses." 
+if {$hls_act == "synth"} {
+  csynth_design
+  export_design -format ip_catalog -ipname "arp_server" -display_name "ARP Subnet Server" -description "Replies to ARP queries and resolves IP addresses."
+}
+
+if {$hls_act == "cosim"} {
+  cosim_design -rtl verilog -argv "${pcap_input_dir}/arp_in.pcap ${pcap_output_dir}/arp_golden.pcap"
+}
 
 if {$hls_act == "install_ip"} {
-   file delete -force ${ip_repo}/${prj_name}
-   exec unzip ${prj_name}/solution1/impl/ip/*.zip -d ${ip_repo}/${prj_name}/
-} 
+  file delete -force ${ip_repo}/${prj_name}
+  exec unzip ${prj_name}/solution1/impl/ip/*.zip -d ${ip_repo}/${prj_name}/
+}
 
 exit

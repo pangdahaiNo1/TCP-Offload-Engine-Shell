@@ -15,7 +15,7 @@ TX_APP_INTF_SRC=$(TOE_SRC)/tx_app_intf
 TX_ENGINE_SRC=$(TOE_SRC)/tx_engine
 TX_SAR_TABLE_SRC=$(TOE_SRC)/tx_sar_table
 TIMER_WRAPPER_SRC=$(TOE_SRC)/timer_wrapper
-TEST_PORT_SRC=$(TOE_SRC)/test_port
+# TEST_PORT_SRC=$(TOE_SRC)/test_port
 
 HASH_TABLE_SRC=$(HLS_SRC_DIR)/hash_table
 ARP_SRC=$(HLS_SRC_DIR)/arp_server
@@ -60,7 +60,9 @@ project = arp_server \
 		tx_app_intf \
 		tx_engine \
 		tx_sar_table \
-		timer_wrapper
+		timer_wrapper \
+		echo_server \
+		iperf2
 
 
 all: build
