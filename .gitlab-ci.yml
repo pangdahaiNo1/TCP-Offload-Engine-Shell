@@ -1,13 +1,13 @@
 stages:
   - csim
   - synth
-  - cosim
+  - unzip-ip
   - export-ip
+  - cosim
 
 variables:
     GIT_DEPTH: "1"
     GIT_STRATEGY: clone
-
 
 default:
   image: gitlab.agileserve.org.cn:15050/zelin/vivado-ci-tools/ucas-cod-2022:v0.8
@@ -20,7 +20,6 @@ default:
       - stuck_or_timeout_failure
       - unknown_failure
 
-
 #=============================================================
 Simulation:
   stage: csim
@@ -28,27 +27,33 @@ Simulation:
     - make project=$TOE_MODULE  HLS_ACT=csim hls_prj 
   parallel:
     matrix:
-      - TOE_MODULE: [arp_server,
-                    hash_table,
-                    ethernet_header_inserter,
-                    icmp_server,
-                    packet_handler,
-                    ack_delay,
-                    close_timer,
-                    event_engine,
-                    port_table,
-                    probe_timer,
-                    retransmit_timer,
-                    rx_app_intf,
-                    rx_engine,
-                    rx_sar_table,
-                    session_lookup_controller,
-                    state_table,
-                    tx_app_intf,
-                    tx_engine,
-                    tx_sar_table,
-                    timer_wrapper,
-                    toe]
+      - TOE_MODULE: 
+          # app
+          - echo_server
+          - iperf2
+          # TOE module
+          - arp_server
+          - ethernet_header_inserter
+          - hash_table
+          - icmp_server
+          - packet_handler
+          - toe
+          # inner TOE
+          - ack_delay
+          - close_timer
+          - event_engine
+          - port_table
+          - probe_timer
+          - retransmit_timer
+          - rx_app_intf
+          - rx_engine
+          - rx_sar_table
+          - session_lookup_controller
+          - state_table
+          - tx_app_intf
+          - tx_engine
+          - tx_sar_table
+          - timer_wrapper
 
 Synthesis:
   stage: synth
@@ -57,52 +62,111 @@ Synthesis:
     - make project=$TOE_MODULE  HLS_ACT=synth hls_prj 
   parallel:
     matrix:
-      - TOE_MODULE: [arp_server,
-                    hash_table,
-                    ethernet_header_inserter,
-                    icmp_server,
-                    packet_handler,
-                    ack_delay,
-                    close_timer,
-                    event_engine,
-                    port_table,
-                    probe_timer,
-                    retransmit_timer,
-                    rx_app_intf,
-                    rx_engine,
-                    rx_sar_table,
-                    session_lookup_controller,
-                    state_table,
-                    tx_app_intf,
-                    tx_engine,
-                    tx_sar_table,
-                    timer_wrapper,
-                    toe]
+      - TOE_MODULE: 
+          # app
+          - echo_server
+          - iperf2
+          # TOE module
+          - arp_server
+          - ethernet_header_inserter
+          - hash_table
+          - icmp_server
+          - packet_handler
+          - toe
+          # inner TOE
+          - ack_delay
+          - close_timer
+          - event_engine
+          - port_table
+          - probe_timer
+          - retransmit_timer
+          - rx_app_intf
+          - rx_engine
+          - rx_sar_table
+          - session_lookup_controller
+          - state_table
+          - tx_app_intf
+          - tx_engine
+          - tx_sar_table
+          - timer_wrapper
+  artifacts:
+    name: "MR_TOE-$CI_JOB_STAGE-$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - vivado_hls_prj/*
+
+# unzip each ip
+Unzip_IP:
+  stage: unzip-ip
+  dependencies:
+    - Synthesis
+  script:
+    - make project=$TOE_MODULE  HLS_ACT=install_ip hls_prj 
+  parallel:
+    matrix:
+      - TOE_MODULE: 
+          # app
+          - echo_server
+          - iperf2
+          # TOE module
+          - arp_server
+          - ethernet_header_inserter
+          - hash_table
+          - icmp_server
+          - packet_handler
+          - toe
+  artifacts:
+    name: "MR_TOE-$CI_JOB_STAGE-$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - ip_repo/*
+
+Export_IP:
+  stage: export-ip
+  dependencies:
+    - Unzip_IP
+  script:
+    - echo "Merge all ips into one zip"
+  artifacts:
+    name: "MR_TOE-$CI_JOB_STAGE-$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - ip_repo/*
 
 Cosim:
   stage: cosim
   script:
     - make project=$TOE_MODULE  HLS_ACT=cosim hls_prj 
+  dependencies:
+    - Synthesis
   parallel:
     matrix:
-      - TOE_MODULE: [arp_server,
-                    hash_table,
-                    ethernet_header_inserter,
-                    icmp_server,
-                    packet_handler,
-                    ack_delay,
-                    close_timer,
-                    event_engine,
-                    port_table,
-                    probe_timer,
-                    retransmit_timer,
-                    rx_app_intf,
-                    rx_engine,
-                    rx_sar_table,
-                    session_lookup_controller,
-                    state_table,
-                    tx_app_intf,
-                    tx_engine,
-                    tx_sar_table,
-                    timer_wrapper,
-                    toe]
+      - TOE_MODULE: 
+          # app
+          - echo_server
+          - iperf2
+          # TOE module
+          - arp_server
+          - ethernet_header_inserter
+          - hash_table
+          - icmp_server
+          - packet_handler
+          - toe
+          # inner TOE
+          - ack_delay
+          - close_timer
+          - event_engine
+          - port_table
+          - probe_timer
+          - retransmit_timer
+          - rx_app_intf
+          - rx_engine
+          - rx_sar_table
+          - session_lookup_controller
+          - state_table
+          - tx_app_intf
+          - tx_engine
+          - tx_sar_table
+          - timer_wrapper     
+  artifacts:
+    name: "MR_TOE-$CI_JOB_STAGE-$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - ip_repo/*
+      - vivado_hls_prj/* 
