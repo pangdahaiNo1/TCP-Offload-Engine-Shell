@@ -39,11 +39,10 @@ add_files " ${prj_src_dir}/${prj_name}.cpp \
   ${src_top_dir}/utils/axi_utils.cpp " -cflags "-I${src_top_dir} -DDEBUG"
 
 add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
-  ${src_top_dir}/utils/pcap/pcap_to_stream.cpp \
-  ${src_top_dir}/utils/pcap/pcap.cpp \
-  ${src_top_dir}/utils/axi_utils.cpp \
-  ${src_top_dir}/toe/toe_conn.hpp \
-  ${src_top_dir}/net_app/echo_server/echo_server.cpp"  -cflags "-I${src_top_dir} -DDEBUG"
+  ${src_top_dir}/toe/mock/mock_logger.hpp \
+  ${src_top_dir}/toe/mock/mock_memory.hpp \
+  ${src_top_dir}/toe/mock/mock_net_app.hpp \
+  ${src_top_dir}/toe/mock/mock_cam.hpp "  -cflags "-I${src_top_dir} -I${src_top_dir}/toe -DDEBUG"
 
 if {$hls_act == "csim"} {
   csim_design -clean   -argv "${pcap_input_dir}/echo_client_golden_tiny.pcap"

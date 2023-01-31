@@ -25,11 +25,14 @@ add_files "${prj_src_dir}/${prj_name}.cpp \
   ${src_top_dir}/toe/probe_timer/probe_timer.cpp \
   ${src_top_dir}/toe/retransmit_timer/retransmit_timer.cpp " -cflags "-I${src_top_dir} -DDEBUG"
 
-add_files -tb " ${src_top_dir}/toe/toe_conn.hpp"  -cflags "-I${src_top_dir} -DDEBUG"
-
+add_files -tb "${src_top_dir}/toe/mock/mock_logger.hpp \
+  ${src_top_dir}/toe/mock/mock_memory.hpp \
+  ${src_top_dir}/toe/mock/mock_net_app.hpp \
+  ${src_top_dir}/toe/mock/mock_cam.hpp "  -cflags "-I${src_top_dir} -I${src_top_dir}/toe -DDEBUG"
 
 if {$hls_act == "csim"} {
-  csim_design -clean
+  #csim_design -clean
+  exit
 }
 if {$hls_act == "synth"} {
   csynth_design

@@ -23,7 +23,7 @@ set_top iperf2
 add_files "${prj_src_dir}/${prj_name}.cpp \
   ${src_top_dir}/utils/axi_utils.cpp \
   ${src_top_dir}/toe/toe_conn.hpp \
-  ${src_top_dir}/toe/memory_access/memory_access.hpp\
+  ${src_top_dir}/toe/memory_access/memory_access.hpp \
   ${toe_src_dir}/ack_delay/ack_delay.cpp \
   ${toe_src_dir}/event_engine/event_engine.cpp \
   ${toe_src_dir}/port_table/port_table.cpp \

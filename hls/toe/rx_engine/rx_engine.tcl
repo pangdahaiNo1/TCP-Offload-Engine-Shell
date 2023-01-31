@@ -32,7 +32,6 @@ add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
 
 if {$hls_act == "csim"} {
   csim_design -clean  -argv  "${pcap_input_dir}/echo_client_golden_tiny.pcap"
-  exit
 }
 
 if {$hls_act == "synth"} {
@@ -41,6 +40,6 @@ if {$hls_act == "synth"} {
 
 if {$hls_act == "cosim"} {
   cosim_design -rtl verilog -argv  "${pcap_input_dir}/echo_client_golden_tiny.pcap "
-}echo_client_golden_tiny
+}
 
 exit
