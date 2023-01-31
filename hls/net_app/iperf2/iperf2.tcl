@@ -18,7 +18,7 @@ set_part ${fpga_part}
 create_clock -period 3.1 -name default
 set_clock_uncertainty 0.2
 
-set_top iperf
+set_top iperf2
 
 add_files "${prj_src_dir}/${prj_name}.cpp \
   ${src_top_dir}/utils/axi_utils.cpp \
