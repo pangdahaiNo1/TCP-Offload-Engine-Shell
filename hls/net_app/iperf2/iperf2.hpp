@@ -43,6 +43,8 @@ struct IperfRegs {
             << "|Max Conn " << max_connections;
     return sstream.str();
   }
+#else
+  INLINE char *to_string() { return 0; }
 #endif
 };
 
