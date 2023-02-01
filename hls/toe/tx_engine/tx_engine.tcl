@@ -32,7 +32,7 @@ add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
   ${src_top_dir}/utils/pcap/pcap.cpp \
   ${src_top_dir}/utils/axi_utils.cpp \
   ${src_top_dir}/utils/axi_utils_test.hpp \
-  ${src_top_dir}/toe/rx_engine/rx_engine.hpp"  -cflags "-I${src_top_dir} -I${src_top_dir}/toe -DDEBUG"
+  ${src_top_dir}/toe/rx_engine/rx_engine.cpp"  -cflags "-I${src_top_dir} -I${src_top_dir}/toe -DDEBUG"
 
 if {$hls_act == "csim"} {
   csim_design -clean  -argv  "${pcap_input_dir}/echo_server_golde_tiny.pcap"
