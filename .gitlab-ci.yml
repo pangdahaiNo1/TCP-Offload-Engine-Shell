@@ -59,6 +59,7 @@ Synthesis:
   needs: []
   script:
     - make project=$TOE_MODULE HLS_ACT=synth hls_prj 
+    - mkdir -p ip_repo
     - make project=$TOE_MODULE HLS_ACT=install_ip hls_prj 
   parallel:
     matrix:
