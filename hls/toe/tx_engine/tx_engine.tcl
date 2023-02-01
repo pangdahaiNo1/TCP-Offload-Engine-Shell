@@ -34,13 +34,13 @@ add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
   ${src_top_dir}/utils/axi_utils_test.hpp "  -cflags "-I${src_top_dir} -I${src_top_dir}/toe -DDEBUG"
 
 if {$hls_act == "csim"} {
-  csim_design -clean  -argv  "${pcap_input_dir}/echo_server_golden.pcap"
+  csim_design -clean  -argv  "${pcap_input_dir}/echo_server_golde_tiny.pcap"
 }
 if {$hls_act == "synth"} {
   csynth_design
 }
 if {$hls_act == "cosim"} {
-  cosim_design -rtl verilog -argv  "${pcap_input_dir}/echo_server_golden.pcap "
+  cosim_design -rtl verilog -argv  "${pcap_input_dir}/echo_server_golde_tiny.pcap "
 }
 
 exit

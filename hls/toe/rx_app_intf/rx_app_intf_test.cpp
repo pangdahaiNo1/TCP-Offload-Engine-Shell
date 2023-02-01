@@ -108,6 +108,10 @@ int TestDataHandler(stream<NetAXIS> &input_tcp_packets) {
   stream<NetAXISAppReadRsp> net_app_read_data_rsp;
   stream<RxSarAppReqRsp>    rx_app_to_rx_sar_req;
   stream<RxSarAppReqRsp>    rx_sar_to_rx_app_rsp;
+  // inner read mem cmd
+  stream<MemBufferRWCmd> rx_app_to_mem_read_cmd;
+  // read mem payload
+  stream<NetAXISWord> mover_to_rx_app_read_data;
   // rx engine data to net app
   stream<NetAXISWord> rx_eng_to_rx_app_data("rx_eng_to_rx_app_data");
   stream<NetAXIS>     rx_app_to_net_app_data("rx_app_to_net_app_data");
@@ -160,7 +164,8 @@ int TestDataHandler(stream<NetAXIS> &input_tcp_packets) {
                      net_app_read_data_rsp,
                      rx_app_to_rx_sar_req,
                      rx_sar_to_rx_app_rsp,
-                     rx_eng_to_rx_app_data,
+                     rx_app_to_mem_read_cmd,
+                     mover_to_rx_app_read_data,
                      rx_app_to_net_app_data);
     EmptyDataHandlerFifos(
         data_logger, net_app_read_data_rsp, rx_app_to_rx_sar_req, rx_app_to_net_app_data);
@@ -185,6 +190,9 @@ void TestRxAppIntf(stream<NetAXIS> &input_tcp_packets) {
   // rx sar req/rsp
   stream<RxSarAppReqRsp> rx_app_to_rx_sar_req;
   stream<RxSarAppReqRsp> rx_sar_to_rx_app_rsp;
+  // data from mem to net app
+  stream<DataMoverCmd> rx_app_to_mover_read_cmd;
+  stream<NetAXIS>      mover_to_rx_app_read_data;
   // data from rx engine to net app
   stream<NetAXISWord> rx_eng_to_rx_app_data;
   stream<NetAXIS>     rx_app_to_net_app_data;
@@ -267,7 +275,12 @@ void TestRxAppIntf(stream<NetAXIS> &input_tcp_packets) {
                 net_app_read_data_rsp,
                 rx_app_to_rx_sar_req,
                 rx_sar_to_rx_app_rsp,
+#if !(TCP_RX_DDR_BYPASS)
+                rx_app_to_mover_read_cmd,
+                mover_to_rx_app_read_data,
+#else
                 rx_eng_to_rx_app_data,
+#endif
                 rx_app_to_net_app_data,
                 rx_eng_to_rx_app_notification,
                 rtimer_to_rx_app_notification,

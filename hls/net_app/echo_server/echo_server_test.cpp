@@ -360,9 +360,9 @@ int main(int argc, char **argv) {
   char           *server_golden_file = argv[2];
   stream<NetAXIS> client_golden_tcp_pkt("client_golden_tcp_pkt");
   stream<NetAXIS> server_golden_tcp_pkt("server_golden_tcp_pkt");
-    PcapToStream(client_golden_file, true, client_golden_tcp_pkt);
+  PcapToStream(client_golden_file, true, client_golden_tcp_pkt);
   PcapToStream(server_golden_file, true, server_golden_tcp_pkt);
 
-  //TestEchoServer();
+  // TestEchoServer();
   TestEchoServerWithToe(client_golden_tcp_pkt);
 }
