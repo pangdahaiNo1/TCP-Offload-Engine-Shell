@@ -249,7 +249,7 @@ void echo_server(
 #pragma HLS INTERFACE ap_ctrl_none port = return
 
 #pragma HLS stable variable = tdest_const
-  // #pragma HLS INTERFACE mode = ap_stable register port = tdest_const
+  // #pragma HLS INTERFACE mode = ap_none register port = tdest_const
 
 #pragma HLS INTERFACE axis register both port = net_app_listen_port_req
 #pragma HLS aggregate variable = net_app_listen_port_req compact = bit

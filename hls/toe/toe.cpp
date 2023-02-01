@@ -153,7 +153,7 @@ void toe_top(
 #pragma HLS aggregate variable = rtl_cam_to_slookup_update_rsp compact = bit
 
 // ip
-#pragma HLS INTERFACE ap_stable register port = my_ip_addr name = my_ip_addr
+#pragma HLS INTERFACE ap_none register port = my_ip_addr name = my_ip_addr
 // session count register
 #pragma HLS INTERFACE ap_none register port = reg_session_cnt
   // some fifos
