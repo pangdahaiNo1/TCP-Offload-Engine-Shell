@@ -1,7 +1,6 @@
 stages:
   - csim
   - synth
-  - unzip-ip
   - export-ip
   - cosim
 
@@ -59,7 +58,8 @@ Synthesis:
   stage: synth
   needs: []
   script:
-    - make project=$TOE_MODULE  HLS_ACT=synth hls_prj 
+    - make project=$TOE_MODULE HLS_ACT=synth hls_prj 
+    - make project=$TOE_MODULE HLS_ACT=install_ip hls_prj 
   parallel:
     matrix:
       - TOE_MODULE: 
@@ -93,49 +93,23 @@ Synthesis:
     name: "MR_TOE-$CI_JOB_STAGE-$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA"
     paths:
       - vivado_hls_prj/*
-
-# unzip each ip
-Unzip_IP:
-  stage: unzip-ip
-  dependencies:
-    - Synthesis
-  script:
-    - make project=$TOE_MODULE  HLS_ACT=install_ip hls_prj 
-  parallel:
-    matrix:
-      - TOE_MODULE: 
-          # app
-          - echo_server
-          - iperf2
-          # TOE module
-          - arp_server
-          - ethernet_header_inserter
-          - hash_table
-          - icmp_server
-          - packet_handler
-          - toe
-  artifacts:
-    name: "MR_TOE-$CI_JOB_STAGE-$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA"
-    paths:
       - ip_repo/*
 
 Export_IP:
   stage: export-ip
-  dependencies:
-    - Unzip_IP
+  needs: ["Synthesis"]
   script:
     - echo "Merge all ips into one zip"
   artifacts:
-    name: "MR_TOE-$CI_JOB_STAGE-$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA"
+    name: "MR_TOE_IP_REPO-$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA"
     paths:
       - ip_repo/*
 
 Cosim:
   stage: cosim
+  needs: ["Synthesis"]
   script:
     - make project=$TOE_MODULE  HLS_ACT=cosim hls_prj 
-  dependencies:
-    - Synthesis
   parallel:
     matrix:
       - TOE_MODULE: 
