@@ -32,7 +32,7 @@ void EmptyFifos(MockLogger                     &logger,
     logger.Info("Retranstimer to Tx app notify NoTDEST", out_tx_app_notify.to_string(), false);
   }
 }
-MockLogger logger("./rtimer_inner.log");
+MockLogger logger("./rtimer_inner.log", RTRMT_TMR);
 
 int main() {
   stream<RxEngToRetransTimerReq> rx_eng_to_timer_clear_rtimer;
@@ -46,7 +46,7 @@ int main() {
   TxEngToRetransTimerReq tx_eng_req;
 
   // open output file
-  MockLogger top_logger("rtimer_top.log");
+  MockLogger top_logger("rtimer_top.log", RTRMT_TMR);
 
   int sim_cycle = 0;
   while (sim_cycle < 10000) {

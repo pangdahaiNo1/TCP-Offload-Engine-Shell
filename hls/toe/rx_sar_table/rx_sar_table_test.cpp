@@ -13,19 +13,19 @@ void EmptyFifos(MockLogger              &logger,
   RxSarLookupRsp  to_tx_eng_rsp;
   while (!(rx_sar_to_rx_app_rsp.empty())) {
     rx_sar_to_rx_app_rsp.read(to_rx_app_rsp);
-    logger.Info(RX_SAR, RX_APP_INTF, "R/W Rsp", to_rx_app_rsp.to_string());
+    logger.Info(RX_SAR_TB, RX_APP_IF, "R/W Rsp", to_rx_app_rsp.to_string());
   }
 
   while (!(rx_sar_to_rx_eng_rsp.empty())) {
     rx_sar_to_rx_eng_rsp.read(to_rx_eng_rsp);
-    logger.Info(RX_SAR, RX_ENG, "R/W Rsp", to_rx_eng_rsp.to_string());
+    logger.Info(RX_SAR_TB, RX_ENGINE, "R/W Rsp", to_rx_eng_rsp.to_string());
   }
   while (!(rx_sar_to_tx_eng_lup_rsp.empty())) {
     rx_sar_to_tx_eng_lup_rsp.read(to_tx_eng_rsp);
-    logger.Info(RX_SAR, TX_ENG, "Lup Rsp", to_tx_eng_rsp.to_string());
+    logger.Info(RX_SAR_TB, TX_ENGINE, "Lup Rsp", to_tx_eng_rsp.to_string());
   }
 }
-MockLogger logger("./rx_sar_inner.log", RX_SAR);
+MockLogger logger("./rx_sar_inner.log", RX_ENGINE);
 
 int main() {
   stream<RxSarAppReqRsp>  rx_app_to_rx_sar_req;
@@ -35,7 +35,7 @@ int main() {
   stream<TcpSessionID>    tx_eng_to_rx_sar_lup_req;
   stream<RxSarLookupRsp>  rx_sar_to_tx_eng_lup_rsp;
 
-  MockLogger top_logger("./rx_sar_top.log", RX_SAR);
+  MockLogger top_logger("./rx_sar_top.log", RX_SAR_TB);
 
   RxEngToRxSarReq rx_eng_req;
   RxSarAppReqRsp  rx_app_req;
