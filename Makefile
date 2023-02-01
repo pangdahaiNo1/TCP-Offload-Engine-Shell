@@ -27,8 +27,7 @@ VITIS_HLS_ACT = csim
 # export all varibles to sub makefile 
 export
 
-.PHONY: FORCE clean
-all: hls_prj cmac 
+.PHONY: FORCE clean hls_prj
 
 ifeq ($(HLS_ACT),)
 hls_prj: FORCE
