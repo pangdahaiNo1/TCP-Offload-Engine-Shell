@@ -29,7 +29,11 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "hash_table.hpp"
 
 const ap_uint<kMaxAddressBits> tabulation_table[kNumTables][2][kMaxKeySize] = {
-#include "tabulation_table.txt"
+#if MULTI_IP_ADDR
+#include "tabulation_table_96.txt"
+#else
+#include "tabulation_table_64.txt"
+#endif
 };
 
 static HTEntry<kKeySize, kValueSize> cuckooTables[kNumTables][kTableSize];

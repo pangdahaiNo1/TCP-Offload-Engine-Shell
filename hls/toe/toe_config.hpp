@@ -39,4 +39,7 @@ const uint64_t TCP_DDR_TX_BASE_ADDR = TCP_DDR_BASE_ADDR + 0x350000000;
 // echo-server:  0x52A61C18, iperf-server: 0x7C579CB3
 #define INIT_SEQ_NUMBER 0x7C579CB3
 
+// enable TOE support multi-ip fpga apps
+#define MULTI_IP_ADDR 1
+
 #endif  // _TOE_CONFIG_HPP_

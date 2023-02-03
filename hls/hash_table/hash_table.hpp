@@ -45,14 +45,14 @@ constexpr unsigned long ConstLog2(unsigned long val) {
   return val == 1 ? 0 : 1 + ConstLog2(val >> 1);
 }
 
-const uint32_t kMaxKeySize     = 64;
+const uint32_t kMaxKeySize     = (MULTI_IP_ADDR) ? 96 : 64;
 const uint32_t kMaxAddressBits = 16;
 
 const uint32_t kNumTables        = 9;
 const uint32_t kTableAddressBits = ConstLog2(kMaxNumberOfEntries / (kNumTables - 1));
 const uint32_t kTableSize        = (1 << kTableAddressBits);
 
-const uint32_t kKeySize   = 64;
+const uint32_t kKeySize   = (MULTI_IP_ADDR) ? 96 : 64;
 const uint32_t kValueSize = 16;
 const uint32_t kMaxTrials = 12;
 

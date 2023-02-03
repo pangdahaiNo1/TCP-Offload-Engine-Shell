@@ -41,11 +41,11 @@ uint64_t getRandomKey() { return distr(gen); }
 uint64_t getRandomTuple() { return 0; }
 
 int main() {
-  hls::stream<HTLookupReq<64> >      s_axis_lup_req;
-  hls::stream<HTUpdateReq<64, 16> >  s_axis_upd_req;
-  hls::stream<HTLookupResp<64, 16> > m_axis_lup_rsp;
-  hls::stream<HTUpdateResp<64, 16> > m_axis_upd_rsp;
-  ap_uint<16>                        reg_insert_fail_count;
+  hls::stream<HTLookupReq<kKeySize> >              s_axis_lup_req;
+  hls::stream<HTUpdateReq<kKeySize, kValueSize> >  s_axis_upd_req;
+  hls::stream<HTLookupResp<kKeySize, kValueSize> > m_axis_lup_rsp;
+  hls::stream<HTUpdateResp<kKeySize, kValueSize> > m_axis_upd_rsp;
+  ap_uint<16>                                      reg_insert_fail_count;
 
   std::map<uint64_t, uint16_t> expected_kv;
   uint32_t                     num_elements = (kNumTables - 1) * kTableSize;
@@ -61,7 +61,7 @@ int main() {
 
     // Check if key unique
     if (expected_kv.find(new_key) == expected_kv.end()) {
-      s_axis_upd_req.write(HTUpdateReq<64, 16>(KV_INSERT, new_key, new_value, SRC_A));
+      s_axis_upd_req.write(HTUpdateReq<kKeySize, kValueSize>(KV_INSERT, new_key, new_value, SRC_A));
       expected_kv[new_key] = new_value;
       i++;
     }
@@ -75,7 +75,7 @@ int main() {
     HashTable(
         s_axis_lup_req, s_axis_upd_req, m_axis_lup_rsp, m_axis_upd_rsp, reg_insert_fail_count);
     if (!m_axis_upd_rsp.empty()) {
-      HTUpdateResp<64, 16> response = m_axis_upd_rsp.read();
+      HTUpdateResp<kKeySize, kValueSize> response = m_axis_upd_rsp.read();
       if (!response.success) {
         success = false;
         std::cerr << "[ERROR] insert failed" << std::endl;
@@ -97,7 +97,7 @@ int main() {
   std::map<uint64_t, uint16_t>::const_iterator it;
   for (it = expected_kv.begin(); it != expected_kv.end(); ++it) {
     uint64_t key = it->first;
-    s_axis_lup_req.write(HTLookupReq<64>(key, SRC_A));
+    s_axis_lup_req.write(HTLookupReq<kKeySize>(key, SRC_A));
   }
 
   // Execute lookups
@@ -108,7 +108,7 @@ int main() {
     HashTable(
         s_axis_lup_req, s_axis_upd_req, m_axis_lup_rsp, m_axis_upd_rsp, reg_insert_fail_count);
     if (!m_axis_lup_rsp.empty()) {
-      HTLookupResp<64, 16> response = m_axis_lup_rsp.read();
+      HTLookupResp<kKeySize, kValueSize> response = m_axis_lup_rsp.read();
       if (!response.hit) {
         success = false;
         std::cerr << "[ERROR] LookUp did not return hit" << std::endl;
@@ -138,7 +138,7 @@ int main() {
   for (it = expected_kv.begin(); it != expected_kv.end(); ++it) {
     uint64_t key = it->first;
     if (even) {
-      s_axis_upd_req.write(HTUpdateReq<64, 16>(KV_DELETE, key, SRC_A, SRC_A));
+      s_axis_upd_req.write(HTUpdateReq<kKeySize, kValueSize>(KV_DELETE, key, SRC_A, SRC_A));
       expectedDeletes++;
     }
     even = !even;
@@ -151,7 +151,7 @@ int main() {
     HashTable(
         s_axis_lup_req, s_axis_upd_req, m_axis_lup_rsp, m_axis_upd_rsp, reg_insert_fail_count);
     if (!m_axis_upd_rsp.empty()) {
-      HTUpdateResp<64, 16> response = m_axis_upd_rsp.read();
+      HTUpdateResp<kKeySize, kValueSize> response = m_axis_upd_rsp.read();
       if (!response.success) {
         success = false;
         std::cerr << "[ERROR] delete failed" << std::endl;
@@ -173,7 +173,7 @@ int main() {
   // Run lookups again to make sure elements got deleted
   for (it = expected_kv.begin(); it != expected_kv.end(); ++it) {
     uint64_t key = it->first;
-    s_axis_lup_req.write(HTLookupReq<64>(key, SRC_A));
+    s_axis_lup_req.write(HTLookupReq<kKeySize>(key, SRC_A));
   }
 
   // Execute lookups
@@ -185,7 +185,7 @@ int main() {
     HashTable(
         s_axis_lup_req, s_axis_upd_req, m_axis_lup_rsp, m_axis_upd_rsp, reg_insert_fail_count);
     if (!m_axis_lup_rsp.empty()) {
-      HTLookupResp<64, 16> response = m_axis_lup_rsp.read();
+      HTLookupResp<kKeySize, kValueSize> response = m_axis_lup_rsp.read();
       if (even) {
         if (response.hit) {
           success = false;

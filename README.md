@@ -4,9 +4,11 @@
 
 1. 支持多Role APP的TCP-Offload-Engine
 
-
 ## Note
 1. ICMP Server 模块只计算ICMP checksum，不计算Ipv4 checksum
+
+### 支持多IP所做的修改
+1. Hash Table中的Key需要完整记录四元组，而不是之前的三元组，所以keySize=96
 
 ## 附录
 ### 1. 编码风格

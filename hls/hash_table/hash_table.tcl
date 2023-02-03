@@ -21,7 +21,7 @@ set_top ${prj_name}_top
 add_files ${prj_src_dir}/hash_table.cpp -cflags "-std=c++11 -I${src_top_dir}"
 
 
-add_files -tb ${prj_src_dir}/hash_table_test.cpp -cflags "-std=c++11 -I${src_top_dir}"
+add_files -tb ${prj_src_dir}/hash_table_test.cpp -cflags "-std=c++11 -I${src_top_dir} "
 
 
 if {$hls_act == "csim"} {

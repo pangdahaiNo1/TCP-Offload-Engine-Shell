@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
   int           blockSize  = atoi(argv[2]);
   int           keyLength  = atoi(argv[3]);
   int           hashLength = atoi(argv[4]);
-  std::string   fileName("tabulation_table.txt");
+  std::string   fileName("tabulation_table_" + std::to_string(keyLength) + ".txt");
   std::ofstream outfile;
   outfile.open(fileName.c_str());
   if (!outfile) {
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  uint32_t                           maxKeyValue = pow(2, keyLength) - 1;
+  uint64_t                           maxKeyValue = pow(keyLength, 2) - 1;
   std::default_random_engine         generator;
   std::uniform_int_distribution<int> distribution(0, maxKeyValue);
 
