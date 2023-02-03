@@ -43,7 +43,11 @@ void EmptyEchoFifos(MockLogger                     &logger,
 void TestEchoServer() {
   stream<NetAXIS> rand_data;
   stream<NetAXIS> rand_data_copy;
-  NetAppIntf      app(0x1, "_unit_test");
+#if MULTI_IP_ADDR
+  NetAppIntf app(mock_src_ip_addr, 0x1, "_unit_test");
+#else
+  NetAppIntf app(0x1, "_unit_test");
+#endif
 
   MockLogger top_logger("./echo_server_top.log", NET_APP);
 
@@ -91,20 +95,25 @@ void TestEchoServer() {
       default:
         break;
     }
-    echo_server(app.net_app_listen_port_req,
-                app.net_app_listen_port_rsp,
-                app.net_app_new_client_notification,
-                app.net_app_notification,
-                app.net_app_recv_data_req,
-                app.net_app_recv_data_rsp,
-                app.net_app_recv_data,
-                app.net_app_open_conn_req,
-                app.net_app_open_conn_rsp,
-                app.net_app_close_conn_req,
-                app.net_app_trans_data_req,
-                app.net_app_trans_data_rsp,
-                app.net_app_trans_data,
-                app.tdest_const);
+    echo_server(
+#if MULTI_IP_ADDR
+        app.my_ip_addr,
+#else
+#endif
+        app.tdest_const,
+        app.net_app_listen_port_req,
+        app.net_app_listen_port_rsp,
+        app.net_app_new_client_notification,
+        app.net_app_notification,
+        app.net_app_recv_data_req,
+        app.net_app_recv_data_rsp,
+        app.net_app_recv_data,
+        app.net_app_open_conn_req,
+        app.net_app_open_conn_rsp,
+        app.net_app_close_conn_req,
+        app.net_app_trans_data_req,
+        app.net_app_trans_data_rsp,
+        app.net_app_trans_data);
     EmptyEchoFifos(top_logger,
                    app.net_app_listen_port_req,
                    app.net_app_recv_data_req,
@@ -126,8 +135,12 @@ void TestEchoServerWithToe(stream<NetAXIS> &client_golden_pkt) {
   stream<NetAXIS> output_tcp_packet;
 
   // in big endian
-  IpAddr  my_ip_addr = 0x29131e0a;  // 10.19.0.36
-  ToeIntf toe_intf(my_ip_addr, "_echo_test");
+  IpAddr my_ip_addr = 0x29131e0a;  // 10.19.0.41
+#if MULTI_IP_ADDR
+  ToeIntf toe_intf("_echo_test");
+#else
+  ToeIntf    toe_intf(my_ip_addr, "_echo_test");
+#endif
   // mock cam
   MockCam mock_cam;
   // mock mem
@@ -188,20 +201,25 @@ void TestEchoServerWithToe(stream<NetAXIS> &client_golden_pkt) {
 #endif
     toe_intf.ConnectToeTxIntfWithMockMem(top_logger, tx_mock_mem);
 
-    echo_server(toe_intf.net_app_to_rx_app_listen_port_req,
-                toe_intf.rx_app_to_net_app_listen_port_rsp,
-                toe_intf.net_app_new_client_notification,
-                toe_intf.net_app_notification,
-                toe_intf.net_app_to_rx_app_recv_data_req,
-                toe_intf.rx_app_to_net_app_recv_data_rsp,
-                toe_intf.net_app_recv_data,
-                toe_intf.net_app_to_tx_app_open_conn_req,
-                toe_intf.tx_app_to_net_app_open_conn_rsp,
-                toe_intf.net_app_to_tx_app_close_conn_req,
-                toe_intf.net_app_to_tx_app_trans_data_req,
-                toe_intf.tx_app_to_net_app_trans_data_rsp,
-                toe_intf.net_app_trans_data,
-                mock_tdest);
+    echo_server(
+#if MULTI_IP_ADDR
+        my_ip_addr,
+#else
+#endif
+        mock_tdest,
+        toe_intf.net_app_to_rx_app_listen_port_req,
+        toe_intf.rx_app_to_net_app_listen_port_rsp,
+        toe_intf.net_app_new_client_notification,
+        toe_intf.net_app_notification,
+        toe_intf.net_app_to_rx_app_recv_data_req,
+        toe_intf.rx_app_to_net_app_recv_data_rsp,
+        toe_intf.net_app_recv_data,
+        toe_intf.net_app_to_tx_app_open_conn_req,
+        toe_intf.tx_app_to_net_app_open_conn_rsp,
+        toe_intf.net_app_to_tx_app_close_conn_req,
+        toe_intf.net_app_to_tx_app_trans_data_req,
+        toe_intf.tx_app_to_net_app_trans_data_rsp,
+        toe_intf.net_app_trans_data);
     while (!toe_intf.tx_ip_pkt_out.empty()) {
       output_tcp_packet.write(toe_intf.tx_ip_pkt_out.read());
     }
@@ -218,12 +236,19 @@ void TestToeWithTwoEcho(stream<NetAXIS> &input_tcp_packet) {
   stream<NetAXIS> output_tcp_packet;
 
   // toe intf
-  IpAddr  my_ip_addr = 0x24131e0a;  // 10.19.0.36
-  ToeIntf toe(my_ip_addr, "_with_two_echo");
+  IpAddr echo0_ip_addr = 0x24131e0a;  // 10.19.0.36
+  IpAddr echo1_ip_addr = 0x24131e0b;  // 10.19.0.36
+#if MULTI_IP_ADDR
+  ToeIntf toe("_with_two_echo");
   // echo0 intf
-  NetAppIntf app0(0x1, "_echo1");
+  NetAppIntf app0(echo0_ip_addr, 0x1, "_echo1");
   // echo 1 intf
+  NetAppIntf app1(echo1_ip_addr, 0x2, "_echo2");
+#else
+  ToeIntf    toe(echo0_ip_addr, "_with_two_echo");
+  NetAppIntf app0(0x1, "_echo1");
   NetAppIntf app1(0x2, "_echo2");
+#endif
 
   MockCam    mock_cam;
   MockMem    tx_mock_mem;
@@ -310,35 +335,45 @@ void TestToeWithTwoEcho(stream<NetAXIS> &input_tcp_packet) {
     toe.ConnectToeRxIntfWithMockMem(top_logger, rx_mock_mem);
 #endif
     toe.ConnectToeTxIntfWithMockMem(top_logger, tx_mock_mem);
-    echo_server(app0.net_app_listen_port_req,
-                app0.net_app_listen_port_rsp,
-                app0.net_app_new_client_notification,
-                app0.net_app_notification,
-                app0.net_app_recv_data_req,
-                app0.net_app_recv_data_rsp,
-                app0.net_app_recv_data,
-                app0.net_app_open_conn_req,
-                app0.net_app_open_conn_rsp,
-                app0.net_app_close_conn_req,
-                app0.net_app_trans_data_req,
-                app0.net_app_trans_data_rsp,
-                app0.net_app_trans_data,
-                app0.tdest_const);
+    echo_server(
+#if MULTI_IP_ADDR
+        app0.my_ip_addr,
+#else
+#endif
+        app0.tdest_const,
+        app0.net_app_listen_port_req,
+        app0.net_app_listen_port_rsp,
+        app0.net_app_new_client_notification,
+        app0.net_app_notification,
+        app0.net_app_recv_data_req,
+        app0.net_app_recv_data_rsp,
+        app0.net_app_recv_data,
+        app0.net_app_open_conn_req,
+        app0.net_app_open_conn_rsp,
+        app0.net_app_close_conn_req,
+        app0.net_app_trans_data_req,
+        app0.net_app_trans_data_rsp,
+        app0.net_app_trans_data);
 
-    echo_server(app1.net_app_listen_port_req,
-                app1.net_app_listen_port_rsp,
-                app1.net_app_new_client_notification,
-                app1.net_app_notification,
-                app1.net_app_recv_data_req,
-                app1.net_app_recv_data_rsp,
-                app1.net_app_recv_data,
-                app1.net_app_open_conn_req,
-                app1.net_app_open_conn_rsp,
-                app1.net_app_close_conn_req,
-                app1.net_app_trans_data_req,
-                app1.net_app_trans_data_rsp,
-                app1.net_app_trans_data,
-                app1.tdest_const);
+    echo_server(
+#if MULTI_IP_ADDR
+        app1.my_ip_addr,
+#else
+#endif
+        app1.tdest_const,
+        app1.net_app_listen_port_req,
+        app1.net_app_listen_port_rsp,
+        app1.net_app_new_client_notification,
+        app1.net_app_notification,
+        app1.net_app_recv_data_req,
+        app1.net_app_recv_data_rsp,
+        app1.net_app_recv_data,
+        app1.net_app_open_conn_req,
+        app1.net_app_open_conn_rsp,
+        app1.net_app_close_conn_req,
+        app1.net_app_trans_data_req,
+        app1.net_app_trans_data_rsp,
+        app1.net_app_trans_data);
     while (!toe.tx_ip_pkt_out.empty()) {
       output_tcp_packet.write(toe.tx_ip_pkt_out.read());
     }

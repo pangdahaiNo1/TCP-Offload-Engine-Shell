@@ -7,6 +7,12 @@
 
 using std::string;
 struct NetAppIntf {
+#if MULTI_IP_ADDR
+  IpAddr my_ip_addr;
+#else
+#endif
+  // tdest constant
+  NetAXISDest tdest_const;
   // listen port
   stream<NetAXISListenPortReq> net_app_listen_port_req;
   stream<NetAXISListenPortRsp> net_app_listen_port_rsp;
@@ -27,9 +33,12 @@ struct NetAppIntf {
   stream<NetAXISAppTransDataReq> net_app_trans_data_req;
   stream<NetAXISAppTransDataRsp> net_app_trans_data_rsp;
   stream<NetAXIS>                net_app_trans_data;
-  NetAXISDest                    tdest_const;
-
+#if MULTI_IP_ADDR
+  NetAppIntf(IpAddr ip_addr, NetAXISDest tdest, string fifo_suffix) {
+    my_ip_addr = ip_addr;
+#else
   NetAppIntf(NetAXISDest tdest, string fifo_suffix) {
+#endif
     tdest_const = tdest;
     // set fifo name
     net_app_listen_port_req.set_name(("net_app_listen_port_req" + fifo_suffix).c_str());

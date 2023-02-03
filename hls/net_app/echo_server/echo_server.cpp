@@ -224,6 +224,11 @@ void                 EchoServerDummy(stream<NetAXISAppOpenConnReq>  &net_app_ope
 }
 
 void echo_server(
+#if MULTI_IP_ADDR
+    IpAddr &my_ip_addr,
+#else
+#endif
+    NetAXISDest &tdest_const,
     // listen port
     stream<NetAXISListenPortReq> &net_app_listen_port_req,
     stream<NetAXISListenPortRsp> &net_app_listen_port_rsp,
@@ -243,13 +248,15 @@ void echo_server(
     // transmit data
     stream<NetAXISAppTransDataReq> &net_app_trans_data_req,
     stream<NetAXISAppTransDataRsp> &net_app_trans_data_rsp,
-    stream<NetAXIS>                &net_app_trans_data,
-    NetAXISDest                    &tdest_const) {
+    stream<NetAXIS>                &net_app_trans_data) {
 #pragma HLS                        DATAFLOW
 #pragma HLS INTERFACE ap_ctrl_none port = return
 
+#if MULTI_IP_ADDR
+#pragma HLS INTERFACE ap_none register port = my_ip_addr name = my_ip_addr
+#else
+#endif
 #pragma HLS stable variable = tdest_const
-  // #pragma HLS INTERFACE mode = ap_none register port = tdest_const
 
 #pragma HLS INTERFACE axis register both port = net_app_listen_port_req
 #pragma HLS aggregate variable = net_app_listen_port_req compact = bit
