@@ -68,6 +68,10 @@ struct TxAppTableToTxAppRsp {
 };
 
 void TxAppConnectionHandler(
+#if MULTI_IP_ADDR
+#else
+    IpAddr &my_ip_addr,
+#endif
     // net app
     stream<NetAXISAppOpenConnReq>  &net_app_to_tx_app_open_conn_req,
     stream<NetAXISAppOpenConnRsp>  &tx_app_to_net_app_open_conn_rsp,
@@ -91,8 +95,7 @@ void TxAppConnectionHandler(
     stream<StateTableReq> &tx_app_to_sttable_req,
     stream<SessionState>  &sttable_to_tx_app_rsp,
     // event engine
-    stream<Event> &tx_app_conn_handler_to_event_engine,
-    IpAddr        &my_ip_addr);
+    stream<Event> &tx_app_conn_handler_to_event_engine);
 
 void TxAppDataHandler(
     // net app
@@ -124,6 +127,10 @@ void TxAppTableInterface(
     stream<TxAppTableToTxAppRsp> &tx_app_table_to_tx_app_rsp);
 
 void tx_app_intf(
+#if MULTI_IP_ADDR
+#else
+    IpAddr &my_ip_addr,
+#endif
     // net app connection request
     stream<NetAXISAppOpenConnReq>  &net_app_to_tx_app_open_conn_req,
     stream<NetAXISAppOpenConnRsp>  &tx_app_to_net_app_open_conn_rsp,
@@ -162,8 +169,6 @@ void tx_app_intf(
     // datamover req/rsp
     stream<DataMoverCmd>    &tx_app_to_mover_write_cmd,
     stream<NetAXIS>         &tx_app_to_mover_write_data,
-    stream<DataMoverStatus> &mover_to_tx_app_write_status,
-    // in big endian
-    IpAddr &my_ip_addr);
+    stream<DataMoverStatus> &mover_to_tx_app_write_status);
 
 #endif

@@ -10,9 +10,12 @@
 ### 支持多IP所做的修改
 1. Hash Table中的Key需要完整记录四元组，而不是之前的三元组，所以keySize=96
 2. CamTuple类型使用FourTuple
-2. Session Lookup Controller中操作的key为四元组
-3. MockCam中模拟的KV Map，其Key为四元组
-4. PortTable应该记录每个IP分配的Port，但也可以保持现状，即所有端口均不同
+3. Session Lookup Controller中操作的key为四元组
+4. MockCam中模拟的KV Map，其Key为四元组
+5. PortTable应该记录每个IP分配的Port，但也可以保持现状，即所有端口均不同
+6. Tx app intf中App打开TCP连接的请求中，应该携带该App的IP地址
+
+
 ## 附录
 ### 1. 编码风格
 参考[Google 开源项目风格指南-命名规范](https://zh-google-styleguide.readthedocs.io/en/latest/google-cpp-styleguide/naming/#macro-names)

@@ -514,17 +514,31 @@ struct FourTuple {
 };
 
 // ip + port are all in big endian
-struct IpPortTuple {
+struct OpenConnTuple {
+#if MULTI_IP_ADDR
+  IpAddr my_ip_addr;
+#else
+#endif
+  // remote IP:Addr
   // big endian
   IpAddr ip_addr;
   // big endian
   TcpPortNumber tcp_port;
-  IpPortTuple() {}
-  IpPortTuple(IpAddr ip, TcpPortNumber port) : ip_addr(ip), tcp_port(port) {}
+  OpenConnTuple() {}
+#if MULTI_IP_ADDR
+  OpenConnTuple(IpAddr my_ip, IpAddr ip, TcpPortNumber port)
+      : my_ip_addr(my_ip), ip_addr(ip), tcp_port(port) {}
+#else
+  OpenConnTuple(IpAddr ip, TcpPortNumber port) : ip_addr(ip), tcp_port(port) {}
+#endif
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
-    sstream << "IP:Port " << SwapByte(ip_addr).to_string(16) << ":"
+#if MULTI_IP_ADDR
+    sstream << "my IP " << SwapByte(my_ip_addr).to_string(16) << "\t";
+#else
+#endif
+    sstream << "remote IP:Port " << SwapByte(ip_addr).to_string(16) << ":"
             << SwapByte(tcp_port).to_string(16) << "\t";
     return sstream.str();
   }
@@ -1127,11 +1141,11 @@ struct AppNotification {
 };
 
 // Tx app use ip:port to create session with other side
-typedef hls::axis<IpPortTuple, 0, 0, NET_TDEST_WIDTH> NetAXISAppOpenConnReq;
+typedef hls::axis<OpenConnTuple, 0, 0, NET_TDEST_WIDTH> NetAXISAppOpenConnReq;
 
 struct AppOpenConnReq {
-  IpPortTuple data;
-  NetAXISDest dest;
+  OpenConnTuple data;
+  NetAXISDest   dest;
   AppOpenConnReq() {}
   AppOpenConnReq(const NetAXISAppOpenConnReq &net_axis) {
 #pragma HLS INLINE

@@ -34,6 +34,10 @@ void                 TxAppEventMerger(stream<Event> &tx_app_conn_handler_to_even
  * @p closeConIn the application can initiate the teardown of the connection.
  */
 void TxAppConnectionHandler(
+#if MULTI_IP_ADDR
+#else
+    IpAddr &my_ip_addr,
+#endif
     // net app
     stream<NetAXISAppOpenConnReq>  &net_app_to_tx_app_open_conn_req,
     stream<NetAXISAppOpenConnRsp>  &tx_app_to_net_app_open_conn_rsp,
@@ -57,8 +61,7 @@ void TxAppConnectionHandler(
     stream<StateTableReq> &tx_app_to_sttable_req,
     stream<SessionState>  &sttable_to_tx_app_rsp,
     // event engine
-    stream<Event> &tx_app_conn_handler_to_event_engine,
-    IpAddr        &my_ip_addr) {
+    stream<Event> &tx_app_conn_handler_to_event_engine) {
 #pragma HLS INLINE   off
 #pragma HLS pipeline II = 1
 
@@ -81,11 +84,19 @@ void TxAppConnectionHandler(
     TcpPortNumber free_port = ptable_to_tx_app_rsp.read();
     logger.Info(PORT_TBLE, TX_APP_IF, "FreePort Rsp LE", free_port.to_string(16));
     // generate a session id, and record the TDEST
+#if MULTI_IP_ADDR
+    to_slup_req = TxAppToSlookupReq(FourTuple(app_open_req_reg.data.my_ip_addr,
+                                              app_open_req_reg.data.ip_addr,
+                                              SwapByte<16>(free_port),
+                                              app_open_req_reg.data.tcp_port),
+                                    app_open_req_reg.dest);
+#else
     to_slup_req = TxAppToSlookupReq(FourTuple(my_ip_addr,
                                               app_open_req_reg.data.ip_addr,
                                               SwapByte<16>(free_port),
                                               app_open_req_reg.data.tcp_port),
                                     app_open_req_reg.dest);
+#endif
     tx_app_to_slookup_req.write(to_slup_req);
     logger.Info(TX_APP_IF, SLUP_CTRL, "Session Create", to_slup_req.to_string());
     tx_app_wait_for_free_port_lock = false;
@@ -498,6 +509,10 @@ void TxAppTableInterface(
 }
 
 void tx_app_intf(
+#if MULTI_IP_ADDR
+#else
+    IpAddr &my_ip_addr,
+#endif
     // net app connection request
     stream<NetAXISAppOpenConnReq>  &net_app_to_tx_app_open_conn_req,
     stream<NetAXISAppOpenConnRsp>  &tx_app_to_net_app_open_conn_rsp,
@@ -536,9 +551,7 @@ void tx_app_intf(
     // datamover req/rsp
     stream<DataMoverCmd>    &tx_app_to_mover_write_cmd,
     stream<NetAXIS>         &tx_app_to_mover_write_data,
-    stream<DataMoverStatus> &mover_to_tx_app_write_status,
-    // in big endian
-    IpAddr &my_ip_addr) {
+    stream<DataMoverStatus> &mover_to_tx_app_write_status) {
 // #pragma HLS          INLINE
 // #pragma HLS PIPELINE II = 1
 #pragma HLS DATAFLOW
@@ -588,6 +601,10 @@ void tx_app_intf(
 #pragma HLS aggregate variable = tx_app_to_mem_write_data_fifo compact = bit
 #pragma HLS stream variable = tx_app_to_mem_write_data_fifo depth = 4
   TxAppConnectionHandler(
+#if MULTI_IP_ADDR
+#else
+      my_ip_addr,
+#endif
       // net app
       net_app_to_tx_app_open_conn_req,
       tx_app_to_net_app_open_conn_rsp,
@@ -610,8 +627,7 @@ void tx_app_intf(
       // state table read/write req/rsp
       tx_app_to_sttable_req,
       sttable_to_tx_app_rsp,
-      tx_app_conn_handler_to_event_engine_fifo,
-      my_ip_addr);
+      tx_app_conn_handler_to_event_engine_fifo);
   // data handler
   TxAppDataHandler(
       // net app

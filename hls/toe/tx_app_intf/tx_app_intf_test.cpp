@@ -167,23 +167,27 @@ void TestTxAppConn() {
       default:
         break;
     }
-    TxAppConnectionHandler(net_app_to_tx_app_open_conn_req,
-                           tx_app_to_net_app_open_conn_rsp,
-                           net_app_to_tx_app_close_conn_req,
-                           rx_eng_to_tx_app_new_client_notification,
-                           net_app_new_client_notification,
-                           rx_eng_to_tx_app_notification,
-                           rtimer_to_tx_app_notification,
-                           tx_app_to_slookup_req,
-                           slookup_to_tx_app_rsp,
-                           tx_app_to_slookup_check_tdest_req,
-                           slookup_to_tx_app_check_tdest_rsp,
-                           tx_app_to_ptable_req,
-                           ptable_to_tx_app_rsp,
-                           tx_app_to_sttable_req,
-                           sttable_to_tx_app_rsp,
-                           tx_app_conn_handler_to_event_engine,
-                           my_ip_addr);
+    TxAppConnectionHandler(
+#if MULTI_IP_ADDR
+#else
+        my_ip_addr,
+#endif
+        net_app_to_tx_app_open_conn_req,
+        tx_app_to_net_app_open_conn_rsp,
+        net_app_to_tx_app_close_conn_req,
+        rx_eng_to_tx_app_new_client_notification,
+        net_app_new_client_notification,
+        rx_eng_to_tx_app_notification,
+        rtimer_to_tx_app_notification,
+        tx_app_to_slookup_req,
+        slookup_to_tx_app_rsp,
+        tx_app_to_slookup_check_tdest_req,
+        slookup_to_tx_app_check_tdest_rsp,
+        tx_app_to_ptable_req,
+        ptable_to_tx_app_rsp,
+        tx_app_to_sttable_req,
+        sttable_to_tx_app_rsp,
+        tx_app_conn_handler_to_event_engine);
     EmptyTxAppConnFifos(conn_logger,
                         tx_app_to_ptable_req,
                         tx_app_to_slookup_req,
@@ -366,12 +370,21 @@ void TestTxAppIntf(stream<NetAXIS> &input_tcp_packets) {
   while (sim_cycle < 200) {
     switch (sim_cycle) {
       case 1:
-        // role 1 open a conn
-        open_conn_req.data = IpPortTuple(mock_dst_ip_addr, mock_dst_tcp_port);
+// role 1 open a conn
+#if MULTI_IP_ADDR
+        open_conn_req.data = OpenConnTuple(mock_src_ip_addr, mock_dst_ip_addr, mock_dst_tcp_port);
+#else
+        open_conn_req.data = OpenConnTuple(mock_dst_ip_addr, mock_dst_tcp_port);
+#endif
         open_conn_req.dest = 0x1;
         net_app_to_tx_app_open_conn_req.write(open_conn_req.to_net_axis());
         // role 2 open a conn
-        open_conn_req.data = IpPortTuple(mock_dst_ip_addr, mock_dst_tcp_port + 0x0100);
+#if MULTI_IP_ADDR
+        open_conn_req.data =
+            OpenConnTuple(mock_src_ip_addr, mock_dst_ip_addr, mock_dst_tcp_port + 0x0100);
+#else
+        open_conn_req.data = OpenConnTuple(mock_dst_ip_addr, mock_dst_tcp_port + 0x0100);
+#endif
         open_conn_req.dest = 0x2;
         net_app_to_tx_app_open_conn_req.write(open_conn_req.to_net_axis());
         // port table return port = 80 LE
@@ -438,33 +451,37 @@ void TestTxAppIntf(stream<NetAXIS> &input_tcp_packets) {
       default:
         break;
     }
-    tx_app_intf(net_app_to_tx_app_open_conn_req,
-                tx_app_to_net_app_open_conn_rsp,
-                net_app_to_tx_app_close_conn_req,
-                rx_eng_to_tx_app_new_client_notification,
-                net_app_new_client_notification,
-                rx_eng_to_tx_app_notification,
-                rtimer_to_tx_app_notification,
-                tx_app_to_slookup_req,
-                slookup_to_tx_app_rsp,
-                tx_app_to_slookup_check_tdest_req,
-                slookup_to_tx_app_check_tdest_rsp,
-                tx_app_to_ptable_req,
-                ptable_to_tx_app_rsp,
-                tx_app_to_sttable_req,
-                sttable_to_tx_app_rsp,
-                net_app_to_tx_app_trans_data_req,
-                tx_app_to_net_app_trans_data_rsp,
-                net_app_trans_data,
-                tx_app_to_tx_sar_upd_req,
-                tx_sar_to_tx_app_upd_req,
-                tx_app_to_event_eng_set_event,
-                tx_app_to_sttable_lup_req,
-                sttable_to_tx_app_lup_rsp,
-                tx_app_to_mover_write_cmd,
-                tx_app_to_mover_write_data,
-                mover_to_tx_app_write_status,
-                my_ip_addr);
+    tx_app_intf(
+#if MULTI_IP_ADDR
+#else
+        my_ip_addr,
+#endif
+        net_app_to_tx_app_open_conn_req,
+        tx_app_to_net_app_open_conn_rsp,
+        net_app_to_tx_app_close_conn_req,
+        rx_eng_to_tx_app_new_client_notification,
+        net_app_new_client_notification,
+        rx_eng_to_tx_app_notification,
+        rtimer_to_tx_app_notification,
+        tx_app_to_slookup_req,
+        slookup_to_tx_app_rsp,
+        tx_app_to_slookup_check_tdest_req,
+        slookup_to_tx_app_check_tdest_rsp,
+        tx_app_to_ptable_req,
+        ptable_to_tx_app_rsp,
+        tx_app_to_sttable_req,
+        sttable_to_tx_app_rsp,
+        net_app_to_tx_app_trans_data_req,
+        tx_app_to_net_app_trans_data_rsp,
+        net_app_trans_data,
+        tx_app_to_tx_sar_upd_req,
+        tx_sar_to_tx_app_upd_req,
+        tx_app_to_event_eng_set_event,
+        tx_app_to_sttable_lup_req,
+        sttable_to_tx_app_lup_rsp,
+        tx_app_to_mover_write_cmd,
+        tx_app_to_mover_write_data,
+        mover_to_tx_app_write_status);
     EmptyTxAppConnFifos(top_logger,
                         tx_app_to_ptable_req,
                         tx_app_to_slookup_req,
