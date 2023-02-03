@@ -46,7 +46,11 @@ void TestIperf2() {
   IperfRegs       iperf_reg;
   stream<NetAXIS> rand_data;
   stream<NetAXIS> rand_data_copy;
-  NetAppIntf      app(0x2, "_unit_test");
+#if MULTI_IP_ADDR
+  NetAppIntf app(mock_src_ip_addr, 0x1, "_unit_test");
+#else
+  NetAppIntf app(0x1, "_unit_test");
+#endif
 
   MockLogger top_logger("./iperf2_top.log", NET_APP);
 
@@ -94,21 +98,26 @@ void TestIperf2() {
       default:
         break;
     }
-    iperf2(iperf_reg,
-           app.net_app_listen_port_req,
-           app.net_app_listen_port_rsp,
-           app.net_app_new_client_notification,
-           app.net_app_notification,
-           app.net_app_recv_data_req,
-           app.net_app_recv_data_rsp,
-           app.net_app_recv_data,
-           app.net_app_open_conn_req,
-           app.net_app_open_conn_rsp,
-           app.net_app_close_conn_req,
-           app.net_app_trans_data_req,
-           app.net_app_trans_data_rsp,
-           app.net_app_trans_data,
-           app.tdest_const);
+    iperf2(
+#if MULTI_IP_ADDR
+        app.my_ip_addr,
+#else
+#endif
+        app.tdest_const,
+        iperf_reg,
+        app.net_app_listen_port_req,
+        app.net_app_listen_port_rsp,
+        app.net_app_new_client_notification,
+        app.net_app_notification,
+        app.net_app_recv_data_req,
+        app.net_app_recv_data_rsp,
+        app.net_app_recv_data,
+        app.net_app_open_conn_req,
+        app.net_app_open_conn_rsp,
+        app.net_app_close_conn_req,
+        app.net_app_trans_data_req,
+        app.net_app_trans_data_rsp,
+        app.net_app_trans_data);
     EmptyIperf2Fifos(top_logger,
                      app.net_app_listen_port_req,
                      app.net_app_recv_data_req,
@@ -132,7 +141,11 @@ void TestIperf2ServerWithToe(stream<NetAXIS> &client_golden_pkt,
   // iperf2 server ip in big endian
   IperfRegs iperf_reg;
   IpAddr    my_ip_addr = 0x29131e0a;  // 10.19.0.41
-  ToeIntf   toe_intf(my_ip_addr, "_iperf_test");
+#if MULTI_IP_ADDR
+  ToeIntf toe_intf("_iperf_test");
+#else
+  ToeIntf    toe_intf(my_ip_addr, "_iperf_test");
+#endif
   // mock cam
   MockCam mock_cam;
   // mock mem
@@ -164,21 +177,26 @@ void TestIperf2ServerWithToe(stream<NetAXIS> &client_golden_pkt,
 #endif
     toe_intf.ConnectToeTxIntfWithMockMem(top_logger, tx_mock_mem);
 
-    iperf2(iperf_reg,
-           toe_intf.net_app_to_rx_app_listen_port_req,
-           toe_intf.rx_app_to_net_app_listen_port_rsp,
-           toe_intf.net_app_new_client_notification,
-           toe_intf.net_app_notification,
-           toe_intf.net_app_to_rx_app_recv_data_req,
-           toe_intf.rx_app_to_net_app_recv_data_rsp,
-           toe_intf.net_app_recv_data,
-           toe_intf.net_app_to_tx_app_open_conn_req,
-           toe_intf.tx_app_to_net_app_open_conn_rsp,
-           toe_intf.net_app_to_tx_app_close_conn_req,
-           toe_intf.net_app_to_tx_app_trans_data_req,
-           toe_intf.tx_app_to_net_app_trans_data_rsp,
-           toe_intf.net_app_trans_data,
-           mock_tdest);
+    iperf2(
+#if MULTI_IP_ADDR
+        my_ip_addr,
+#else
+#endif
+        mock_tdest,
+        iperf_reg,
+        toe_intf.net_app_to_rx_app_listen_port_req,
+        toe_intf.rx_app_to_net_app_listen_port_rsp,
+        toe_intf.net_app_new_client_notification,
+        toe_intf.net_app_notification,
+        toe_intf.net_app_to_rx_app_recv_data_req,
+        toe_intf.rx_app_to_net_app_recv_data_rsp,
+        toe_intf.net_app_recv_data,
+        toe_intf.net_app_to_tx_app_open_conn_req,
+        toe_intf.tx_app_to_net_app_open_conn_rsp,
+        toe_intf.net_app_to_tx_app_close_conn_req,
+        toe_intf.net_app_to_tx_app_trans_data_req,
+        toe_intf.tx_app_to_net_app_trans_data_rsp,
+        toe_intf.net_app_trans_data);
     while (!toe_intf.tx_ip_pkt_out.empty()) {
       output_tcp_packet.write(toe_intf.tx_ip_pkt_out.read());
     }

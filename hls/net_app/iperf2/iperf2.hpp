@@ -49,6 +49,12 @@ struct IperfRegs {
 };
 
 void iperf2(
+#if MULTI_IP_ADDR
+    IpAddr &my_ip_addr,
+#else
+#endif
+    // tdest constant
+    NetAXISDest &tdest_const,
     // AXI Lite control register
     IperfRegs &settings_regs,
     // listen port
@@ -70,7 +76,5 @@ void iperf2(
     // transmit data
     stream<NetAXISAppTransDataReq> &net_app_trans_data_req,
     stream<NetAXISAppTransDataRsp> &net_app_trans_data_rsp,
-    stream<NetAXIS>                &net_app_trans_data,
-    // tdest constant
-    NetAXISDest &tdest_const);
+    stream<NetAXIS>                &net_app_trans_data);
 #endif

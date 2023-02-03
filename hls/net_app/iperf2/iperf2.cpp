@@ -514,6 +514,12 @@ void IperfStopWatch(stream<ap_uint<64> > &stop_watch_start, stream<bool> &stop_w
 }
 
 void iperf2(
+#if MULTI_IP_ADDR
+    IpAddr &my_ip_addr,
+#else
+#endif
+    // tdest constant
+    NetAXISDest &tdest_const,
     // AXI Lite control register
     IperfRegs &settings_regs,
     // listen port
@@ -535,12 +541,13 @@ void iperf2(
     // transmit data
     stream<NetAXISAppTransDataReq> &net_app_trans_data_req,
     stream<NetAXISAppTransDataRsp> &net_app_trans_data_rsp,
-    stream<NetAXIS>                &net_app_trans_data,
-    // tdest constant
-    NetAXISDest &tdest_const) {
+    stream<NetAXIS>                &net_app_trans_data) {
 #pragma HLS                        DATAFLOW
 #pragma HLS INTERFACE ap_ctrl_none port = return
-
+#if MULTI_IP_ADDR
+#pragma HLS INTERFACE ap_none register port = my_ip_addr name = my_ip_addr
+#else
+#endif
 #pragma HLS stable variable = tdest_const
 
 #pragma HLS INTERFACE s_axilite port = settings_regs bundle = settings
