@@ -9,6 +9,14 @@ typedef ap_uint<WINDOW_SCALE_BITS> TcpSessionBufferScale;
 typedef ap_uint<WINDOW_BITS>       TcpSessionBuffer;
 typedef ap_uint<32>                IpAddr;
 
+struct FourTuple;
+struct ThreeTuple;
+#if MULTI_IP_ADDR
+using CamTuple = FourTuple;
+#else
+using CamTuple                      = ThreeTuple;
+#endif
+
 #define CLOCK_PERIOD 0.003103
 #ifndef __SYNTHESIS__
 static const ap_uint<32> TIME_64us  = 1;  // used for ACK_DELAY
@@ -473,6 +481,24 @@ struct FourTuple {
       , dst_ip_addr(dst_ip_addr)
       , src_tcp_port(src_tcp_port)
       , dst_tcp_port(dst_tcp_port) {}
+  bool operator<(const FourTuple &other) const {
+    if (src_ip_addr < other.src_ip_addr) {
+      return true;
+    } else if (src_ip_addr == other.src_ip_addr) {
+      if (src_tcp_port < other.src_tcp_port) {
+        return true;
+      } else if (src_tcp_port == other.src_tcp_port) {
+        if (dst_ip_addr < other.dst_ip_addr) {
+          return true;
+        } else if (dst_ip_addr == other.dst_ip_addr) {
+          if (dst_tcp_port < other.dst_tcp_port) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
@@ -1599,10 +1625,10 @@ enum SlookupOp { INSERT, DELETE };
  *
  */
 struct RtlSLookupToCamLupReq {
-  ThreeTuple    key;
+  CamTuple      key;
   SlookupSource source;
   RtlSLookupToCamLupReq() : key(), source(RX) {}
-  RtlSLookupToCamLupReq(ThreeTuple tuple, SlookupSource src) : key(tuple), source(src) {}
+  RtlSLookupToCamLupReq(CamTuple tuple, SlookupSource src) : key(tuple), source(src) {}
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
@@ -1619,11 +1645,11 @@ struct RtlSLookupToCamLupReq {
  */
 struct RtlSlookupToCamUpdReq {
   SlookupOp     op;
-  ThreeTuple    key;
+  CamTuple      key;
   TcpSessionID  value;
   SlookupSource source;
   RtlSlookupToCamUpdReq() {}
-  RtlSlookupToCamUpdReq(ThreeTuple key, TcpSessionID value, SlookupOp op, SlookupSource src)
+  RtlSlookupToCamUpdReq(CamTuple key, TcpSessionID value, SlookupOp op, SlookupSource src)
       : key(key), value(value), op(op), source(src) {}
 #ifndef __SYNTHESIS__
   std::string to_string() {
@@ -1643,7 +1669,7 @@ struct RtlSlookupToCamUpdReq {
  *
  */
 struct RtlCamToSlookupLupRsp {
-  ThreeTuple    key;
+  CamTuple      key;
   TcpSessionID  session_id;
   bool          hit;
   SlookupSource source;
@@ -1670,7 +1696,7 @@ struct RtlCamToSlookupLupRsp {
  */
 struct RtlCamToSlookupUpdRsp {
   SlookupOp     op;
-  ThreeTuple    key;
+  CamTuple      key;
   TcpSessionID  session_id;
   bool          success;
   SlookupSource source;
@@ -1679,7 +1705,7 @@ struct RtlCamToSlookupUpdRsp {
   RtlCamToSlookupUpdRsp(TcpSessionID id, SlookupOp op, SlookupSource src)
       : session_id(id), op(op), source(src) {}
   RtlCamToSlookupUpdRsp(
-      SlookupOp op, ThreeTuple tuple, TcpSessionID id, bool success, SlookupSource src)
+      SlookupOp op, CamTuple tuple, TcpSessionID id, bool success, SlookupSource src)
       : op(op), key(tuple), session_id(id), success(success), source(src) {}
 #ifndef __SYNTHESIS__
   std::string to_string() {

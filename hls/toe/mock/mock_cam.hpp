@@ -11,8 +11,8 @@ using std::endl;
 using std::map;
 class MockCam {
 public:
-  std::map<ThreeTuple, TcpSessionID> _mock_cam;
-  MockCam() { _mock_cam = std::map<ThreeTuple, TcpSessionID>(); }
+  std::map<CamTuple, TcpSessionID> _mock_cam;
+  MockCam() { _mock_cam = std::map<CamTuple, TcpSessionID>(); }
   void MockCamIntf(MockLogger                    &logger,
                    stream<RtlSLookupToCamLupReq> &slookup_to_cam_lup_req,
                    stream<RtlCamToSlookupLupRsp> &cam_to_slookup_lup_rsp,
@@ -23,7 +23,7 @@ public:
     RtlSlookupToCamUpdReq update_req;
     RtlCamToSlookupUpdRsp update_rsp;
 
-    std::map<ThreeTuple, TcpSessionID>::const_iterator iter;
+    std::map<CamTuple, TcpSessionID>::const_iterator iter;
 
     if (!slookup_to_cam_lup_req.empty()) {
       slookup_to_cam_lup_req.read(lookup_req);

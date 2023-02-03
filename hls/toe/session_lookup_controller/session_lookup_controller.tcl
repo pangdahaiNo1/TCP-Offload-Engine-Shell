@@ -23,6 +23,7 @@ add_files "${prj_src_dir}/${prj_name}.cpp \
   ${src_top_dir}/utils/axi_utils.hpp " -cflags "-I${src_top_dir} -DDEBUG"
 
 add_files -tb "${prj_src_dir}/${prj_name}_test.cpp \
+  ${src_top_dir}/toe/toe_conn.hpp \
   ${src_top_dir}/toe/mock/mock_logger.hpp \
   ${src_top_dir}/toe/mock/mock_memory.hpp \
   ${src_top_dir}/toe/mock/mock_net_app.hpp \

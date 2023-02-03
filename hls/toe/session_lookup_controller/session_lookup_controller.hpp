@@ -2,38 +2,37 @@
 #include "toe/toe_conn.hpp"
 
 using namespace hls;
-
 struct RevTableEntry {
-  ThreeTuple  three_tuple;
+  CamTuple    tuple;
   NetAXISDest role_id;
-  RevTableEntry() : three_tuple(), role_id(INVALID_TDEST) {}
-  RevTableEntry(ThreeTuple tuple, NetAXISDest role) : three_tuple(tuple), role_id(role) {}
+  RevTableEntry() : tuple(), role_id(INVALID_TDEST) {}
+  RevTableEntry(CamTuple tuple, NetAXISDest role) : tuple(tuple), role_id(role) {}
 };
 /** @ingroup session_lookup_controller
  *
  */
 struct SlookupReqInternal {
-  ThreeTuple    tuple;
+  CamTuple      tuple;
   bool          allow_creation;
   SlookupSource source;
   NetAXISDest   role_id;
   SlookupReqInternal() : tuple(), allow_creation(0), source(RX), role_id(INVALID_TDEST) {}
-  SlookupReqInternal(ThreeTuple tuple, bool allow_creation, SlookupSource src, NetAXISDest role_id)
+  SlookupReqInternal(CamTuple tuple, bool allow_creation, SlookupSource src, NetAXISDest role_id)
       : tuple(tuple), allow_creation(allow_creation), source(src), role_id(role_id) {}
 };
 
 struct SlookupToRevTableUpdReq {
   TcpSessionID key;
-  ThreeTuple   tuple_value;
+  CamTuple     tuple_value;
   NetAXISDest  role_value;
   SlookupToRevTableUpdReq(){};
-  SlookupToRevTableUpdReq(TcpSessionID key, ThreeTuple tuple, NetAXISDest role)
+  SlookupToRevTableUpdReq(TcpSessionID key, CamTuple tuple, NetAXISDest role)
       : key(key), tuple_value(tuple), role_value(role) {}
 #ifndef __SYNTHESIS__
   std::string to_string() {
     std::stringstream sstream;
     sstream << "Key " << key.to_string(16) << "\t"
-            << "ThreeTuple " << tuple_value.to_string() << "\t"
+            << "CamTuple " << tuple_value.to_string() << "\t"
             << "Role " << role_value << "\t";
     return sstream.str();
   }
@@ -46,6 +45,12 @@ struct SlookupToRevTableUpdReq {
  *  @ingroup tcp_module
  */
 void session_lookup_controller(
+// registers
+#if MULTI_IP_ADDR
+#else
+    IpAddr &my_ip_addr,
+#endif
+    ap_uint<16> &reg_session_cnt,
     // from sttable
     stream<TcpSessionID> &sttable_to_slookup_release_req,
     // rx app
@@ -68,7 +73,4 @@ void session_lookup_controller(
     stream<RtlSlookupToCamUpdReq> &rtl_slookup_to_cam_update_req,
     stream<RtlCamToSlookupUpdRsp> &rtl_cam_to_slookup_update_rsp,
     // to ptable
-    stream<TcpPortNumber> &slookup_to_ptable_release_port_req,
-    // registers
-    ap_uint<16> &reg_session_cnt,
-    IpAddr      &my_ip_addr);
+    stream<TcpPortNumber> &slookup_to_ptable_release_port_req);

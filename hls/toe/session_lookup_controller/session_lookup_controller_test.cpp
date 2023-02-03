@@ -83,11 +83,13 @@ int main() {
   while (sim_cycle < 100) {
     switch (sim_cycle) {
       case 1:
+        // insert one session from tx app
         tx_app_req.four_tuple = mock_tuple;
         tx_app_req.role_id    = 0x1;
         tx_app_to_slookup_req.write(tx_app_req);
         break;
       case 2:
+        // lookup one session from rx eng
         rx_eng_req.four_tuple     = reverse_mock_tuple;
         rx_eng_req.role_id        = 0x3;
         rx_eng_req.allow_creation = false;
@@ -115,24 +117,28 @@ int main() {
       default:
         break;
     }
-    session_lookup_controller(sttable_to_slookup_release_req,
-                              rx_app_to_slookup_check_tdest_req,
-                              slookup_to_rx_app_check_tdset_rsp,
-                              rx_eng_to_slookup_req,
-                              slookup_to_rx_eng_rsp,
-                              tx_app_to_slookup_req,
-                              slookup_to_tx_app_rsp,
-                              tx_app_to_slookup_check_tdest_req,
-                              slookup_to_tx_app_check_tdest_rsp,
-                              tx_eng_to_slookup_rev_table_req,
-                              slookup_rev_table_to_tx_eng_rsp,
-                              rtl_slookup_to_cam_lookup_req,
-                              rtl_cam_to_slookup_lookup_rsp,
-                              rtl_slookup_to_cam_update_req,
-                              rtl_cam_to_slookup_update_rsp,
-                              slookup_to_ptable_release_port_req,
-                              reg_session_cnt,
-                              my_ip_addr);
+    session_lookup_controller(
+#if MULTI_IP_ADDR
+#else
+        my_ip_addr,
+#endif
+        reg_session_cnt,
+        sttable_to_slookup_release_req,
+        rx_app_to_slookup_check_tdest_req,
+        slookup_to_rx_app_check_tdset_rsp,
+        rx_eng_to_slookup_req,
+        slookup_to_rx_eng_rsp,
+        tx_app_to_slookup_req,
+        slookup_to_tx_app_rsp,
+        tx_app_to_slookup_check_tdest_req,
+        slookup_to_tx_app_check_tdest_rsp,
+        tx_eng_to_slookup_rev_table_req,
+        slookup_rev_table_to_tx_eng_rsp,
+        rtl_slookup_to_cam_lookup_req,
+        rtl_cam_to_slookup_lookup_rsp,
+        rtl_slookup_to_cam_update_req,
+        rtl_cam_to_slookup_update_rsp,
+        slookup_to_ptable_release_port_req);
     mock_cam.MockCamIntf(top_logger,
                          rtl_slookup_to_cam_lookup_req,
                          rtl_cam_to_slookup_lookup_rsp,

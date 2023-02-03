@@ -80,12 +80,19 @@ void CamLookupRspHandler(
     case LUP_REQ:
       if (!tx_app_to_slookup_req.empty()) {
         tx_app_to_slookup_req.read(tx_app_req);
+#if MULTI_IP_ADDR
+        to_cam_req_cache.tuple.src_ip_addr  = tx_app_req.four_tuple.src_ip_addr;
+        to_cam_req_cache.tuple.src_tcp_port = tx_app_req.four_tuple.src_tcp_port;
+        to_cam_req_cache.tuple.dst_ip_addr  = tx_app_req.four_tuple.dst_ip_addr;
+        to_cam_req_cache.tuple.dst_tcp_port = tx_app_req.four_tuple.dst_tcp_port;
+#else
         to_cam_req_cache.tuple.there_ip_addr  = tx_app_req.four_tuple.dst_ip_addr;
         to_cam_req_cache.tuple.there_tcp_port = tx_app_req.four_tuple.dst_tcp_port;
         to_cam_req_cache.tuple.here_tcp_port  = tx_app_req.four_tuple.src_tcp_port;
-        to_cam_req_cache.allow_creation       = true;
-        to_cam_req_cache.source               = TX_APP;
-        to_cam_req_cache.role_id              = tx_app_req.role_id;
+#endif
+        to_cam_req_cache.allow_creation = true;
+        to_cam_req_cache.source         = TX_APP;
+        to_cam_req_cache.role_id        = tx_app_req.role_id;
         cam_lup_req = RtlSLookupToCamLupReq(to_cam_req_cache.tuple, to_cam_req_cache.source);
         slookup_to_cam_lup_req.write(cam_lup_req);
         logger.Info(SLUP_CTRL, CUKOO_CAM, "Lup Req from TxApp", cam_lup_req.to_string());
@@ -93,12 +100,19 @@ void CamLookupRspHandler(
         slc_fsm_state          = LUP_RSP;
       } else if (!rx_eng_to_slookup_req.empty()) {
         rx_eng_to_slookup_req.read(rx_eng_req);
+#if MULTI_IP_ADDR
+        to_cam_req_cache.tuple.src_ip_addr  = rx_eng_req.four_tuple.dst_ip_addr;
+        to_cam_req_cache.tuple.src_tcp_port = rx_eng_req.four_tuple.dst_tcp_port;
+        to_cam_req_cache.tuple.dst_ip_addr  = rx_eng_req.four_tuple.src_ip_addr;
+        to_cam_req_cache.tuple.dst_tcp_port = rx_eng_req.four_tuple.src_tcp_port;
+#else
         to_cam_req_cache.tuple.there_ip_addr  = rx_eng_req.four_tuple.src_ip_addr;
         to_cam_req_cache.tuple.there_tcp_port = rx_eng_req.four_tuple.src_tcp_port;
         to_cam_req_cache.tuple.here_tcp_port  = rx_eng_req.four_tuple.dst_tcp_port;
-        to_cam_req_cache.allow_creation       = rx_eng_req.allow_creation;
-        to_cam_req_cache.source               = RX;
-        to_cam_req_cache.role_id              = rx_eng_req.role_id;
+#endif
+        to_cam_req_cache.allow_creation = rx_eng_req.allow_creation;
+        to_cam_req_cache.source         = RX;
+        to_cam_req_cache.role_id        = rx_eng_req.role_id;
         cam_lup_req = RtlSLookupToCamLupReq(to_cam_req_cache.tuple, to_cam_req_cache.source);
         slookup_to_cam_lup_req.write(cam_lup_req);
         logger.Info(SLUP_CTRL, CUKOO_CAM, "Lup Req from RxEng", cam_lup_req.to_string());
@@ -137,7 +151,7 @@ void CamLookupRspHandler(
         to_rev_table_req_cache_valid = false;
         // update rev table requset
         reverse_table_insert_req.write(SlookupToRevTableUpdReq(cam_update_rsp.session_id,
-                                                               to_rev_table_req_cache.three_tuple,
+                                                               to_rev_table_req_cache.tuple,
                                                                to_rev_table_req_cache.role_id));
 
         // reponse to rx engine or tx app
@@ -222,6 +236,11 @@ void CamUpdateRspHandler(stream<RtlCamToSlookupUpdRsp> &rtl_cam_to_slookup_updat
  *
  */
 void SlookupReverseTableInterface(
+#if MULTI_IP_ADDR
+#else
+    // register
+    IpAddr my_ip_addr,
+#endif
     // insert req
     stream<SlookupToRevTableUpdReq> &reverse_table_insert_req,
     stream<TcpSessionID>            &sttable_to_slookup_release_req,
@@ -236,9 +255,7 @@ void SlookupReverseTableInterface(
     stream<ReverseTableToTxEngRsp> &slookup_rev_table_to_tx_eng_rsp,
     // to other req
     stream<TcpSessionID>          &slookup_to_ptable_release_port_req,
-    stream<RtlSlookupToCamUpdReq> &slookup_to_cam_delete_req,
-    // register
-    IpAddr my_ip_addr) {
+    stream<RtlSlookupToCamUpdReq> &slookup_to_cam_delete_req) {
 #pragma HLS PIPELINE II = 1
 #pragma HLS INLINE   off
 
@@ -250,7 +267,7 @@ void SlookupReverseTableInterface(
 
   SlookupToRevTableUpdReq insert_req;
   ReverseTableToTxEngRsp  tx_eng_rsp;
-  ThreeTuple              cur_tuple_to_release;
+  CamTuple                cur_tuple_to_release;
   TcpSessionID            session_id;
   NetAXISDest             ret_role_id;
 
@@ -265,11 +282,18 @@ void SlookupReverseTableInterface(
     tx_eng_to_slookup_rev_table_req.read(session_id);
     logger.Info(
         TX_ENGINE, SLUP_CTRL, "Rev Table Req for tuple and TDEST", session_id.to_string(16));
-    tx_eng_rsp.four_tuple.src_ip_addr  = my_ip_addr;
-    tx_eng_rsp.four_tuple.dst_ip_addr  = slookup_rev_table[session_id].three_tuple.there_ip_addr;
-    tx_eng_rsp.four_tuple.src_tcp_port = slookup_rev_table[session_id].three_tuple.here_tcp_port;
-    tx_eng_rsp.four_tuple.dst_tcp_port = slookup_rev_table[session_id].three_tuple.there_tcp_port;
-    tx_eng_rsp.role_id                 = slookup_rev_table[session_id].role_id;
+#if MULTI_IP_ADDR
+    tx_eng_rsp.four_tuple.src_ip_addr  = slookup_rev_table[session_id].tuple.src_ip_addr;
+    tx_eng_rsp.four_tuple.dst_ip_addr  = slookup_rev_table[session_id].tuple.dst_ip_addr;
+    tx_eng_rsp.four_tuple.src_tcp_port = slookup_rev_table[session_id].tuple.src_tcp_port;
+    tx_eng_rsp.four_tuple.dst_tcp_port = slookup_rev_table[session_id].tuple.dst_tcp_port;
+#else
+    tx_eng_rsp.four_tuple.src_ip_addr = my_ip_addr;
+    tx_eng_rsp.four_tuple.dst_ip_addr = slookup_rev_table[session_id].tuple.there_ip_addr;
+    tx_eng_rsp.four_tuple.src_tcp_port = slookup_rev_table[session_id].tuple.here_tcp_port;
+    tx_eng_rsp.four_tuple.dst_tcp_port = slookup_rev_table[session_id].tuple.there_tcp_port;
+#endif
+    tx_eng_rsp.role_id = slookup_rev_table[session_id].role_id;
     logger.Info(SLUP_CTRL, TX_ENGINE, "Rev Table Rsp", tx_eng_rsp.to_string());
     slookup_rev_table_to_tx_eng_rsp.write(tx_eng_rsp);
   } else if (!rx_app_to_slookup_tdest_lookup_req.empty()) {
@@ -295,10 +319,14 @@ void SlookupReverseTableInterface(
   } else if (!sttable_to_slookup_release_req.empty()) {
     sttable_to_slookup_release_req.read(session_id);
     logger.Info(SLUP_CTRL, "Rev Table release Session", session_id.to_string(16));
-    cur_tuple_to_release = slookup_rev_table[session_id].three_tuple;
+    cur_tuple_to_release = slookup_rev_table[session_id].tuple;
     if (valid_tuple[session_id])  // if valid
     {
-      TcpPortNumber release_port = SwapByte(cur_tuple_to_release.here_tcp_port);
+#if MULTI_IP_ADDR
+      TcpPortNumber release_port = SwapByte<16>(cur_tuple_to_release.src_tcp_port);
+#else
+      TcpPortNumber release_port = SwapByte<16>(cur_tuple_to_release.here_tcp_port);
+#endif
       slookup_to_ptable_release_port_req.write(release_port);
       slookup_to_cam_delete_req.write(
           RtlSlookupToCamUpdReq(cur_tuple_to_release, session_id, DELETE, RX));
@@ -314,6 +342,12 @@ void SlookupReverseTableInterface(
  * SessionIDs
  */
 void session_lookup_controller(
+// registers
+#if MULTI_IP_ADDR
+#else
+    IpAddr &my_ip_addr,
+#endif
+    ap_uint<16> &reg_session_cnt,
     // from sttable
     stream<TcpSessionID> &sttable_to_slookup_release_req,
     // rx app
@@ -336,10 +370,7 @@ void session_lookup_controller(
     stream<RtlSlookupToCamUpdReq> &rtl_slookup_to_cam_update_req,
     stream<RtlCamToSlookupUpdRsp> &rtl_cam_to_slookup_update_rsp,
     // to ptable
-    stream<TcpPortNumber> &slookup_to_ptable_release_port_req,
-    // registers
-    ap_uint<16> &reg_session_cnt,
-    IpAddr      &my_ip_addr) {
+    stream<TcpPortNumber> &slookup_to_ptable_release_port_req) {
 #pragma HLS DATAFLOW
   // #pragma HLS INLINE
 
@@ -395,15 +426,19 @@ void session_lookup_controller(
 
   CamUpdateRspHandler(rtl_cam_to_slookup_update_rsp, cam_to_slookup_insert_rsp_fifo);
 
-  SlookupReverseTableInterface(reverse_table_insert_req_fifo,
-                               sttable_to_slookup_release_req,
-                               rx_app_to_slookup_tdest_lookup_req,
-                               slookup_to_rx_app_tdest_lookup_rsp,
-                               tx_app_to_slookup_check_tdest_req,
-                               slookup_to_tx_app_check_tdest_rsp,
-                               tx_eng_to_slookup_rev_table_req,
-                               slookup_rev_table_to_tx_eng_rsp,
-                               slookup_to_ptable_release_port_req,
-                               slookup_to_cam_delete_req_fifo,
-                               my_ip_addr);
+  SlookupReverseTableInterface(
+#if MULTI_IP_ADDR
+#else
+      my_ip_addr,
+#endif
+      reverse_table_insert_req_fifo,
+      sttable_to_slookup_release_req,
+      rx_app_to_slookup_tdest_lookup_req,
+      slookup_to_rx_app_tdest_lookup_rsp,
+      tx_app_to_slookup_check_tdest_req,
+      slookup_to_tx_app_check_tdest_rsp,
+      tx_eng_to_slookup_rev_table_req,
+      slookup_rev_table_to_tx_eng_rsp,
+      slookup_to_ptable_release_port_req,
+      slookup_to_cam_delete_req_fifo);
 }
