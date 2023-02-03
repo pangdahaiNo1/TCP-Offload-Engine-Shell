@@ -26,6 +26,12 @@ FourTuple reverse_mock_tuple(mock_dst_ip_addr,
                              mock_src_tcp_port);
 
 struct ToeIntf {
+#if MULTI_IP_ADDR
+#else
+  IpAddr my_ip_addr;
+#endif
+  // registers
+  ap_uint<16> reg_session_cnt;
   // rx engine
   stream<NetAXIS> rx_ip_pkt_in;
   // rx eng write to data mover
@@ -64,124 +70,128 @@ struct ToeIntf {
   stream<RtlCamToSlookupLupRsp> rtl_cam_to_slookup_lookup_rsp;
   stream<RtlSlookupToCamUpdReq> rtl_slookup_to_cam_update_req;
   stream<RtlCamToSlookupUpdRsp> rtl_cam_to_slookup_update_rsp;
-
-  // registers
-  ap_uint<16> reg_session_cnt;
-  // in big endian
-  IpAddr my_ip_addr;
+#if MULTI_IP_ADDR
+  ToeIntf(string fifo_suffix){
+#else
   ToeIntf(IpAddr ip_addr, string fifo_suffix) {
     my_ip_addr = ip_addr;
-    // set fifo name
-    // rx eng
-    rx_ip_pkt_in.set_name(("rx_ip_pkt_in" + fifo_suffix).c_str());
-    rx_eng_to_mover_write_cmd.set_name(("rx_eng_to_mover_write_cmd" + fifo_suffix).c_str());
-    rx_eng_to_mover_write_data.set_name(("rx_eng_to_mover_write_data" + fifo_suffix).c_str());
-    mover_to_rx_eng_write_status.set_name(("mover_to_rx_eng_write_status" + fifo_suffix).c_str());
-    // tx eng
-    tx_eng_to_mover_read_cmd.set_name(("tx_eng_to_mover_read_cmd" + fifo_suffix).c_str());
-    mover_to_tx_eng_read_data.set_name(("mover_to_tx_eng_read_data" + fifo_suffix).c_str());
-    tx_ip_pkt_out.set_name(("tx_ip_pkt_out" + fifo_suffix).c_str());
-    // rx app
-    net_app_to_rx_app_listen_port_req.set_name(
-        ("net_app_to_rx_app_listen_port_req" + fifo_suffix).c_str());
-    rx_app_to_net_app_listen_port_rsp.set_name(
-        ("rx_app_to_net_app_listen_port_rsp" + fifo_suffix).c_str());
-    net_app_to_rx_app_recv_data_req.set_name(
-        ("net_app_to_rx_app_recv_data_req" + fifo_suffix).c_str());
-    rx_app_to_net_app_recv_data_rsp.set_name(
-        ("rx_app_to_net_app_recv_data_rsp" + fifo_suffix).c_str());
-    net_app_recv_data.set_name(("net_app_recv_data" + fifo_suffix).c_str());
-    net_app_notification.set_name(("net_app_notification" + fifo_suffix).c_str());
-    rx_app_to_mover_read_cmd.set_name(("rx_app_to_mover_read_cmd" + fifo_suffix).c_str());
-    mover_to_rx_app_read_data.set_name(("mover_to_rx_app_read_data" + fifo_suffix).c_str());
-    // tx app
-    net_app_to_tx_app_open_conn_req.set_name(
-        ("net_app_to_tx_app_open_conn_req" + fifo_suffix).c_str());
-    tx_app_to_net_app_open_conn_rsp.set_name(
-        ("tx_app_to_net_app_open_conn_rsp" + fifo_suffix).c_str());
-    net_app_to_tx_app_close_conn_req.set_name(
-        ("net_app_to_tx_app_close_conn_req" + fifo_suffix).c_str());
-    net_app_new_client_notification.set_name(
-        ("net_app_new_client_notification" + fifo_suffix).c_str());
-    net_app_to_tx_app_trans_data_req.set_name(
-        ("net_app_to_tx_app_trans_data_req" + fifo_suffix).c_str());
-    tx_app_to_net_app_trans_data_rsp.set_name(
-        ("tx_app_to_net_app_trans_data_rsp" + fifo_suffix).c_str());
-    net_app_trans_data.set_name(("net_app_trans_data" + fifo_suffix).c_str());
-    tx_app_to_mover_write_cmd.set_name(("tx_app_to_mover_write_cmd" + fifo_suffix).c_str());
-    tx_app_to_mover_write_data.set_name(("tx_app_to_mover_write_data" + fifo_suffix).c_str());
-    mover_to_tx_app_write_status.set_name(("mover_to_tx_app_write_status" + fifo_suffix).c_str());
-    // CAM
-    rtl_slookup_to_cam_lookup_req.set_name(("rtl_slookup_to_cam_lookup_req" + fifo_suffix).c_str());
-    rtl_cam_to_slookup_lookup_rsp.set_name(("rtl_cam_to_slookup_lookup_rsp" + fifo_suffix).c_str());
-    rtl_slookup_to_cam_update_req.set_name(("rtl_slookup_to_cam_update_req" + fifo_suffix).c_str());
-    rtl_cam_to_slookup_update_rsp.set_name(("rtl_cam_to_slookup_update_rsp" + fifo_suffix).c_str());
-  }
+#endif
+      // set fifo name
+      // rx eng
+      rx_ip_pkt_in.set_name(("rx_ip_pkt_in" + fifo_suffix).c_str());
+  rx_eng_to_mover_write_cmd.set_name(("rx_eng_to_mover_write_cmd" + fifo_suffix).c_str());
+  rx_eng_to_mover_write_data.set_name(("rx_eng_to_mover_write_data" + fifo_suffix).c_str());
+  mover_to_rx_eng_write_status.set_name(("mover_to_rx_eng_write_status" + fifo_suffix).c_str());
+  // tx eng
+  tx_eng_to_mover_read_cmd.set_name(("tx_eng_to_mover_read_cmd" + fifo_suffix).c_str());
+  mover_to_tx_eng_read_data.set_name(("mover_to_tx_eng_read_data" + fifo_suffix).c_str());
+  tx_ip_pkt_out.set_name(("tx_ip_pkt_out" + fifo_suffix).c_str());
+  // rx app
+  net_app_to_rx_app_listen_port_req.set_name(
+      ("net_app_to_rx_app_listen_port_req" + fifo_suffix).c_str());
+  rx_app_to_net_app_listen_port_rsp.set_name(
+      ("rx_app_to_net_app_listen_port_rsp" + fifo_suffix).c_str());
+  net_app_to_rx_app_recv_data_req.set_name(
+      ("net_app_to_rx_app_recv_data_req" + fifo_suffix).c_str());
+  rx_app_to_net_app_recv_data_rsp.set_name(
+      ("rx_app_to_net_app_recv_data_rsp" + fifo_suffix).c_str());
+  net_app_recv_data.set_name(("net_app_recv_data" + fifo_suffix).c_str());
+  net_app_notification.set_name(("net_app_notification" + fifo_suffix).c_str());
+  rx_app_to_mover_read_cmd.set_name(("rx_app_to_mover_read_cmd" + fifo_suffix).c_str());
+  mover_to_rx_app_read_data.set_name(("mover_to_rx_app_read_data" + fifo_suffix).c_str());
+  // tx app
+  net_app_to_tx_app_open_conn_req.set_name(
+      ("net_app_to_tx_app_open_conn_req" + fifo_suffix).c_str());
+  tx_app_to_net_app_open_conn_rsp.set_name(
+      ("tx_app_to_net_app_open_conn_rsp" + fifo_suffix).c_str());
+  net_app_to_tx_app_close_conn_req.set_name(
+      ("net_app_to_tx_app_close_conn_req" + fifo_suffix).c_str());
+  net_app_new_client_notification.set_name(
+      ("net_app_new_client_notification" + fifo_suffix).c_str());
+  net_app_to_tx_app_trans_data_req.set_name(
+      ("net_app_to_tx_app_trans_data_req" + fifo_suffix).c_str());
+  tx_app_to_net_app_trans_data_rsp.set_name(
+      ("tx_app_to_net_app_trans_data_rsp" + fifo_suffix).c_str());
+  net_app_trans_data.set_name(("net_app_trans_data" + fifo_suffix).c_str());
+  tx_app_to_mover_write_cmd.set_name(("tx_app_to_mover_write_cmd" + fifo_suffix).c_str());
+  tx_app_to_mover_write_data.set_name(("tx_app_to_mover_write_data" + fifo_suffix).c_str());
+  mover_to_tx_app_write_status.set_name(("mover_to_tx_app_write_status" + fifo_suffix).c_str());
+  // CAM
+  rtl_slookup_to_cam_lookup_req.set_name(("rtl_slookup_to_cam_lookup_req" + fifo_suffix).c_str());
+  rtl_cam_to_slookup_lookup_rsp.set_name(("rtl_cam_to_slookup_lookup_rsp" + fifo_suffix).c_str());
+  rtl_slookup_to_cam_update_req.set_name(("rtl_slookup_to_cam_update_req" + fifo_suffix).c_str());
+  rtl_cam_to_slookup_update_rsp.set_name(("rtl_cam_to_slookup_update_rsp" + fifo_suffix).c_str());
+}
 
   void ConnectToeIntfWithToe() {
-    toe_top(this->rx_ip_pkt_in,
+  toe_top(
+#if MULTI_IP_ADDR
+#else
+        this->my_ip_addr,
+#endif
+      this->reg_session_cnt,
+      this->rx_ip_pkt_in,
 #if !TCP_RX_DDR_BYPASS
-            this->rx_eng_to_mover_write_cmd,
-            this->rx_eng_to_mover_write_data,
-            this->mover_to_rx_eng_write_status,
+      this->rx_eng_to_mover_write_cmd,
+      this->rx_eng_to_mover_write_data,
+      this->mover_to_rx_eng_write_status,
 #endif
-            this->tx_eng_to_mover_read_cmd,
-            this->mover_to_tx_eng_read_data,
-            this->tx_ip_pkt_out,
-            this->net_app_to_rx_app_listen_port_req,
-            this->rx_app_to_net_app_listen_port_rsp,
-            this->net_app_to_rx_app_recv_data_req,
-            this->rx_app_to_net_app_recv_data_rsp,
-            this->net_app_recv_data,
-            this->net_app_notification,
+      this->tx_eng_to_mover_read_cmd,
+      this->mover_to_tx_eng_read_data,
+      this->tx_ip_pkt_out,
+      this->net_app_to_rx_app_listen_port_req,
+      this->rx_app_to_net_app_listen_port_rsp,
+      this->net_app_to_rx_app_recv_data_req,
+      this->rx_app_to_net_app_recv_data_rsp,
+      this->net_app_recv_data,
+      this->net_app_notification,
 #if !(TCP_RX_DDR_BYPASS)
-            this->rx_app_to_mover_read_cmd,
-            this->mover_to_rx_app_read_data,
+      this->rx_app_to_mover_read_cmd,
+      this->mover_to_rx_app_read_data,
 #endif
-            this->net_app_to_tx_app_open_conn_req,
-            this->tx_app_to_net_app_open_conn_rsp,
-            this->net_app_to_tx_app_close_conn_req,
-            this->net_app_new_client_notification,
-            this->net_app_to_tx_app_trans_data_req,
-            this->tx_app_to_net_app_trans_data_rsp,
-            this->net_app_trans_data,
-            this->tx_app_to_mover_write_cmd,
-            this->tx_app_to_mover_write_data,
-            this->mover_to_tx_app_write_status,
-            this->rtl_slookup_to_cam_lookup_req,
-            this->rtl_cam_to_slookup_lookup_rsp,
-            this->rtl_slookup_to_cam_update_req,
-            this->rtl_cam_to_slookup_update_rsp,
-            this->reg_session_cnt,
-            this->my_ip_addr);
-    return;
-  }
+      this->net_app_to_tx_app_open_conn_req,
+      this->tx_app_to_net_app_open_conn_rsp,
+      this->net_app_to_tx_app_close_conn_req,
+      this->net_app_new_client_notification,
+      this->net_app_to_tx_app_trans_data_req,
+      this->tx_app_to_net_app_trans_data_rsp,
+      this->net_app_trans_data,
+      this->tx_app_to_mover_write_cmd,
+      this->tx_app_to_mover_write_data,
+      this->mover_to_tx_app_write_status,
+      this->rtl_slookup_to_cam_lookup_req,
+      this->rtl_cam_to_slookup_lookup_rsp,
+      this->rtl_slookup_to_cam_update_req,
+      this->rtl_cam_to_slookup_update_rsp);
+  return;
+}
 
-  void ConnectToeIntfWithMockCam(MockLogger &logger, MockCam &mock_cam) {
-    mock_cam.MockCamIntf(logger,
-                         this->rtl_slookup_to_cam_lookup_req,
-                         this->rtl_cam_to_slookup_lookup_rsp,
-                         this->rtl_slookup_to_cam_update_req,
-                         this->rtl_cam_to_slookup_update_rsp);
-  }
+void ConnectToeIntfWithMockCam(MockLogger &logger, MockCam &mock_cam) {
+  mock_cam.MockCamIntf(logger,
+                       this->rtl_slookup_to_cam_lookup_req,
+                       this->rtl_cam_to_slookup_lookup_rsp,
+                       this->rtl_slookup_to_cam_update_req,
+                       this->rtl_cam_to_slookup_update_rsp);
+}
 
-  void ConnectToeTxIntfWithMockMem(MockLogger &logger, MockMem &mock_mem) {
-    mock_mem.MockMemIntf(logger,
-                         this->tx_eng_to_mover_read_cmd,
-                         this->mover_to_tx_eng_read_data,
-                         this->tx_app_to_mover_write_cmd,
-                         this->tx_app_to_mover_write_data,
-                         this->mover_to_tx_app_write_status);
-  }
+void ConnectToeTxIntfWithMockMem(MockLogger &logger, MockMem &mock_mem) {
+  mock_mem.MockMemIntf(logger,
+                       this->tx_eng_to_mover_read_cmd,
+                       this->mover_to_tx_eng_read_data,
+                       this->tx_app_to_mover_write_cmd,
+                       this->tx_app_to_mover_write_data,
+                       this->mover_to_tx_app_write_status);
+}
 
-  void ConnectToeRxIntfWithMockMem(MockLogger &logger, MockMem &mock_mem) {
-    mock_mem.MockMemIntf(logger,
-                         this->rx_app_to_mover_read_cmd,
-                         this->mover_to_rx_app_read_data,
-                         this->rx_eng_to_mover_write_cmd,
-                         this->rx_eng_to_mover_write_data,
-                         this->mover_to_rx_eng_write_status);
-  }
-};
+void ConnectToeRxIntfWithMockMem(MockLogger &logger, MockMem &mock_mem) {
+  mock_mem.MockMemIntf(logger,
+                       this->rx_app_to_mover_read_cmd,
+                       this->mover_to_rx_app_read_data,
+                       this->rx_eng_to_mover_write_cmd,
+                       this->rx_eng_to_mover_write_data,
+                       this->mover_to_rx_eng_write_status);
+}
+}
+;
 
 #endif

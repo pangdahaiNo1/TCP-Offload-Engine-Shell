@@ -12,6 +12,12 @@
 #include "toe/tx_sar_table/tx_sar_table.hpp"
 
 void toe_top(
+// registers
+#if MULTI_IP_ADDR
+#else
+    IpAddr &my_ip_addr,
+#endif
+    ap_uint<16> &reg_session_cnt,
     // rx engine
     stream<NetAXIS> &rx_ip_pkt_in,
 #if !TCP_RX_DDR_BYPASS
@@ -53,11 +59,7 @@ void toe_top(
     stream<RtlSLookupToCamLupReq> &rtl_slookup_to_cam_lookup_req,
     stream<RtlCamToSlookupLupRsp> &rtl_cam_to_slookup_lookup_rsp,
     stream<RtlSlookupToCamUpdReq> &rtl_slookup_to_cam_update_req,
-    stream<RtlCamToSlookupUpdRsp> &rtl_cam_to_slookup_update_rsp,
-    // registers
-    ap_uint<16> &reg_session_cnt,
-    // in big endian
-    IpAddr &my_ip_addr) {
+    stream<RtlCamToSlookupUpdRsp> &rtl_cam_to_slookup_update_rsp) {
 #pragma HLS                        DATAFLOW
 #pragma HLS INTERFACE ap_ctrl_none port = return
 // interfaces
@@ -152,8 +154,11 @@ void toe_top(
 #pragma HLS INTERFACE axis register port = rtl_cam_to_slookup_update_rsp
 #pragma HLS aggregate variable = rtl_cam_to_slookup_update_rsp compact = bit
 
-// ip
+  // ip
+#if MULTI_IP_ADDR
+#else
 #pragma HLS INTERFACE ap_none register port = my_ip_addr name = my_ip_addr
+#endif
 // session count register
 #pragma HLS INTERFACE ap_none register port = reg_session_cnt
   // some fifos
@@ -388,6 +393,11 @@ void toe_top(
                rx_sar_to_tx_eng_lup_rsp_fifo);
 
   session_lookup_controller(
+#if MULTI_IP_ADDR
+#else
+      my_ip_addr,
+#endif
+      reg_session_cnt,
       // from sttable
       sttable_to_slookup_release_req_fifo,
       // rx app
@@ -410,10 +420,7 @@ void toe_top(
       rtl_slookup_to_cam_update_req,
       rtl_cam_to_slookup_update_rsp,
       // to ptable
-      slookup_to_ptable_release_port_req_fifo,
-      // registers
-      reg_session_cnt,
-      my_ip_addr);
+      slookup_to_ptable_release_port_req_fifo);
 
   state_table(timer_to_sttable_release_state_fifo,
               rx_eng_to_sttable_req_fifo,
@@ -435,6 +442,10 @@ void toe_top(
                 timer_to_sttable_release_state_fifo);
 
   tx_app_intf(
+#if MULTI_IP_ADDR
+#else
+      my_ip_addr,
+#endif
       // net app connection request
       net_app_to_tx_app_open_conn_req,
       tx_app_to_net_app_open_conn_rsp,
@@ -473,9 +484,7 @@ void toe_top(
       // datamover req/rsp
       tx_app_to_mover_write_cmd,
       tx_app_to_mover_write_data,
-      mover_to_tx_app_write_status,
-      // in big endian
-      my_ip_addr);
+      mover_to_tx_app_write_status);
 
   tx_engine(
       // from ack delay to tx engine req

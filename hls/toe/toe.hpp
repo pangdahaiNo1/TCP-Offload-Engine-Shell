@@ -3,6 +3,12 @@
 #include "toe/toe_conn.hpp"
 
 void toe_top(
+// registers
+#if MULTI_IP_ADDR
+#else
+    IpAddr &my_ip_addr,
+#endif
+    ap_uint<16> &reg_session_cnt,
     // rx engine
     stream<NetAXIS> &rx_ip_pkt_in,
 #if !TCP_RX_DDR_BYPASS
@@ -44,10 +50,6 @@ void toe_top(
     stream<RtlSLookupToCamLupReq> &rtl_slookup_to_cam_lookup_req,
     stream<RtlCamToSlookupLupRsp> &rtl_cam_to_slookup_lookup_rsp,
     stream<RtlSlookupToCamUpdReq> &rtl_slookup_to_cam_update_req,
-    stream<RtlCamToSlookupUpdRsp> &rtl_cam_to_slookup_update_rsp,
-    // registers
-    ap_uint<16> &reg_session_cnt,
-    // in big endian
-    IpAddr &my_ip_addr);
+    stream<RtlCamToSlookupUpdRsp> &rtl_cam_to_slookup_update_rsp);
 
 #endif  // _TOE_HPP_

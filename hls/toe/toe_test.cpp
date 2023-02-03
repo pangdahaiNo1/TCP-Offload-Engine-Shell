@@ -69,8 +69,12 @@ void TestToeSYNRetrans(stream<NetAXIS> &input_tcp_packet) {
   stream<NetAXIS> output_tcp_packet;
   // in big endian
   IpAddr my_ip_addr = 0x24131e0a;  // 10.19.0.36
-  // TOE INTF
+// TOE INTF
+#if MULTI_IP_ADDR
+  ToeIntf toe_intf("_SYN_Retrans");
+#else
   ToeIntf toe_intf(my_ip_addr, "_SYN_Retrans");
+#endif
   // mock cam
   MockCam mock_cam;
   // mock mem
@@ -150,7 +154,11 @@ void TestToeSYNRetransThenACK(stream<NetAXIS> &input_tcp_packet) {
   // in big endian
   IpAddr my_ip_addr = 0x24131e0a;  // 10.19.0.36
 
+#if MULTI_IP_ADDR
+  ToeIntf toe_intf("_SYN_Retrans_then_ack");
+#else
   ToeIntf toe_intf(my_ip_addr, "_SYN_Retrans_then_ack");
+#endif
   // mock cam
   MockCam mock_cam;
   // mock mem
