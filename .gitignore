@@ -1,4 +1,5 @@
 *hls_prj*/
+*vivado_prj*/
 ip_repo/
 test_port/
 .vscode/
@@ -7,3 +8,4 @@ hls/pcap/temp/
 *.dat
 *.log
 *.out
+.Xil/
