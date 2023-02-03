@@ -6,6 +6,7 @@
 
 ## Note
 1. ICMP Server 模块只计算ICMP checksum，不计算Ipv4 checksum
+2. TOE模拟的时候，第一个包的SEQ number的值位于`hls/toe_connfig.hpp`文件的`INIT_SEQ_NUMBER`
 
 ### 支持多IP所做的修改
 1. Hash Table中的Key需要完整记录四元组，而不是之前的三元组，所以keySize=96
@@ -14,6 +15,7 @@
 4. MockCam中模拟的KV Map，其Key为四元组
 5. PortTable应该记录每个IP分配的Port，但也可以保持现状，即所有端口均不同
 6. Tx app intf中App打开TCP连接的请求中，应该携带该App的IP地址
+7. Net APP中的my_ip_addr应该接入GPIO，以此来使得用户可以自己配置该应用的IP地址
 
 
 ## 附录
