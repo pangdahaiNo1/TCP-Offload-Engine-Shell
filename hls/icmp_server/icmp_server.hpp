@@ -12,6 +12,6 @@ const ap_uint<8> ICMP_PROTOCOL = 0x01;
 /** @defgroup icmp_server ICMP(Ping) Server
  *
  */
-void icmp_server(stream<NetAXIS> &dataIn, ap_uint<32> &myIpAddress, stream<NetAXIS> &dataOut);
+void icmp_server(stream<NetAXIS> &data_in, ap_uint<32> &my_ipaddr, stream<NetAXIS> &data_out);
 
 #endif

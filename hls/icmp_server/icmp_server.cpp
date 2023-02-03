@@ -86,8 +86,8 @@ void icmp_server(stream<NetAXIS> &data_in, ap_uint<32> &my_ipaddr, stream<NetAXI
 
 #pragma HLS INTERFACE ap_ctrl_none       port = return
 #pragma HLS INTERFACE axis register both port = data_in name = s_axis_icmp
-#pragma HLS INTERFACE axis register both port = data_out name = m_axis_icmp
-#pragma HLS INTERFACE mode = ap_none register port = my_ipaddr name = my_ipaddr
+#pragma HLS INTERFACE axis register both port = data_out name                  = m_axis_icmp
+#pragma HLS INTERFACE                                    ap_none register port = my_ipaddr
 
   enum IcmpState { READ_PACKET, EVALUATE_CONDITIONS, SEND_FIRST_WORD, FORWARD, DROP_PACKET };
   static IcmpState fsm_state = READ_PACKET;

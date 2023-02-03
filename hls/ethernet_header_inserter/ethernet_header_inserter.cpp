@@ -285,9 +285,9 @@ void ethernet_header_inserter(
 #pragma HLS aggregate variable = arp_table_rsp compact = bit
 #pragma HLS INTERFACE axis register both       port    = arp_table_req
 
-#pragma HLS INTERFACE ap_none register port = my_mac_addr name = my_mac_addr
-#pragma HLS INTERFACE ap_none register port = subnet_mask name = subnet_mask
-#pragma HLS INTERFACE ap_none register port = gateway_ip_addr name = gateway_ip_addr
+#pragma HLS INTERFACE ap_none register port = my_mac_addr
+#pragma HLS INTERFACE ap_none register port = subnet_mask
+#pragma HLS INTERFACE ap_none register port = gateway_ip_addr
 
   // FIFOs
   static stream<NetAXISWord> ip_header_without_checksum_fifo;

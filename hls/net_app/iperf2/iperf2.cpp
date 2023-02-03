@@ -545,10 +545,10 @@ void iperf2(
 #pragma HLS                        DATAFLOW
 #pragma HLS INTERFACE ap_ctrl_none port = return
 #if MULTI_IP_ADDR
-#pragma HLS INTERFACE ap_none register port = my_ip_addr name = my_ip_addr
+#pragma HLS INTERFACE ap_none register port = my_ip_addr
 #else
 #endif
-#pragma HLS stable variable = tdest_const
+#pragma HLS INTERFACE ap_none register port = tdest_const
 
 #pragma HLS INTERFACE s_axilite port = settings_regs bundle = settings
 
